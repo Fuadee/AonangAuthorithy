@@ -29,6 +29,6 @@ export const ROLE_PERMISSIONS: Record<RoleCode, string[]> = {
   SURVEYOR: ["request.document_review", "request.survey_result"],
   OPERATIONS: ["meter.ics", "meter.invoice", "meter.payment"],
   SUPERVISOR: ["dashboard.view", "request.reassign"],
-  MANAGER: ["request.approve", "queue.approve"],
+  MANAGER: ["dashboard.view", "request.create", "request.approve", "queue.approve"],
   INSTALL_PLANNER: ["queue.create", "queue.assign"]
 };

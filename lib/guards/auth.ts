@@ -18,6 +18,13 @@ const VALID_ROLES: RoleCode[] = [
   "INSTALL_PLANNER"
 ];
 
+export class PermissionDeniedError extends Error {
+  constructor(public readonly permission: string, public readonly userId: string, message?: string) {
+    super(message ?? `Permission denied for ${permission}`);
+    this.name = "PermissionDeniedError";
+  }
+}
+
 function isRoleCode(value: string): value is RoleCode {
   return VALID_ROLES.includes(value as RoleCode);
 }
@@ -43,6 +50,7 @@ export async function getMyRoles(): Promise<RoleCode[]> {
     .eq("user_id", user.id);
 
   if (error || !data) {
+    console.error("[auth] getMyRoles failed", { userId: user.id, error: error?.message });
     return [];
   }
 
@@ -52,14 +60,37 @@ export async function getMyRoles(): Promise<RoleCode[]> {
     .filter(isRoleCode);
 }
 
-export async function requirePermission(permission: string) {
+export type RequirePermissionOptions = {
+  redirectTo?: string | null;
+};
+
+export async function requirePermission(permission: string, options: RequirePermissionOptions = {}) {
   const user = await requireAuth();
   const roles = await getMyRoles();
+  const permissions = roles.flatMap((role) => ROLE_PERMISSIONS[role] ?? []);
 
-  const granted = roles.some((role) => ROLE_PERMISSIONS[role]?.includes(permission));
+  console.info("[auth] permission check", {
+    userId: user.id,
+    permission,
+    roles,
+    permissions
+  });
+
+  const granted = permissions.includes(permission);
   if (!granted) {
-    redirect("/dashboard?error=forbidden");
+    console.warn("[auth] permission denied", {
+      userId: user.id,
+      permission,
+      roles,
+      permissions
+    });
+
+    if (options.redirectTo !== null) {
+      redirect(options.redirectTo ?? "/forbidden");
+    }
+
+    throw new PermissionDeniedError(permission, user.id);
   }
 
-  return { user, roles };
+  return { user, roles, permissions };
 }
