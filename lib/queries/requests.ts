@@ -85,9 +85,22 @@ export async function getRequestDetail(requestId: string): Promise<RequestDetail
       .limit(10)
   ]);
 
+  const normalizedTimeline: RequestDetail["timeline"] = (timeline ?? []).map((row) => {
+    const actorArray = ((row as Record<string, unknown>).actor as Array<{ full_name?: string }>) ?? [];
+    const actor = actorArray[0]?.full_name ? { full_name: String(actorArray[0].full_name) } : null;
+
+    return {
+      id: Number((row as Record<string, unknown>).id),
+      activity_type: String((row as Record<string, unknown>).activity_type),
+      payload: ((row as Record<string, unknown>).payload as Record<string, unknown>) ?? {},
+      created_at: String((row as Record<string, unknown>).created_at),
+      actor
+    };
+  });
+
   return {
     request: request as RequestDetail["request"],
-    timeline: (timeline ?? []) as RequestDetail["timeline"],
+    timeline: normalizedTimeline,
     assignments: assignments ?? [],
     reviews: reviews ?? []
   };
