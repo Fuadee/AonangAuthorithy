@@ -1,6 +1,13 @@
 import { createAdminClient } from "@/lib/supabase/admin";
 import type { DashboardSummary } from "@/types/domain";
 
+export type OverdueRequest = {
+  request_id: string;
+  request_no: string;
+  current_status: string;
+  updated_at: string;
+};
+
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   const supabase = createAdminClient();
 
@@ -24,7 +31,7 @@ export async function getAgingBuckets() {
   return data ?? [];
 }
 
-export async function getOverdueRequests(limit = 20) {
+export async function getOverdueRequests(limit = 20): Promise<OverdueRequest[]> {
   const supabase = createAdminClient();
   const { data } = await supabase
     .from("v_sla_overdue_requests")
@@ -32,5 +39,10 @@ export async function getOverdueRequests(limit = 20) {
     .order("updated_at", { ascending: true })
     .limit(limit);
 
-  return data ?? [];
+  return (data ?? []).map((row) => ({
+    request_id: String((row as Record<string, unknown>).request_id),
+    request_no: String((row as Record<string, unknown>).request_no),
+    current_status: String((row as Record<string, unknown>).current_status),
+    updated_at: String((row as Record<string, unknown>).updated_at)
+  }));
 }

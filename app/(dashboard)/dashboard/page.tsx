@@ -1,6 +1,6 @@
 import { DashboardCards } from "@/components/dashboard/dashboard-cards";
 import { requirePermission } from "@/lib/guards/auth";
-import { getAgingBuckets, getDashboardSummary, getOverdueRequests } from "@/lib/queries/dashboard";
+import { getAgingBuckets, getDashboardSummary, getOverdueRequests, type OverdueRequest } from "@/lib/queries/dashboard";
 
 export default async function DashboardPage() {
   await requirePermission("dashboard.view");
@@ -39,7 +39,7 @@ export default async function DashboardPage() {
       <div className="rounded-xl bg-white p-4 shadow-sm">
         <h2 className="mb-2 font-semibold">งานเกิน SLA ล่าสุด</h2>
         <ul className="space-y-2 text-sm">
-          {overdue.map((job) => (
+          {overdue.map((job: OverdueRequest) => (
             <li key={job.request_id} className="rounded border p-2">
               <span className="font-medium">{job.request_no}</span> - {job.current_status}
             </li>
