@@ -4,10 +4,23 @@ import { ROLE_PERMISSIONS } from "@/lib/workflow/constants";
 import type { RoleCode } from "@/types/domain";
 
 type UserRoleRow = {
-  roles: {
-    code: RoleCode;
-  } | null;
+  roles: Array<{
+    code: RoleCode | string;
+  }>;
 };
+
+const VALID_ROLES: RoleCode[] = [
+  "RECEPTIONIST",
+  "SURVEYOR",
+  "OPERATIONS",
+  "SUPERVISOR",
+  "MANAGER",
+  "INSTALL_PLANNER"
+];
+
+function isRoleCode(value: string): value is RoleCode {
+  return VALID_ROLES.includes(value as RoleCode);
+}
 
 export async function requireAuth() {
   const supabase = await createClient();
@@ -29,13 +42,14 @@ export async function getMyRoles(): Promise<RoleCode[]> {
     .select("roles(code)")
     .eq("user_id", user.id);
 
-  if (error) {
+  if (error || !data) {
     return [];
   }
 
-  return (data as UserRoleRow[])
-    .map((row) => row.roles?.code)
-    .filter((value): value is RoleCode => Boolean(value));
+  return (data as unknown as UserRoleRow[])
+    .flatMap((row) => row.roles ?? [])
+    .map((role) => String(role.code))
+    .filter(isRoleCode);
 }
 
 export async function requirePermission(permission: string) {
