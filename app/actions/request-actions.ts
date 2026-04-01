@@ -1,59 +1,111 @@
 "use server";
 
 import { revalidatePath } from "next/cache";
+import { redirect } from "next/navigation";
+import { ZodError } from "zod";
 import { createAdminClient } from "@/lib/supabase/admin";
-import { requirePermission } from "@/lib/guards/auth";
+import { PermissionDeniedError, requirePermission } from "@/lib/guards/auth";
 import { transitionStatus } from "@/lib/workflow/service";
 import { assignRequestSchema, createRequestSchema, reviewDocumentSchema } from "@/lib/workflow/validators";
 
-export async function createRequestAction(formData: FormData) {
-  const { user } = await requirePermission("request.create");
+export type CreateRequestActionState = {
+  error: string | null;
+};
 
-  const parsed = createRequestSchema.parse({
-    requestType: formData.get("requestType"),
-    areaCode: formData.get("areaCode"),
-    customerName: formData.get("customerName"),
-    customerPhone: formData.get("customerPhone"),
-    supplyAddress: formData.get("supplyAddress")
-  });
+export const INITIAL_CREATE_REQUEST_STATE: CreateRequestActionState = {
+  error: null
+};
 
-  const supabase = createAdminClient();
-  const { data, error } = await supabase
-    .from("service_requests")
-    .insert({
-      request_type: parsed.requestType,
-      area_code: parsed.areaCode,
-      customer_name: parsed.customerName,
-      customer_phone: parsed.customerPhone,
-      supply_address: parsed.supplyAddress,
-      current_status: "WAITING_SURVEY_ASSIGNMENT",
-      created_by: user.id,
-      current_owner_id: user.id,
-      prelim_check_ok: true
-    })
-    .select("id")
-    .single();
+export async function createRequestAction(
+  _prevState: CreateRequestActionState,
+  formData: FormData
+): Promise<CreateRequestActionState> {
+  console.info("[request.create] start");
 
-  if (error) throw error;
+  try {
+    const { user, roles, permissions } = await requirePermission("request.create", { redirectTo: null });
 
-  await supabase.from("request_activities").insert({
-    request_id: data.id,
-    actor_id: user.id,
-    activity_type: "REQUEST_CREATED",
-    payload: parsed
-  });
+    console.info("[request.create] user resolved", {
+      userId: user.id,
+      roles,
+      permissions
+    });
 
-  await supabase.from("request_status_history").insert({
-    request_id: data.id,
-    from_status: "NEW",
-    to_status: "WAITING_SURVEY_ASSIGNMENT",
-    changed_by: user.id,
-    note: "Preliminary check completed"
-  });
+    const parsed = createRequestSchema.parse({
+      requestType: formData.get("requestType"),
+      areaCode: formData.get("areaCode"),
+      customerName: formData.get("customerName"),
+      customerPhone: formData.get("customerPhone"),
+      supplyAddress: formData.get("supplyAddress")
+    });
 
-  revalidatePath("/dashboard");
-  revalidatePath(`/requests/${data.id}`);
-  return data.id;
+    const supabase = createAdminClient();
+    const { data, error } = await supabase
+      .from("service_requests")
+      .insert({
+        request_type: parsed.requestType,
+        area_code: parsed.areaCode,
+        customer_name: parsed.customerName,
+        customer_phone: parsed.customerPhone,
+        supply_address: parsed.supplyAddress,
+        current_status: "WAITING_SURVEY_ASSIGNMENT",
+        created_by: user.id,
+        current_owner_id: user.id,
+        prelim_check_ok: true
+      })
+      .select("id")
+      .single();
+
+    if (error) {
+      console.error("[request.create] insert service_requests failed", { userId: user.id, error: error.message });
+      return { error: "ไม่สามารถบันทึกคำร้องได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง" };
+    }
+
+    await supabase.from("request_activities").insert({
+      request_id: data.id,
+      actor_id: user.id,
+      activity_type: "REQUEST_CREATED",
+      payload: parsed
+    });
+
+    await supabase.from("request_status_history").insert({
+      request_id: data.id,
+      from_status: "NEW",
+      to_status: "WAITING_SURVEY_ASSIGNMENT",
+      changed_by: user.id,
+      note: "Preliminary check completed"
+    });
+
+    revalidatePath("/dashboard");
+    revalidatePath(`/requests/${data.id}`);
+
+    const destination = `/requests/${data.id}`;
+    console.info("[request.create] success", {
+      userId: user.id,
+      requestId: data.id,
+      destination
+    });
+
+    redirect(destination);
+  } catch (error) {
+    if (error instanceof PermissionDeniedError) {
+      console.error("[request.create] permission denied", {
+        userId: error.userId,
+        permission: error.permission
+      });
+      return { error: "คุณไม่มีสิทธิ์สร้างคำร้อง กรุณาติดต่อผู้ดูแลระบบ" };
+    }
+
+    if (error instanceof ZodError) {
+      console.error("[request.create] validation failed", {
+        issues: error.issues.map((issue) => issue.message)
+      });
+      return { error: "ข้อมูลไม่ครบถ้วนหรือไม่ถูกต้อง กรุณาตรวจสอบอีกครั้ง" };
+    }
+
+    console.error("[request.create] unexpected error", error);
+    return { error: "เกิดข้อผิดพลาดไม่คาดคิด กรุณาลองใหม่อีกครั้ง" };
+  }
 }
 
 export async function assignSurveyorAction(formData: FormData) {

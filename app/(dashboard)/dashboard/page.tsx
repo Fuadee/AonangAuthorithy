@@ -1,9 +1,28 @@
 import { DashboardCards } from "@/components/dashboard/dashboard-cards";
-import { requirePermission } from "@/lib/guards/auth";
+import { PermissionDeniedError, requirePermission } from "@/lib/guards/auth";
 import { getAgingBuckets, getDashboardSummary, getOverdueRequests, type OverdueRequest } from "@/lib/queries/dashboard";
 
 export default async function DashboardPage() {
-  await requirePermission("dashboard.view");
+  try {
+    await requirePermission("dashboard.view", { redirectTo: null });
+  } catch (error) {
+    if (error instanceof PermissionDeniedError) {
+      console.warn("[dashboard] forbidden", {
+        userId: error.userId,
+        permission: error.permission
+      });
+
+      return (
+        <div className="rounded-xl border border-amber-300 bg-amber-50 p-4 text-amber-900">
+          <h1 className="text-xl font-semibold">Forbidden</h1>
+          <p className="mt-2 text-sm">คุณไม่มีสิทธิ์เข้าถึงหน้า Dashboard สำหรับบัญชีนี้</p>
+        </div>
+      );
+    }
+
+    throw error;
+  }
+
   const [summary, aging, overdue] = await Promise.all([getDashboardSummary(), getAgingBuckets(), getOverdueRequests(15)]);
 
   return (
