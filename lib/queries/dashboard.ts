@@ -11,16 +11,20 @@ export type OverdueRequest = {
 export async function getDashboardSummary(): Promise<DashboardSummary> {
   const supabase = createAdminClient();
 
-  const [{ count: totalOpen = 0 }, { count: waitingSurveyorReview = 0 }, { count: slaOverdue = 0 }, { count: staleJobs = 0 }] =
-    await Promise.all([
-      supabase.from("service_requests").select("id", { count: "exact", head: true }).neq("current_status", "CLOSED"),
-      supabase
-        .from("service_requests")
-        .select("id", { count: "exact", head: true })
-        .eq("current_status", "WAITING_SURVEYOR_DOCUMENT_REVIEW"),
-      supabase.from("v_sla_overdue_requests").select("request_id", { count: "exact", head: true }),
-      supabase.from("v_stale_requests").select("id", { count: "exact", head: true })
-    ]);
+  const [openRes, reviewRes, overdueRes, staleRes] = await Promise.all([
+    supabase.from("service_requests").select("id", { count: "exact", head: true }).neq("current_status", "CLOSED"),
+    supabase
+      .from("service_requests")
+      .select("id", { count: "exact", head: true })
+      .eq("current_status", "WAITING_SURVEYOR_DOCUMENT_REVIEW"),
+    supabase.from("v_sla_overdue_requests").select("request_id", { count: "exact", head: true }),
+    supabase.from("v_stale_requests").select("id", { count: "exact", head: true })
+  ]);
+
+  const totalOpen = Number(openRes.count ?? 0);
+  const waitingSurveyorReview = Number(reviewRes.count ?? 0);
+  const slaOverdue = Number(overdueRes.count ?? 0);
+  const staleJobs = Number(staleRes.count ?? 0);
 
   return { totalOpen, waitingSurveyorReview, slaOverdue, staleJobs };
 }
