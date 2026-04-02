@@ -51,7 +51,7 @@ export function SurveyorActionForm({ requestId, currentStatus }: SurveyorActionF
       <input name="action" type="hidden" value={selectedAction} />
 
       <div className="space-y-2">
-        <p className="text-sm font-medium text-slate-700">เลือกการดำเนินการ</p>
+        <p className="text-sm font-medium text-slate-700">งานที่ต้องการทำตอนนี้</p>
         <div className="flex flex-wrap gap-2">
           {enabledButtons.map((item) => (
             <button
@@ -77,7 +77,7 @@ export function SurveyorActionForm({ requestId, currentStatus }: SurveyorActionF
 
       <div>
         <label className="text-sm font-medium" htmlFor="survey_note">
-          หมายเหตุจากนักสำรวจ
+          ผลการตรวจเอกสาร / หมายเหตุล่าสุด
         </label>
         <textarea
           className="input min-h-24"
@@ -90,7 +90,7 @@ export function SurveyorActionForm({ requestId, currentStatus }: SurveyorActionF
 
       <div>
         <label className="text-sm font-medium" htmlFor="survey_reschedule_date">
-          วันสำรวจใหม่ (กรณีขอเลื่อน)
+          วันสำรวจนัดหมายใหม่ (กรณีขอเลื่อน)
         </label>
         <input
           className="input"
@@ -102,7 +102,7 @@ export function SurveyorActionForm({ requestId, currentStatus }: SurveyorActionF
       </div>
 
       <button className="btn-primary" disabled={!enabledButtons.length} type="submit">
-        บันทึกการอัปเดตนักสำรวจ
+        ยืนยันการดำเนินการ
       </button>
     </form>
   );
