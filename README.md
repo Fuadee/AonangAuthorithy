@@ -1,12 +1,32 @@
-# Project Reset
+# Electricity Service Request MVP
 
-โปรเจกต์นี้ถูกล้างไฟล์ระบบเดิมออกทั้งหมดแล้ว  
-ปัจจุบันเหลือเพียง README.md เพื่อเตรียมเริ่มต้นพัฒนาใหม่
+MVP ระบบรับคำร้องผู้ใช้ไฟฟ้าแบบเรียบง่าย โดยรอบนี้รองรับ 2 พื้นที่ + 2 ผู้รับผิดชอบที่เลือกได้อิสระ (ไม่ผูกตายตัว)
 
-## Status
-- Source code: removed
-- Configuration files: removed
-- Assets and scripts: removed
+## สิ่งที่ทำได้
+- สร้างคำร้องใหม่ (`/requests/new`)
+- เลือกพื้นที่และผู้รับผิดชอบจาก dropdown
+- บันทึกคำร้องลงฐานข้อมูล SQLite
+- Dashboard ดูรายการคำร้องทั้งหมด (`/dashboard`)
+- หน้ารายละเอียดคำร้องแบบอ่านอย่างเดียว (`/requests/:id`)
 
-## Next Step
-ใช้ repository นี้สำหรับเริ่มออกแบบและพัฒนาระบบใหม่
+## Tech Stack
+- Python 3 (standard library)
+- `http.server` สำหรับเว็บ
+- SQLite (`sqlite3`)
+
+## Run
+```bash
+python app.py
+```
+
+เปิดใช้งานที่ `http://localhost:3000`
+
+## Database (auto init + seed)
+เมื่อรันระบบ จะสร้างตารางและ seed data อัตโนมัติ:
+- `areas`
+- `assignees`
+- `service_requests`
+
+Seed data:
+- Areas: `AREA_1 | พื้นที่ 1`, `AREA_2 | พื้นที่ 2`
+- Assignees: `STAFF_A | นาย A`, `STAFF_B | นาย B`
