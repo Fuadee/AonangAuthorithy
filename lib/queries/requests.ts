@@ -15,7 +15,6 @@ export type RequestDetail = {
     area_code: string;
     customer_name: string;
     customer_phone: string;
-    supply_address?: string | null;
     current_owner: { id: string; full_name: string } | null;
     created_at: string;
     updated_at: string;
@@ -59,7 +58,7 @@ export async function getRequestDetail(requestId: string): Promise<RequestDetail
     supabase
       .from("service_requests")
       .select(
-        `id, request_no, request_type, current_status, area_code, customer_name, customer_phone, supply_address,
+        `id, request_no, request_type, current_status, area_code, customer_name, customer_phone,
         current_owner:profiles!service_requests_current_owner_id_fkey(id, full_name),
         created_at, updated_at`
       )
