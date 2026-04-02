@@ -1,11 +1,13 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
+import { useEffect, useMemo, useState } from 'react';
 import { getRequestStatusLabel, RequestStatus, REQUEST_TYPE_LABELS, ServiceRequest } from '@/lib/requests/types';
 
 type SurveyorRequestsPanelProps = {
   requests: ServiceRequest[];
+  defaultSurveyor?: string | null;
 };
 
 type SurveyorFilter =
@@ -15,6 +17,8 @@ type SurveyorFilter =
   | 'SURVEY_DOCS_INCOMPLETE'
   | 'TODAY'
   | 'SURVEY_COMPLETED';
+
+const ALL_SURVEYORS = 'ALL';
 
 const FILTER_OPTIONS: Array<{ value: SurveyorFilter; label: string }> = [
   { value: 'ALL', label: 'ทั้งหมด' },
@@ -45,31 +49,96 @@ function isToday(value: string | null): boolean {
   return value === `${yyyy}-${mm}-${dd}`;
 }
 
-export function SurveyorRequestsPanel({ requests }: SurveyorRequestsPanelProps) {
+export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorRequestsPanelProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+
   const [activeFilter, setActiveFilter] = useState<SurveyorFilter>('ALL');
 
-  const summary = useMemo(
-    () => ({
-      pendingReview: requests.filter((request) => request.status === 'PENDING_SURVEY_REVIEW').length,
-      accepted: requests.filter((request) => request.status === 'SURVEY_ACCEPTED').length,
-      docsIncomplete: requests.filter((request) => request.status === 'SURVEY_DOCS_INCOMPLETE').length,
-      today: requests.filter((request) => isToday(request.scheduled_survey_date)).length,
-      completed: requests.filter((request) => request.status === 'SURVEY_COMPLETED').length
-    }),
-    [requests]
-  );
+  const surveyorOptions = useMemo(() => {
+    const unique = new Set<string>();
 
-  const filteredRequests = useMemo(() => {
-    if (activeFilter === 'ALL') {
+    requests.forEach((request) => {
+      if (request.assigned_surveyor) {
+        unique.add(request.assigned_surveyor);
+      }
+    });
+
+    return Array.from(unique).sort((a, b) => a.localeCompare(b, 'th'));
+  }, [requests]);
+
+  const selectedSurveyor = useMemo(() => {
+    if (!defaultSurveyor || !surveyorOptions.includes(defaultSurveyor)) {
+      return ALL_SURVEYORS;
+    }
+
+    return defaultSurveyor;
+  }, [defaultSurveyor, surveyorOptions]);
+
+  const [activeSurveyor, setActiveSurveyor] = useState<string>(selectedSurveyor);
+
+  useEffect(() => {
+    setActiveSurveyor(selectedSurveyor);
+  }, [selectedSurveyor]);
+
+  const surveyorFilteredRequests = useMemo(() => {
+    if (activeSurveyor === ALL_SURVEYORS) {
       return requests;
     }
 
-    if (activeFilter === 'TODAY') {
-      return requests.filter((request) => isToday(request.scheduled_survey_date));
+    return requests.filter((request) => request.assigned_surveyor === activeSurveyor);
+  }, [activeSurveyor, requests]);
+
+  const summary = useMemo(
+    () => ({
+      pendingReview: surveyorFilteredRequests.filter((request) => request.status === 'PENDING_SURVEY_REVIEW').length,
+      accepted: surveyorFilteredRequests.filter((request) => request.status === 'SURVEY_ACCEPTED').length,
+      docsIncomplete: surveyorFilteredRequests.filter((request) => request.status === 'SURVEY_DOCS_INCOMPLETE').length,
+      today: surveyorFilteredRequests.filter((request) => isToday(request.scheduled_survey_date)).length,
+      completed: surveyorFilteredRequests.filter((request) => request.status === 'SURVEY_COMPLETED').length
+    }),
+    [surveyorFilteredRequests]
+  );
+
+  const workloadBySurveyor = useMemo(() => {
+    const bySurveyor = new Map<string, number>();
+
+    requests.forEach((request) => {
+      const key = request.assigned_surveyor ?? 'ยังไม่ระบุ';
+      bySurveyor.set(key, (bySurveyor.get(key) ?? 0) + 1);
+    });
+
+    return Array.from(bySurveyor.entries())
+      .map(([name, total]) => ({ name, total }))
+      .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'th'));
+  }, [requests]);
+
+  const filteredRequests = useMemo(() => {
+    if (activeFilter === 'ALL') {
+      return surveyorFilteredRequests;
     }
 
-    return requests.filter((request) => request.status === (activeFilter as RequestStatus));
-  }, [activeFilter, requests]);
+    if (activeFilter === 'TODAY') {
+      return surveyorFilteredRequests.filter((request) => isToday(request.scheduled_survey_date));
+    }
+
+    return surveyorFilteredRequests.filter((request) => request.status === (activeFilter as RequestStatus));
+  }, [activeFilter, surveyorFilteredRequests]);
+
+  const handleSurveyorChange = (value: string) => {
+    setActiveSurveyor(value);
+
+    const nextParams = new URLSearchParams(searchParams.toString());
+    if (value === ALL_SURVEYORS) {
+      nextParams.delete('surveyor');
+    } else {
+      nextParams.set('surveyor', value);
+    }
+
+    const query = nextParams.toString();
+    router.replace(query ? `${pathname}?${query}` : pathname);
+  };
 
   return (
     <div className="space-y-4">
@@ -97,6 +166,31 @@ export function SurveyorRequestsPanel({ requests }: SurveyorRequestsPanelProps) 
       </section>
 
       <section className="card p-4">
+        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+          <div className="space-y-1">
+            <p className="text-sm font-medium text-slate-700">นักสำรวจ</p>
+            <select
+              aria-label="กรองตามนักสำรวจ"
+              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+              value={activeSurveyor}
+              onChange={(event) => handleSurveyorChange(event.target.value)}
+            >
+              <option value={ALL_SURVEYORS}>ทั้งหมด</option>
+              {surveyorOptions.map((name) => (
+                <option key={name} value={name}>
+                  {name}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <p className="text-sm text-slate-500">
+            {activeSurveyor === ALL_SURVEYORS ? 'กำลังแสดง: งานนักสำรวจทั้งหมด' : `กำลังกรอง: ${activeSurveyor}`}
+          </p>
+        </div>
+      </section>
+
+      <section className="card p-4">
         <div className="flex flex-wrap items-center gap-2">
           {FILTER_OPTIONS.map((option) => {
             const isActive = activeFilter === option.value;
@@ -119,6 +213,17 @@ export function SurveyorRequestsPanel({ requests }: SurveyorRequestsPanelProps) 
         </div>
       </section>
 
+      <section className="card p-4">
+        <p className="text-sm font-medium text-slate-700">ภาระงานต่อคน</p>
+        <div className="mt-2 flex flex-wrap gap-2">
+          {workloadBySurveyor.map((item) => (
+            <span key={item.name} className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700">
+              {item.name}: {item.total} งาน
+            </span>
+          ))}
+        </div>
+      </section>
+
       <section className="card overflow-hidden">
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
@@ -128,6 +233,7 @@ export function SurveyorRequestsPanel({ requests }: SurveyorRequestsPanelProps) 
                 <th className="px-4 py-3 font-medium">ชื่อลูกค้า</th>
                 <th className="px-4 py-3 font-medium">ประเภทคำร้อง</th>
                 <th className="px-4 py-3 font-medium">พื้นที่</th>
+                <th className="px-4 py-3 font-medium">นักสำรวจ</th>
                 <th className="px-4 py-3 font-medium">วันสำรวจ</th>
                 <th className="px-4 py-3 font-medium">สถานะ</th>
                 <th className="px-4 py-3 font-medium">จัดการ</th>
@@ -140,6 +246,7 @@ export function SurveyorRequestsPanel({ requests }: SurveyorRequestsPanelProps) 
                   <td className="px-4 py-3">{request.customer_name}</td>
                   <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
                   <td className="px-4 py-3">{request.area_name}</td>
+                  <td className="px-4 py-3">{request.assigned_surveyor ?? '-'}</td>
                   <td className="px-4 py-3">{formatSurveyDate(request.scheduled_survey_date)}</td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3">
@@ -151,7 +258,7 @@ export function SurveyorRequestsPanel({ requests }: SurveyorRequestsPanelProps) 
               ))}
               {!filteredRequests.length && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-slate-500" colSpan={7}>
+                  <td className="px-4 py-6 text-center text-slate-500" colSpan={8}>
                     ไม่พบรายการตามตัวกรองนี้
                   </td>
                 </tr>
