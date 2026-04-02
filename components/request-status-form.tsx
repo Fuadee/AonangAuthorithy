@@ -1,5 +1,5 @@
 import { updateRequestStatusAction } from '@/app/actions';
-import { RequestStatus, REQUEST_STATUSES } from '@/lib/requests/types';
+import { getRequestStatusLabel, RequestStatus, REQUEST_STATUSES } from '@/lib/requests/types';
 
 type RequestStatusFormProps = {
   requestId: string;
@@ -17,7 +17,7 @@ export function RequestStatusForm({ requestId, currentStatus }: RequestStatusFor
         <select className="input" id="status" name="status" defaultValue={currentStatus}>
           {REQUEST_STATUSES.map((status) => (
             <option key={status} value={status}>
-              {status}
+              {getRequestStatusLabel(status)}
             </option>
           ))}
         </select>

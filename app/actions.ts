@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { generateRequestNo } from '@/lib/requests/generateRequestNo';
 import { isAreaCode } from '@/lib/requests/areas';
-import { REQUEST_STATUSES, REQUEST_TYPES } from '@/lib/requests/types';
+import { REQUEST_STATUSES, RequestStatus, REQUEST_TYPES } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 function requiredField(formData: FormData, key: string): string {
@@ -23,6 +23,10 @@ function optionalField(formData: FormData, key: string): string | null {
 
 function isValidDateOnly(dateText: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(dateText) && !Number.isNaN(new Date(`${dateText}T00:00:00.000Z`).valueOf());
+}
+
+function isValidRequestStatus(status: string): status is RequestStatus {
+  return REQUEST_STATUSES.includes(status as RequestStatus);
 }
 
 export async function createRequestAction(formData: FormData) {
@@ -72,6 +76,8 @@ export async function createRequestAction(formData: FormData) {
 
   const requestNo = await generateRequestNo();
 
+  const initialStatus: RequestStatus = assignedSurveyor && scheduledSurveyDate ? 'PENDING_SURVEY_REVIEW' : 'NEW';
+
   const { error: insertError } = await supabase.from('service_requests').insert({
     request_no: requestNo,
     customer_name: customerName,
@@ -84,7 +90,7 @@ export async function createRequestAction(formData: FormData) {
     assignee_name: assignee.name,
     assigned_surveyor: assignedSurveyor,
     scheduled_survey_date: scheduledSurveyDate,
-    status: 'NEW',
+    status: initialStatus,
     request_type: requestType
   });
 
@@ -93,6 +99,7 @@ export async function createRequestAction(formData: FormData) {
   }
 
   revalidatePath('/dashboard');
+  revalidatePath('/surveyor');
   redirect('/dashboard');
 }
 
@@ -100,7 +107,7 @@ export async function updateRequestStatusAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
   const nextStatus = requiredField(formData, 'status');
 
-  if (!REQUEST_STATUSES.includes(nextStatus as (typeof REQUEST_STATUSES)[number])) {
+  if (!isValidRequestStatus(nextStatus)) {
     throw new Error('Invalid status');
   }
 
@@ -116,6 +123,109 @@ export async function updateRequestStatusAction(formData: FormData) {
   }
 
   revalidatePath('/dashboard');
+  revalidatePath('/surveyor');
+  revalidatePath(`/requests/${requestId}`);
+  redirect(`/requests/${requestId}`);
+}
+
+type SurveyorAction = 'ACCEPT' | 'DOCS_INCOMPLETE' | 'REQUEST_RESCHEDULE' | 'COMPLETE';
+
+const SURVEYOR_ALLOWED_CURRENT_STATUSES: Record<SurveyorAction, RequestStatus[]> = {
+  ACCEPT: ['PENDING_SURVEY_REVIEW', 'SURVEY_DOCS_INCOMPLETE', 'SURVEY_RESCHEDULE_REQUESTED'],
+  DOCS_INCOMPLETE: ['PENDING_SURVEY_REVIEW', 'SURVEY_ACCEPTED'],
+  REQUEST_RESCHEDULE: ['PENDING_SURVEY_REVIEW', 'SURVEY_ACCEPTED'],
+  COMPLETE: ['SURVEY_ACCEPTED', 'SURVEY_RESCHEDULE_REQUESTED']
+};
+
+export async function updateSurveyorAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const action = requiredField(formData, 'action') as SurveyorAction;
+  const note = optionalField(formData, 'survey_note');
+  const proposedDate = optionalField(formData, 'survey_reschedule_date');
+
+  const nowIso = new Date().toISOString();
+  const supabase = createServerSupabaseClient();
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if (!isValidRequestStatus(request.status)) {
+    throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
+  }
+
+  if (!Object.keys(SURVEYOR_ALLOWED_CURRENT_STATUSES).includes(action)) {
+    throw new Error('ไม่รู้จักการทำรายการของนักสำรวจ');
+  }
+
+  if (!SURVEYOR_ALLOWED_CURRENT_STATUSES[action].includes(request.status)) {
+    throw new Error('สถานะปัจจุบันไม่รองรับ action นี้');
+  }
+
+  if (action === 'DOCS_INCOMPLETE' && !note) {
+    throw new Error('กรุณาระบุหมายเหตุว่าเอกสารขาดอะไร');
+  }
+
+  if (action === 'REQUEST_RESCHEDULE') {
+    if (!proposedDate || !isValidDateOnly(proposedDate)) {
+      throw new Error('กรุณาเลือกวันสำรวจใหม่ให้ถูกต้อง');
+    }
+  }
+
+  const payload: {
+    status: RequestStatus;
+    survey_note?: string | null;
+    survey_reschedule_date?: string | null;
+    survey_reviewed_at?: string | null;
+    survey_completed_at?: string | null;
+    updated_at: string;
+  } = {
+    status: 'PENDING_SURVEY_REVIEW',
+    updated_at: nowIso
+  };
+
+  if (action === 'ACCEPT') {
+    payload.status = 'SURVEY_ACCEPTED';
+    payload.survey_note = note;
+    payload.survey_reviewed_at = nowIso;
+    payload.survey_reschedule_date = null;
+  }
+
+  if (action === 'DOCS_INCOMPLETE') {
+    payload.status = 'SURVEY_DOCS_INCOMPLETE';
+    payload.survey_note = note;
+    payload.survey_reviewed_at = nowIso;
+    payload.survey_completed_at = null;
+  }
+
+  if (action === 'REQUEST_RESCHEDULE') {
+    payload.status = 'SURVEY_RESCHEDULE_REQUESTED';
+    payload.survey_note = note;
+    payload.survey_reschedule_date = proposedDate;
+    payload.survey_reviewed_at = nowIso;
+    payload.survey_completed_at = null;
+  }
+
+  if (action === 'COMPLETE') {
+    payload.status = 'SURVEY_COMPLETED';
+    payload.survey_note = note;
+    payload.survey_completed_at = nowIso;
+  }
+
+  const { error } = await supabase.from('service_requests').update(payload).eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidatePath('/dashboard');
+  revalidatePath('/surveyor');
   revalidatePath(`/requests/${requestId}`);
   redirect(`/requests/${requestId}`);
 }
@@ -152,6 +262,7 @@ export async function updateRequestAssigneeAction(formData: FormData) {
   }
 
   revalidatePath('/dashboard');
+  revalidatePath('/surveyor');
   revalidatePath(`/requests/${requestId}`);
   redirect(`/requests/${requestId}`);
 }

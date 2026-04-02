@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { REQUEST_TYPE_LABELS, ServiceRequest } from '@/lib/requests/types';
+import { getRequestStatusLabel, REQUEST_TYPE_LABELS, ServiceRequest } from '@/lib/requests/types';
 
 type RequestTableProps = {
   requests: ServiceRequest[];
@@ -47,7 +47,7 @@ export function RequestTable({ requests }: RequestTableProps) {
                 <td className="px-4 py-3">{request.assignee_name}</td>
                 <td className="px-4 py-3">{request.assigned_surveyor ?? '-'}</td>
                 <td className="px-4 py-3">{formatSurveyDate(request.scheduled_survey_date)}</td>
-                <td className="px-4 py-3">{request.status}</td>
+                <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                 <td className="px-4 py-3">{new Date(request.created_at).toLocaleString('th-TH')}</td>
               </tr>
             ))}
