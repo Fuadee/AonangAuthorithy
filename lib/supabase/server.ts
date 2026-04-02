@@ -19,8 +19,13 @@ export async function createClient() {
           return cookieStore.getAll();
         },
         setAll(cookiesToSet: CookieToSet[]) {
-          for (const { name, value, options } of cookiesToSet) {
-            cookieStore.set(name, value, options);
+          try {
+            for (const { name, value, options } of cookiesToSet) {
+              cookieStore.set(name, value, options);
+            }
+          } catch {
+            // Server Components cannot set cookies during render.
+            // Session refresh should be handled in middleware/route handlers.
           }
         }
       }
