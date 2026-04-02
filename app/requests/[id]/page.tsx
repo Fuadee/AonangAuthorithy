@@ -11,6 +11,14 @@ type RequestDetailPageProps = {
   params: Promise<{ id: string }>;
 };
 
+function formatSurveyDate(value: string | null): string {
+  if (!value) {
+    return '-';
+  }
+
+  return new Date(`${value}T00:00:00`).toLocaleDateString('th-TH', { dateStyle: 'full' });
+}
+
 export default async function RequestDetailPage({ params }: RequestDetailPageProps) {
   const { id } = await params;
   const supabase = createServerSupabaseClient();
@@ -20,7 +28,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
       supabase
         .from('service_requests')
         .select(
-          'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,status,created_at,updated_at'
+          'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,status,created_at,updated_at'
         )
         .eq('id', id)
         .maybeSingle(),
@@ -76,6 +84,14 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           <div>
             <dt className="text-sm text-slate-500">ผู้รับผิดชอบ</dt>
             <dd className="mt-1 font-medium">{request.assignee_name}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">ผู้สำรวจ</dt>
+            <dd className="mt-1 font-medium">{request.assigned_surveyor ?? '-'}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">วันสำรวจ</dt>
+            <dd className="mt-1 font-medium">{formatSurveyDate(request.scheduled_survey_date)}</dd>
           </div>
           <div>
             <dt className="text-sm text-slate-500">สถานะ</dt>

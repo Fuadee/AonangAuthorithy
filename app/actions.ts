@@ -15,15 +15,34 @@ function requiredField(formData: FormData, key: string): string {
   return value;
 }
 
+function optionalField(formData: FormData, key: string): string | null {
+  const value = formData.get(key)?.toString().trim();
+  return value ? value : null;
+}
+
+function isValidDateOnly(dateText: string): boolean {
+  return /^\d{4}-\d{2}-\d{2}$/.test(dateText) && !Number.isNaN(new Date(`${dateText}T00:00:00.000Z`).valueOf());
+}
+
 export async function createRequestAction(formData: FormData) {
   const customerName = requiredField(formData, 'customer_name');
   const phone = requiredField(formData, 'phone');
   const areaId = requiredField(formData, 'area_id');
   const assigneeId = requiredField(formData, 'assignee_id');
   const requestType = requiredField(formData, 'request_type');
+  const assignedSurveyor = optionalField(formData, 'assigned_surveyor');
+  const scheduledSurveyDate = optionalField(formData, 'scheduled_survey_date');
 
   if (!REQUEST_TYPES.includes(requestType as (typeof REQUEST_TYPES)[number])) {
     throw new Error('Invalid request type');
+  }
+
+  if ((assignedSurveyor && !scheduledSurveyDate) || (!assignedSurveyor && scheduledSurveyDate)) {
+    throw new Error('กรุณาระบุผู้สำรวจและวันสำรวจให้ครบทั้งคู่');
+  }
+
+  if (scheduledSurveyDate && !isValidDateOnly(scheduledSurveyDate)) {
+    throw new Error('รูปแบบวันสำรวจไม่ถูกต้อง');
   }
 
   const supabase = createServerSupabaseClient();
@@ -58,6 +77,8 @@ export async function createRequestAction(formData: FormData) {
     assignee_id: assignee.id,
     assignee_code: assignee.code,
     assignee_name: assignee.name,
+    assigned_surveyor: assignedSurveyor,
+    scheduled_survey_date: scheduledSurveyDate,
     status: 'NEW',
     request_type: requestType
   });

@@ -29,6 +29,8 @@ export type ServiceRequest = {
   phone: string;
   area_name: string;
   assignee_name: string;
+  assigned_surveyor: string | null;
+  scheduled_survey_date: string | null;
   status: RequestStatus;
   request_type: RequestType;
   created_at: string;

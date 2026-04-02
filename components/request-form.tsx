@@ -1,24 +1,87 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { createRequestAction } from '@/app/actions';
 import { Area, Assignee, REQUEST_TYPE_LABELS, REQUEST_TYPES } from '@/lib/requests/types';
+import type { SurveySuggestionResult } from '@/lib/requests/survey-suggestion';
 
 type RequestFormProps = {
   areas: Area[];
   assignees: Assignee[];
 };
 
+const WEEKDAY_LABELS: Record<string, string> = {
+  Monday: 'จันทร์',
+  Tuesday: 'อังคาร',
+  Wednesday: 'พุธ',
+  Thursday: 'พฤหัสบดี',
+  Friday: 'ศุกร์',
+  Saturday: 'เสาร์',
+  Sunday: 'อาทิตย์'
+};
+
 export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [requestType, setRequestType] = useState('');
   const [areaId, setAreaId] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
+  const [assignedSurveyor, setAssignedSurveyor] = useState('');
+  const [scheduledSurveyDate, setScheduledSurveyDate] = useState('');
+  const [surveySuggestion, setSurveySuggestion] = useState<SurveySuggestionResult | null>(null);
+  const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
 
   const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areas, areaId]);
   const selectedAssignee = useMemo(
     () => assignees.find((assignee) => assignee.id === assigneeId),
     [assignees, assigneeId]
   );
+
+  useEffect(() => {
+    const controller = new AbortController();
+
+    async function loadSuggestion() {
+      if (!areaId) {
+        setSurveySuggestion(null);
+        setAssignedSurveyor('');
+        setScheduledSurveyDate('');
+        return;
+      }
+
+      setIsLoadingSuggestion(true);
+      try {
+        const response = await fetch(`/api/survey-suggestion?area_id=${areaId}`, {
+          method: 'GET',
+          signal: controller.signal
+        });
+
+        if (!response.ok) {
+          const payload = (await response.json()) as { error?: string };
+          throw new Error(payload.error ?? 'ไม่สามารถโหลดคำแนะนำคิวสำรวจได้');
+        }
+
+        const data = (await response.json()) as SurveySuggestionResult;
+        setSurveySuggestion(data);
+      } catch {
+        setSurveySuggestion({
+          area_id: areaId,
+          schedules: [],
+          suggestion: null,
+          message: 'ไม่สามารถโหลดคำแนะนำคิวสำรวจได้ กรุณาลองใหม่อีกครั้ง'
+        });
+      } finally {
+        setIsLoadingSuggestion(false);
+      }
+    }
+
+    loadSuggestion();
+
+    return () => controller.abort();
+  }, [areaId]);
+
+  const recommendedDateText = surveySuggestion?.suggestion?.suggested_date
+    ? new Date(`${surveySuggestion.suggestion.suggested_date}T00:00:00`).toLocaleDateString('th-TH', {
+        dateStyle: 'full'
+      })
+    : '-';
 
   return (
     <form action={createRequestAction} className="card space-y-5 p-6">
@@ -105,6 +168,89 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             ? `ผู้รับผิดชอบที่เลือก: ${selectedAssignee.code} | ${selectedAssignee.name}`
             : 'ยังไม่เลือกผู้รับผิดชอบ'}
         </p>
+      </div>
+
+      <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <h3 className="text-sm font-semibold text-slate-700">คำแนะนำการนัดสำรวจ</h3>
+        {isLoadingSuggestion && <p className="mt-2 text-xs text-slate-500">กำลังคำนวณคิวสำรวจ...</p>}
+
+        {!isLoadingSuggestion && surveySuggestion?.schedules.length ? (
+          <>
+            <p className="mt-2 text-xs text-slate-500">
+              ตารางประจำ:{' '}
+              {surveySuggestion.schedules
+                .map((schedule) => `${schedule.surveyor_name} (${WEEKDAY_LABELS[schedule.weekday] ?? schedule.weekday})`)
+                .join(', ')}
+            </p>
+
+            <div className="mt-3 space-y-1 text-sm">
+              <p>
+                <span className="text-slate-500">ผู้สำรวจที่แนะนำ:</span>{' '}
+                {surveySuggestion.suggestion?.surveyor ?? '-'}
+              </p>
+              <p>
+                <span className="text-slate-500">วันที่แนะนำ:</span> {recommendedDateText}
+              </p>
+              <p>
+                <span className="text-slate-500">คิวของวันนั้น:</span>{' '}
+                {surveySuggestion.suggestion
+                  ? `${surveySuggestion.suggestion.current_jobs}/${surveySuggestion.suggestion.max_jobs_per_day}`
+                  : '-'}
+              </p>
+            </div>
+
+            {surveySuggestion.suggestion && (
+              <button
+                className="btn-secondary mt-3"
+                type="button"
+                onClick={() => {
+                  setAssignedSurveyor(surveySuggestion.suggestion?.surveyor ?? '');
+                  setScheduledSurveyDate(surveySuggestion.suggestion?.suggested_date ?? '');
+                }}
+              >
+                ใช้ค่าที่แนะนำ
+              </button>
+            )}
+          </>
+        ) : null}
+
+        {!isLoadingSuggestion && surveySuggestion?.message ? (
+          <p className="mt-2 text-sm text-amber-600">{surveySuggestion.message}</p>
+        ) : null}
+
+        {!isLoadingSuggestion && !areaId ? (
+          <p className="mt-2 text-xs text-slate-500">กรุณาเลือกพื้นที่เพื่อดูคำแนะนำการนัดสำรวจ</p>
+        ) : null}
+      </section>
+
+      <div className="grid gap-4 sm:grid-cols-2">
+        <div>
+          <label className="text-sm font-medium" htmlFor="assigned_surveyor">
+            ผู้สำรวจ
+          </label>
+          <input
+            className="input"
+            id="assigned_surveyor"
+            name="assigned_surveyor"
+            placeholder="เช่น นาย A"
+            value={assignedSurveyor}
+            onChange={(event) => setAssignedSurveyor(event.target.value)}
+          />
+        </div>
+
+        <div>
+          <label className="text-sm font-medium" htmlFor="scheduled_survey_date">
+            วันสำรวจ
+          </label>
+          <input
+            className="input"
+            id="scheduled_survey_date"
+            name="scheduled_survey_date"
+            type="date"
+            value={scheduledSurveyDate}
+            onChange={(event) => setScheduledSurveyDate(event.target.value)}
+          />
+        </div>
       </div>
 
       <button className="btn-primary w-full" type="submit">
