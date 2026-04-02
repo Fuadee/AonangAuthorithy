@@ -1,35 +1,52 @@
-# Electricity Service Request MVP
+# Electricity Service Request MVP (Next.js + Supabase)
 
-MVP ระบบรับคำร้องผู้ใช้ไฟฟ้าแบบเรียบง่าย โดยรอบนี้รองรับ 2 พื้นที่ + 2 ผู้รับผิดชอบที่เลือกได้อิสระ (ไม่ผูกตายตัว)
+ระบบ MVP งานคำร้องผู้ใช้ไฟฟ้าแบบใหม่ โดยใช้ **Next.js + Supabase (Postgres)** เป็นแกนหลักเท่านั้น
 
-## สิ่งที่ทำได้
-- สร้างคำร้องใหม่ (`/requests/new`)
-- เลือกพื้นที่และผู้รับผิดชอบจาก dropdown
-- บันทึกคำร้องลงฐานข้อมูล SQLite
-- Dashboard ดูรายการคำร้องทั้งหมด (`/dashboard`)
-- หน้ารายละเอียดคำร้อง (`/requests/:id`) พร้อมข้อมูลสำคัญ
-- เปลี่ยนสถานะคำร้องเป็น `NEW`, `IN_PROGRESS`, `COMPLETED`, `CANCELLED`
-- เปลี่ยนผู้รับผิดชอบจากหน้า detail
-- Dashboard แสดงข้อมูลล่าสุดจาก `updated_at` และ filter ตาม status
+## Stack
+- Next.js (App Router) + TypeScript
+- Tailwind CSS
+- Supabase (Postgres)
 
-## Tech Stack
-- Python 3 (standard library)
-- `http.server` สำหรับเว็บ
-- SQLite (`sqlite3`)
+## Features (MVP)
+- Dashboard `/dashboard`
+  - สรุปจำนวนคำร้องทั้งหมด
+  - สรุปจำนวนคำร้องสถานะ `NEW`
+  - ตารางรายการคำร้องทั้งหมดเรียงจากใหม่ไปเก่า
+- Create Request `/requests/new`
+  - ฟอร์มสร้างคำร้องใหม่
+  - เลือกพื้นที่และผู้รับผิดชอบจากฐานข้อมูล
+- Request Detail `/requests/[id]`
+  - ดูรายละเอียดคำร้อง
+  - เปลี่ยนสถานะคำร้อง
+  - เปลี่ยนผู้รับผิดชอบคำร้อง
 
-## Run
+## Setup
+1. ติดตั้ง dependencies
 ```bash
-python app.py
+npm install
 ```
 
-เปิดใช้งานที่ `http://localhost:3000`
+2. สร้างไฟล์ `.env.local` จาก `.env.example` แล้วใส่ค่า Supabase
+```bash
+cp .env.example .env.local
+```
 
-## Database (auto init + seed)
-เมื่อรันระบบ จะสร้างตารางและ seed data อัตโนมัติ:
-- `areas`
-- `assignees`
-- `service_requests`
+3. รัน SQL ที่ Supabase
+- รัน `supabase/schema.sql`
+- รัน `supabase/seed.sql`
 
-Seed data:
-- Areas: `AREA_1 | พื้นที่ 1`, `AREA_2 | พื้นที่ 2`
-- Assignees: `STAFF_A | นาย A`, `STAFF_B | นาย B`
+4. เริ่มระบบ
+```bash
+npm run dev
+```
+
+เปิดที่ `http://localhost:3000`
+
+## Database files
+- `supabase/schema.sql`
+- `supabase/seed.sql`
+
+## หมายเหตุ
+- ไม่มี SQLite
+- ไม่มี Python backend เป็น runtime หลัก
+- รอบนี้ intentionally ยังไม่ทำ auth, workflow ซับซ้อน, audit log
