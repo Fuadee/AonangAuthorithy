@@ -13,7 +13,7 @@ export type Database = {
           area_code: string;
           customer_name: string;
           customer_phone: string;
-          supply_address: string;
+          supply_address: string | null;
           created_by: string;
           created_at: string;
           updated_at: string;

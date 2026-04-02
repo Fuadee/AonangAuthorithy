@@ -24,7 +24,7 @@ export default async function RequestDetailPage({ params }: { params: Promise<{ 
           <p><span className="font-medium">ประเภท:</span> {detail.request.request_type}</p>
           <p><span className="font-medium">สถานะ:</span> {detail.request.current_status}</p>
           <p><span className="font-medium">Owner:</span> {detail.request.current_owner?.full_name}</p>
-          <p><span className="font-medium">ที่อยู่:</span> {detail.request.supply_address}</p>
+          <p><span className="font-medium">ที่อยู่:</span> {detail.request.supply_address || "-"}</p>
         </div>
         <AssignSurveyorForm requestId={id} surveyors={surveyors} />
       </div>
