@@ -18,6 +18,7 @@ create table if not exists public.assignees (
 create table if not exists public.survey_schedules (
   id uuid primary key default gen_random_uuid(),
   surveyor_name text not null,
+  area_id uuid not null references public.areas(id),
   area_code text not null references public.areas(code),
   area text not null,
   weekday text not null check (weekday in ('Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday')),
