@@ -1,3 +1,5 @@
+import type { AreaCode } from '@/lib/requests/areas';
+
 export const REQUEST_STATUSES = ['NEW', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED'] as const;
 export const REQUEST_TYPES = ['METER', 'EXPANSION'] as const;
 
@@ -11,7 +13,7 @@ export type RequestType = (typeof REQUEST_TYPES)[number];
 
 export type Area = {
   id: string;
-  code: string;
+  code: AreaCode;
   name: string;
 };
 

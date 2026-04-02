@@ -3,6 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { generateRequestNo } from '@/lib/requests/generateRequestNo';
+import { isAreaCode } from '@/lib/requests/areas';
 import { REQUEST_STATUSES, REQUEST_TYPES } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -27,7 +28,7 @@ function isValidDateOnly(dateText: string): boolean {
 export async function createRequestAction(formData: FormData) {
   const customerName = requiredField(formData, 'customer_name');
   const phone = requiredField(formData, 'phone');
-  const areaId = requiredField(formData, 'area_id');
+  const areaCode = requiredField(formData, 'area_code');
   const assigneeId = requiredField(formData, 'assignee_id');
   const requestType = requiredField(formData, 'request_type');
   const assignedSurveyor = optionalField(formData, 'assigned_surveyor');
@@ -47,8 +48,12 @@ export async function createRequestAction(formData: FormData) {
 
   const supabase = createServerSupabaseClient();
 
+  if (!isAreaCode(areaCode)) {
+    throw new Error('Invalid area code');
+  }
+
   const [{ data: area, error: areaError }, { data: assignee, error: assigneeError }] = await Promise.all([
-    supabase.from('areas').select('id,code,name').eq('id', areaId).single(),
+    supabase.from('areas').select('id,code,name').eq('code', areaCode).single(),
     supabase
       .from('assignees')
       .select('id,code,name,is_active')
