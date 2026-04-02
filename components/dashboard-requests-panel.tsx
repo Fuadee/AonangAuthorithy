@@ -36,6 +36,14 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
     () => requests.filter((request) => request.request_type === 'EXPANSION').length,
     [requests]
   );
+  const pendingSurveyReviewCount = useMemo(
+    () => requests.filter((request) => request.status === 'PENDING_SURVEY_REVIEW').length,
+    [requests]
+  );
+  const surveyCompletedCount = useMemo(
+    () => requests.filter((request) => request.status === 'SURVEY_COMPLETED').length,
+    [requests]
+  );
 
   return (
     <>
@@ -43,6 +51,8 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
         totalCount={requests.length}
         meterCount={meterCount}
         expansionCount={expansionCount}
+        pendingSurveyReviewCount={pendingSurveyReviewCount}
+        surveyCompletedCount={surveyCompletedCount}
       />
 
       <section className="card p-4">

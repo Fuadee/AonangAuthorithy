@@ -18,6 +18,9 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
               <Link className="btn-secondary" href="/dashboard">
                 Dashboard
               </Link>
+              <Link className="btn-secondary" href="/surveyor">
+                งานนักสำรวจ
+              </Link>
               <Link className="btn-primary" href="/requests/new">
                 สร้างคำร้องใหม่
               </Link>

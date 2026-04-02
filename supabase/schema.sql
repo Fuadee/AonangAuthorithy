@@ -43,7 +43,11 @@ create table if not exists public.service_requests (
   assigned_surveyor text,
   scheduled_survey_date date,
   request_type text not null default 'METER' check (request_type in ('METER', 'EXPANSION')),
-  status text not null default 'NEW' check (status in ('NEW', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')),
+  status text not null default 'NEW' check (status in ('NEW', 'PENDING_SURVEY_REVIEW', 'SURVEY_ACCEPTED', 'SURVEY_DOCS_INCOMPLETE', 'SURVEY_RESCHEDULE_REQUESTED', 'SURVEY_COMPLETED')),
+  survey_note text,
+  survey_reschedule_date date,
+  survey_reviewed_at timestamptz,
+  survey_completed_at timestamptz,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -53,3 +57,5 @@ create index if not exists idx_service_requests_status on public.service_request
 create index if not exists idx_service_requests_request_type on public.service_requests (request_type);
 create index if not exists idx_survey_schedules_area_active on public.survey_schedules (area_code, active);
 create index if not exists idx_service_requests_survey_queue on public.service_requests (assigned_surveyor, scheduled_survey_date);
+
+create index if not exists idx_service_requests_surveyor_status on public.service_requests (assigned_surveyor, status, scheduled_survey_date);

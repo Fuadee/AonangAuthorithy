@@ -2,7 +2,15 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { RequestAssigneeForm } from '@/components/request-assignee-form';
 import { RequestStatusForm } from '@/components/request-status-form';
-import { Assignee, REQUEST_TYPE_LABELS, RequestStatus, RequestType } from '@/lib/requests/types';
+import { SurveyorActionForm } from '@/components/surveyor-action-form';
+import {
+  Assignee,
+  getRequestStatusLabel,
+  REQUEST_TYPE_LABELS,
+  RequestStatus,
+  RequestType,
+  SURVEYOR_VISIBLE_STATUSES
+} from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -19,6 +27,14 @@ function formatSurveyDate(value: string | null): string {
   return new Date(`${value}T00:00:00`).toLocaleDateString('th-TH', { dateStyle: 'full' });
 }
 
+function formatDateTime(value: string | null): string {
+  if (!value) {
+    return '-';
+  }
+
+  return new Date(value).toLocaleString('th-TH');
+}
+
 export default async function RequestDetailPage({ params }: RequestDetailPageProps) {
   const { id } = await params;
   const supabase = createServerSupabaseClient();
@@ -28,7 +44,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
       supabase
         .from('service_requests')
         .select(
-          'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,status,created_at,updated_at'
+          'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,created_at,updated_at'
         )
         .eq('id', id)
         .maybeSingle(),
@@ -51,6 +67,8 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     notFound();
   }
 
+  const isSurveyorFlowStatus = SURVEYOR_VISIBLE_STATUSES.includes(request.status as RequestStatus);
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -65,6 +83,10 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
 
       <section className="card p-6">
         <dl className="grid gap-4 sm:grid-cols-2">
+          <div>
+            <dt className="text-sm text-slate-500">เลขคำร้อง</dt>
+            <dd className="mt-1 font-medium">{request.request_no}</dd>
+          </div>
           <div>
             <dt className="text-sm text-slate-500">ชื่อลูกค้า</dt>
             <dd className="mt-1 font-medium">{request.customer_name}</dd>
@@ -95,7 +117,25 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           </div>
           <div>
             <dt className="text-sm text-slate-500">สถานะ</dt>
-            <dd className="mt-1 font-medium">{request.status}</dd>
+            <dd className="mt-1 font-medium">{getRequestStatusLabel(request.status as RequestStatus)}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">หมายเหตุจากนักสำรวจ</dt>
+            <dd className={`mt-1 font-medium ${request.status === 'SURVEY_DOCS_INCOMPLETE' ? 'text-amber-700' : ''}`}>
+              {request.survey_note ?? '-'}
+            </dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">วันเสนอเลื่อนสำรวจ</dt>
+            <dd className="mt-1 font-medium text-sky-700">{formatSurveyDate(request.survey_reschedule_date)}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">ตรวจเอกสารเมื่อ</dt>
+            <dd className="mt-1 font-medium">{formatDateTime(request.survey_reviewed_at)}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">สำรวจเสร็จเมื่อ</dt>
+            <dd className="mt-1 font-medium">{formatDateTime(request.survey_completed_at)}</dd>
           </div>
           <div>
             <dt className="text-sm text-slate-500">สร้างเมื่อ</dt>
@@ -129,6 +169,20 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           </div>
         </article>
       </section>
+
+      <article className="card p-6">
+        <h3 className="text-lg font-semibold">Action ฝั่งนักสำรวจ</h3>
+        <p className="mt-1 text-sm text-slate-500">
+          รองรับการรับงาน, ตีกลับเอกสาร, ขอเลื่อนวันสำรวจ และปิดงานสำรวจ (MVP)
+        </p>
+        <div className="mt-4">
+          {isSurveyorFlowStatus ? (
+            <SurveyorActionForm requestId={request.id} currentStatus={request.status as RequestStatus} />
+          ) : (
+            <p className="text-sm text-slate-500">สถานะนี้ยังไม่อยู่ในช่วง workflow ฝั่งนักสำรวจ</p>
+          )}
+        </div>
+      </article>
     </div>
   );
 }
