@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { MeterWorkflowActions } from '@/components/meter-workflow-actions';
 import { SurveyorActionWorkflow } from '@/components/surveyor-action-workflow';
 import {
   getRequestStatusLabel,
@@ -39,7 +40,47 @@ function formatDateTime(value: string | null): string {
   return new Date(value).toLocaleString('th-TH');
 }
 
-function getNextStepSummary(status: RequestStatus): { nextStep: string; owner: string } {
+function formatCurrency(value: number | null): string {
+  if (value === null) {
+    return '-';
+  }
+
+  return new Intl.NumberFormat('th-TH', {
+    style: 'currency',
+    currency: 'THB',
+    maximumFractionDigits: 2
+  }).format(value);
+}
+
+function getNextStepSummary(status: RequestStatus, requestType: RequestType): { nextStep: string; owner: string } {
+  if (requestType === 'METER') {
+    switch (status) {
+      case 'SURVEY_COMPLETED':
+        return {
+          nextStep: 'ส่งงานให้เจ้าหน้าที่ออกใบแจ้งหนี้',
+          owner: 'นักสำรวจ'
+        };
+      case 'WAIT_BILLING':
+        return {
+          nextStep: 'ออกใบแจ้งหนี้ พร้อมบันทึกจำนวนเงินและผู้ดำเนินการ',
+          owner: 'เจ้าหน้าที่ออกใบแจ้งหนี้'
+        };
+      case 'BILLED':
+      case 'WAIT_SURVEYOR_SIGN':
+        return {
+          nextStep: 'รอนักสำรวจเซ็นรับรองใบแจ้งหนี้',
+          owner: 'นักสำรวจ'
+        };
+      case 'WAIT_PAYMENT':
+        return {
+          nextStep: 'รอลูกค้าชำระเงิน และเจ้าหน้าที่รับชำระบันทึกผล',
+          owner: 'ลูกค้า / เจ้าหน้าที่รับชำระ'
+        };
+      default:
+        break;
+    }
+  }
+
   switch (status) {
     case 'PENDING_SURVEY_REVIEW':
       return {
@@ -74,27 +115,20 @@ function getNextStepSummary(status: RequestStatus): { nextStep: string; owner: s
   }
 }
 
-function getSurveyorStatusMessage(status: RequestStatus): string {
-  switch (status) {
-    case 'SURVEY_DOCS_INCOMPLETE':
-      return 'รอเจ้าหน้าที่ติดตามเอกสาร';
-    case 'SURVEY_COMPLETED':
-      return 'สำรวจเสร็จสิ้นแล้ว';
-    case 'SURVEY_RESCHEDULE_REQUESTED':
-      return 'นักสำรวจขอเลื่อนวันสำรวจ รอยืนยันวันนัดใหม่';
-    default:
-      return 'กดปุ่มตามขั้นตอน ระบบจะอัปเดตสถานะให้อัตโนมัติ';
-  }
-}
-
 function getTimeline(request: {
   created_at: string;
   survey_reviewed_at: string | null;
   survey_reschedule_date: string | null;
   survey_completed_at: string | null;
+  billed_at: string | null;
+  surveyor_signed_at: string | null;
   updated_at: string;
   status: RequestStatus;
   survey_note: string | null;
+  billing_note: string | null;
+  billed_by: string | null;
+  billing_amount: number | null;
+  surveyor_signed_by: string | null;
 }): TimelineItem[] {
   const items: TimelineItem[] = [
     {
@@ -130,6 +164,32 @@ function getTimeline(request: {
     });
   }
 
+  if (request.billed_at) {
+    const detail = [`จำนวนเงิน: ${formatCurrency(request.billing_amount)}`];
+    if (request.billed_by) {
+      detail.push(`ออกโดย: ${request.billed_by}`);
+    }
+    if (request.billing_note) {
+      detail.push(`หมายเหตุ: ${request.billing_note}`);
+    }
+
+    items.push({
+      key: 'billed',
+      title: 'ออกใบแจ้งหนี้แล้ว',
+      description: detail.join(' | '),
+      at: request.billed_at
+    });
+  }
+
+  if (request.surveyor_signed_at) {
+    items.push({
+      key: 'surveyor-signed',
+      title: 'นักสำรวจเซ็นรับรองใบแจ้งหนี้',
+      description: request.surveyor_signed_by ? `ผู้เซ็น: ${request.surveyor_signed_by}` : undefined,
+      at: request.surveyor_signed_at
+    });
+  }
+
   if (request.updated_at !== request.created_at) {
     items.push({
       key: 'updated',
@@ -142,7 +202,11 @@ function getTimeline(request: {
   return items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 }
 
-function getActionTitle(status: RequestStatus): string {
+function getActionTitle(status: RequestStatus, requestType: RequestType): string {
+  if (requestType === 'METER' && ['SURVEY_COMPLETED', 'WAIT_BILLING', 'WAIT_SURVEYOR_SIGN', 'BILLED'].includes(status)) {
+    return 'การดำเนินการงานขอมิเตอร์หลังสำรวจ';
+  }
+
   switch (status) {
     case 'PENDING_SURVEY_REVIEW':
       return 'ขั้นตอนสำหรับนักสำรวจ';
@@ -163,7 +227,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,billing_amount,billing_note,billed_at,billed_by,surveyor_signed_at,surveyor_signed_by,payment_note,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -177,16 +241,24 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   }
 
   const requestStatus = request.status as RequestStatus;
+  const requestType = request.request_type as RequestType;
   const isSurveyorFlowStatus = SURVEYOR_VISIBLE_STATUSES.includes(requestStatus);
-  const nextStepSummary = getNextStepSummary(requestStatus);
+  const isMeterLoopStatus = requestType === 'METER' && ['SURVEY_COMPLETED', 'WAIT_BILLING', 'WAIT_SURVEYOR_SIGN', 'BILLED'].includes(requestStatus);
+  const nextStepSummary = getNextStepSummary(requestStatus, requestType);
   const timeline = getTimeline({
     created_at: request.created_at,
     survey_reviewed_at: request.survey_reviewed_at,
     survey_reschedule_date: request.survey_reschedule_date,
     survey_completed_at: request.survey_completed_at,
+    billed_at: request.billed_at,
+    surveyor_signed_at: request.surveyor_signed_at,
     updated_at: request.updated_at,
     status: requestStatus,
-    survey_note: request.survey_note
+    survey_note: request.survey_note,
+    billing_note: request.billing_note,
+    billed_by: request.billed_by,
+    billing_amount: request.billing_amount,
+    surveyor_signed_by: request.surveyor_signed_by
   });
 
   return (
@@ -210,18 +282,16 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
             <dd className="mt-1 font-medium">{getRequestStatusLabel(requestStatus)}</dd>
           </div>
           <div>
+            <dt className="text-sm text-slate-500">ประเภทคำร้อง</dt>
+            <dd className="mt-1 font-medium">{REQUEST_TYPE_LABELS[requestType]}</dd>
+          </div>
+          <div>
             <dt className="text-sm text-slate-500">ผู้สำรวจ</dt>
             <dd className="mt-1 font-medium">{request.assigned_surveyor ?? '-'}</dd>
           </div>
           <div>
             <dt className="text-sm text-slate-500">วันสำรวจนัดหมาย</dt>
             <dd className="mt-1 font-medium">{formatSurveyDate(request.scheduled_survey_date)}</dd>
-          </div>
-          <div>
-            <dt className="text-sm text-slate-500">ผลการตรวจเอกสารล่าสุด</dt>
-            <dd className={`mt-1 font-medium ${requestStatus === 'SURVEY_DOCS_INCOMPLETE' ? 'text-amber-700' : ''}`}>
-              {request.survey_note ?? 'ยังไม่มีหมายเหตุ'}
-            </dd>
           </div>
           <div>
             <dt className="text-sm text-slate-500">ขั้นตอนถัดไป</dt>
@@ -234,15 +304,49 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         </dl>
       </section>
 
+      {requestType === 'METER' ? (
+        <section className="card p-6">
+          <h3 className="text-lg font-semibold">ข้อมูลใบแจ้งหนี้งานขอมิเตอร์</h3>
+          <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <dt className="text-sm text-slate-500">จำนวนเงินใบแจ้งหนี้</dt>
+              <dd className="mt-1 font-medium">{formatCurrency(request.billing_amount)}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">ออกใบแจ้งหนี้เมื่อ</dt>
+              <dd className="mt-1 font-medium">{formatDateTime(request.billed_at)}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">ออกโดย</dt>
+              <dd className="mt-1 font-medium">{request.billed_by ?? '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">นักสำรวจเซ็นเมื่อ</dt>
+              <dd className="mt-1 font-medium">{formatDateTime(request.surveyor_signed_at)}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">ผู้เซ็น</dt>
+              <dd className="mt-1 font-medium">{request.surveyor_signed_by ?? '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">หมายเหตุใบแจ้งหนี้</dt>
+              <dd className="mt-1 font-medium">{request.billing_note ?? '-'}</dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
+
       <article className="card p-6">
-        <h3 className="text-lg font-semibold">{getActionTitle(requestStatus)}</h3>
-        <p className="mt-1 text-sm text-slate-500">{getSurveyorStatusMessage(requestStatus)}</p>
+        <h3 className="text-lg font-semibold">{getActionTitle(requestStatus, requestType)}</h3>
+        <p className="mt-1 text-sm text-slate-500">ใช้ปุ่มตามหน้าที่ เพื่อกันการเปลี่ยนสถานะข้ามขั้นตอน</p>
         <div className="mt-4">
-          {isSurveyorFlowStatus ? (
+          {isMeterLoopStatus ? <MeterWorkflowActions requestId={request.id} currentStatus={requestStatus} /> : null}
+          {!isMeterLoopStatus && isSurveyorFlowStatus ? (
             <SurveyorActionWorkflow requestId={request.id} currentStatus={requestStatus} />
-          ) : (
-            <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{getSurveyorStatusMessage(requestStatus)}</p>
-          )}
+          ) : null}
+          {!isMeterLoopStatus && !isSurveyorFlowStatus ? (
+            <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">สถานะนี้ยังไม่มี action เพิ่มเติม</p>
+          ) : null}
         </div>
       </article>
 
@@ -259,36 +363,6 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           ))}
         </ol>
       </section>
-
-      <article className="card p-6">
-        <h3 className="text-lg font-semibold">ข้อมูลคำร้อง</h3>
-        <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-          <div>
-            <dt className="text-sm text-slate-500">เลขคำร้อง</dt>
-            <dd className="mt-1 font-medium">{request.request_no}</dd>
-          </div>
-          <div>
-            <dt className="text-sm text-slate-500">ชื่อลูกค้า</dt>
-            <dd className="mt-1 font-medium">{request.customer_name}</dd>
-          </div>
-          <div>
-            <dt className="text-sm text-slate-500">เบอร์โทรศัพท์</dt>
-            <dd className="mt-1 font-medium">{request.phone}</dd>
-          </div>
-          <div>
-            <dt className="text-sm text-slate-500">ประเภทคำร้อง</dt>
-            <dd className="mt-1 font-medium">{REQUEST_TYPE_LABELS[request.request_type as RequestType]}</dd>
-          </div>
-          <div>
-            <dt className="text-sm text-slate-500">พื้นที่</dt>
-            <dd className="mt-1 font-medium">{request.area_name}</dd>
-          </div>
-          <div>
-            <dt className="text-sm text-slate-500">เจ้าหน้าที่รับคำร้อง</dt>
-            <dd className="mt-1 font-medium">{request.assignee_name}</dd>
-          </div>
-        </dl>
-      </article>
     </div>
   );
 }

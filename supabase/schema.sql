@@ -43,11 +43,18 @@ create table if not exists public.service_requests (
   assigned_surveyor text,
   scheduled_survey_date date,
   request_type text not null default 'METER' check (request_type in ('METER', 'EXPANSION')),
-  status text not null default 'NEW' check (status in ('NEW', 'PENDING_SURVEY_REVIEW', 'SURVEY_ACCEPTED', 'SURVEY_DOCS_INCOMPLETE', 'SURVEY_RESCHEDULE_REQUESTED', 'SURVEY_COMPLETED')),
+  status text not null default 'NEW' check (status in ('NEW', 'PENDING_SURVEY_REVIEW', 'SURVEY_ACCEPTED', 'SURVEY_DOCS_INCOMPLETE', 'SURVEY_RESCHEDULE_REQUESTED', 'SURVEY_COMPLETED', 'WAIT_BILLING', 'BILLED', 'WAIT_SURVEYOR_SIGN', 'WAIT_PAYMENT')),
   survey_note text,
   survey_reschedule_date date,
   survey_reviewed_at timestamptz,
   survey_completed_at timestamptz,
+  billing_amount numeric(12, 2),
+  billing_note text,
+  billed_at timestamptz,
+  billed_by text,
+  surveyor_signed_at timestamptz,
+  surveyor_signed_by text,
+  payment_note text,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );
@@ -59,3 +66,6 @@ create index if not exists idx_survey_schedules_area_active on public.survey_sch
 create index if not exists idx_service_requests_survey_queue on public.service_requests (assigned_surveyor, scheduled_survey_date);
 
 create index if not exists idx_service_requests_surveyor_status on public.service_requests (assigned_surveyor, status, scheduled_survey_date);
+
+create index if not exists idx_service_requests_wait_billing on public.service_requests (request_type, status) where status = 'WAIT_BILLING';
+create index if not exists idx_service_requests_wait_payment on public.service_requests (request_type, status) where status = 'WAIT_PAYMENT';
