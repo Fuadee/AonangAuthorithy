@@ -3,11 +3,12 @@ import { notFound } from 'next/navigation';
 import { MeterWorkflowActions } from '@/components/meter-workflow-actions';
 import { SurveyorActionWorkflow } from '@/components/surveyor-action-workflow';
 import {
+  getRequestQueueGroup,
+  getRequestQueueGroupLabel,
   getRequestStatusLabel,
   REQUEST_TYPE_LABELS,
   RequestStatus,
-  RequestType,
-  SURVEYOR_VISIBLE_STATUSES
+  RequestType
 } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -62,19 +63,19 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
         };
       case 'WAIT_BILLING':
         return {
-          nextStep: 'ออกใบแจ้งหนี้ พร้อมบันทึกจำนวนเงินและผู้ดำเนินการ',
-          owner: 'เจ้าหน้าที่ออกใบแจ้งหนี้'
+          nextStep: 'เจ้าหน้าที่ออกใบแจ้งหนี้ พร้อมบันทึกจำนวนเงินและผู้ดำเนินการ',
+          owner: 'การเงิน'
         };
       case 'BILLED':
       case 'WAIT_SURVEYOR_SIGN':
         return {
-          nextStep: 'รอนักสำรวจเซ็นรับรองใบแจ้งหนี้',
+          nextStep: 'นักสำรวจเซ็นรับรองใบแจ้งหนี้',
           owner: 'นักสำรวจ'
         };
       case 'WAIT_PAYMENT':
         return {
-          nextStep: 'รอลูกค้าชำระเงิน และเจ้าหน้าที่รับชำระบันทึกผล',
-          owner: 'ลูกค้า / เจ้าหน้าที่รับชำระ'
+          nextStep: 'ติดตามการชำระเงินและบันทึกผลการรับชำระ',
+          owner: 'การเงิน'
         };
       default:
         break;
@@ -242,7 +243,8 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
 
   const requestStatus = request.status as RequestStatus;
   const requestType = request.request_type as RequestType;
-  const isSurveyorFlowStatus = SURVEYOR_VISIBLE_STATUSES.includes(requestStatus);
+  const currentQueue = getRequestQueueGroup(requestStatus);
+  const isSurveyorFlowStatus = currentQueue === 'SURVEY';
   const isMeterLoopStatus = requestType === 'METER' && ['SURVEY_COMPLETED', 'WAIT_BILLING', 'WAIT_SURVEYOR_SIGN', 'BILLED'].includes(requestStatus);
   const nextStepSummary = getNextStepSummary(requestStatus, requestType);
   const timeline = getTimeline({
@@ -277,6 +279,10 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         <h3 className="text-lg font-semibold">สรุปสถานะงานล่าสุด</h3>
         <p className="mt-1 text-sm text-slate-500">หน้าดูข้อมูลเป็นหลัก กดปุ่มเฉพาะงานที่ต้องทำตอนนี้</p>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <dt className="text-sm text-slate-500">คิวปัจจุบัน</dt>
+            <dd className="mt-1 font-medium">{getRequestQueueGroupLabel(currentQueue)}</dd>
+          </div>
           <div>
             <dt className="text-sm text-slate-500">สถานะปัจจุบัน</dt>
             <dd className="mt-1 font-medium">{getRequestStatusLabel(requestStatus)}</dd>

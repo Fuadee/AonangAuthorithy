@@ -16,10 +16,13 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
             <h1 className="text-lg font-semibold">Electricity Request MVP</h1>
             <nav className="flex items-center gap-3 text-sm">
               <Link className="btn-secondary" href="/dashboard">
-                Dashboard
+                แดชบอร์ด
               </Link>
               <Link className="btn-secondary" href="/surveyor">
-                งานนักสำรวจ
+                คิวนักสำรวจ
+              </Link>
+              <Link className="btn-secondary" href="/billing">
+                คิวการเงิน
               </Link>
               <Link className="btn-primary" href="/requests/new">
                 สร้างคำร้องใหม่

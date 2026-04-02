@@ -3,7 +3,7 @@
 import { useMemo, useState } from 'react';
 import { DashboardSummary } from '@/components/dashboard-summary';
 import { RequestTable } from '@/components/request-table';
-import { RequestType, ServiceRequest } from '@/lib/requests/types';
+import { getRequestQueueGroup, RequestType, ServiceRequest } from '@/lib/requests/types';
 
 type RequestTypeFilter = 'ALL' | RequestType;
 type WorkflowFilter = 'ALL' | 'WAIT_BILLING_ONLY' | 'WAIT_PAYMENT_ONLY';
@@ -58,6 +58,14 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
     () => requests.filter((request) => request.status === 'PENDING_SURVEY_REVIEW').length,
     [requests]
   );
+  const surveyQueueCount = useMemo(
+    () => requests.filter((request) => getRequestQueueGroup(request.status) === 'SURVEY').length,
+    [requests]
+  );
+  const billingQueueCount = useMemo(
+    () => requests.filter((request) => getRequestQueueGroup(request.status) === 'BILLING').length,
+    [requests]
+  );
   const waitBillingCount = useMemo(
     () => requests.filter((request) => request.status === 'WAIT_BILLING').length,
     [requests]
@@ -73,6 +81,8 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
         totalCount={requests.length}
         meterCount={meterCount}
         expansionCount={expansionCount}
+        surveyQueueCount={surveyQueueCount}
+        billingQueueCount={billingQueueCount}
         pendingSurveyReviewCount={pendingSurveyReviewCount}
         waitBillingCount={waitBillingCount}
         waitPaymentCount={waitPaymentCount}
