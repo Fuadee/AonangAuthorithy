@@ -10,7 +10,7 @@ type SurveyorPageProps = {
 
 export default async function SurveyorPage({ searchParams }: SurveyorPageProps) {
   const params = searchParams ? await searchParams : undefined;
-  const selectedSurveyor = params?.surveyor?.trim();
+  const selectedSurveyor = params?.surveyor?.trim() || null;
 
   const supabase = createServerSupabaseClient();
 
@@ -29,25 +29,14 @@ export default async function SurveyorPage({ searchParams }: SurveyorPageProps) 
 
   const typedRequests = (requests ?? []) as ServiceRequest[];
 
-  const fallbackSurveyor = typedRequests.find((request) => request.assigned_surveyor)?.assigned_surveyor ?? null;
-  const activeSurveyor = selectedSurveyor || fallbackSurveyor;
-
-  const myRequests = activeSurveyor
-    ? typedRequests.filter((request) => request.assigned_surveyor === activeSurveyor)
-    : typedRequests;
-
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold">งานของฉัน (นักสำรวจ)</h2>
-        <p className="mt-1 text-sm text-slate-500">
-          {activeSurveyor
-            ? `กำลังแสดงงานของ: ${activeSurveyor} (MVP ใช้ query ?surveyor=ชื่อ)`
-            : 'ยังไม่ระบุ surveyor จึงแสดงงานฝั่งสำรวจทั้งหมดในระบบ'}
-        </p>
+        <h2 className="text-2xl font-semibold">คิวงานสำรวจ</h2>
+        <p className="mt-1 text-sm text-slate-500">ติดตามภาพรวมงานของนักสำรวจทั้งหมด และกรองดูรายบุคคลได้ในหน้าเดียว</p>
       </div>
 
-      <SurveyorRequestsPanel requests={myRequests} />
+      <SurveyorRequestsPanel requests={typedRequests} defaultSurveyor={selectedSurveyor} />
     </div>
   );
 }
