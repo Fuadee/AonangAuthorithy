@@ -24,7 +24,7 @@ export default async function CreateRequestPage() {
   return (
     <div className="mx-auto max-w-2xl space-y-4">
       <h2 className="text-2xl font-semibold">สร้างคำร้องใหม่</h2>
-      <p className="text-sm text-slate-500">กรอกข้อมูลลูกค้า เลือกพื้นที่ และเลือกผู้รับผิดชอบ</p>
+      <p className="text-sm text-slate-500">เลือกประเภทคำร้อง และกรอกข้อมูลลูกค้าให้ครบถ้วน</p>
       <RequestForm areas={(areas ?? []) as Area[]} assignees={(assignees ?? []) as Assignee[]} />
     </div>
   );

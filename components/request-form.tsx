@@ -2,7 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import { createRequestAction } from '@/app/actions';
-import { Area, Assignee } from '@/lib/requests/types';
+import { Area, Assignee, REQUEST_TYPE_LABELS, REQUEST_TYPES } from '@/lib/requests/types';
 
 type RequestFormProps = {
   areas: Area[];
@@ -10,6 +10,7 @@ type RequestFormProps = {
 };
 
 export function RequestForm({ areas, assignees }: RequestFormProps) {
+  const [requestType, setRequestType] = useState('');
   const [areaId, setAreaId] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
 
@@ -21,6 +22,27 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
 
   return (
     <form action={createRequestAction} className="card space-y-5 p-6">
+      <div>
+        <label className="text-sm font-medium" htmlFor="request_type">
+          ประเภทคำร้อง
+        </label>
+        <select
+          className="input"
+          id="request_type"
+          name="request_type"
+          required
+          value={requestType}
+          onChange={(event) => setRequestType(event.target.value)}
+        >
+          <option value="">-- เลือกประเภทคำร้อง --</option>
+          {REQUEST_TYPES.map((type) => (
+            <option key={type} value={type}>
+              {REQUEST_TYPE_LABELS[type]}
+            </option>
+          ))}
+        </select>
+      </div>
+
       <div>
         <label className="text-sm font-medium" htmlFor="customer_name">
           ชื่อลูกค้า

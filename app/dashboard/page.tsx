@@ -1,6 +1,5 @@
 import Link from 'next/link';
-import { DashboardSummary } from '@/components/dashboard-summary';
-import { RequestTable } from '@/components/request-table';
+import { DashboardRequestsPanel } from '@/components/dashboard-requests-panel';
 import { ServiceRequest } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -11,9 +10,7 @@ export default async function DashboardPage() {
 
   const { data: requests, error } = await supabase
     .from('service_requests')
-    .select(
-      'id,request_no,customer_name,phone,area_name,assignee_name,status,created_at,updated_at'
-    )
+    .select('id,request_no,customer_name,phone,request_type,area_name,assignee_name,status,created_at,updated_at')
     .order('created_at', { ascending: false });
 
   if (error) {
@@ -21,7 +18,6 @@ export default async function DashboardPage() {
   }
 
   const typedRequests = (requests ?? []) as ServiceRequest[];
-  const newCount = typedRequests.filter((request) => request.status === 'NEW').length;
 
   return (
     <div className="space-y-6">
@@ -35,8 +31,7 @@ export default async function DashboardPage() {
         </Link>
       </div>
 
-      <DashboardSummary totalCount={typedRequests.length} newCount={newCount} />
-      <RequestTable requests={typedRequests} />
+      <DashboardRequestsPanel requests={typedRequests} />
     </div>
   );
 }

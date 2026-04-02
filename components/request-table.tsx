@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { ServiceRequest } from '@/lib/requests/types';
+import { REQUEST_TYPE_LABELS, ServiceRequest } from '@/lib/requests/types';
 
 type RequestTableProps = {
   requests: ServiceRequest[];
@@ -15,6 +15,7 @@ export function RequestTable({ requests }: RequestTableProps) {
               <th className="px-4 py-3 font-medium">Request No.</th>
               <th className="px-4 py-3 font-medium">ลูกค้า</th>
               <th className="px-4 py-3 font-medium">โทรศัพท์</th>
+              <th className="px-4 py-3 font-medium">ประเภทคำร้อง</th>
               <th className="px-4 py-3 font-medium">พื้นที่</th>
               <th className="px-4 py-3 font-medium">ผู้รับผิดชอบ</th>
               <th className="px-4 py-3 font-medium">สถานะ</th>
@@ -31,6 +32,7 @@ export function RequestTable({ requests }: RequestTableProps) {
                 </td>
                 <td className="px-4 py-3">{request.customer_name}</td>
                 <td className="px-4 py-3">{request.phone}</td>
+                <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
                 <td className="px-4 py-3">{request.area_name}</td>
                 <td className="px-4 py-3">{request.assignee_name}</td>
                 <td className="px-4 py-3">{request.status}</td>
@@ -39,7 +41,7 @@ export function RequestTable({ requests }: RequestTableProps) {
             ))}
             {!requests.length && (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-500" colSpan={7}>
+                <td className="px-4 py-6 text-center text-slate-500" colSpan={8}>
                   ยังไม่มีคำร้อง
                 </td>
               </tr>

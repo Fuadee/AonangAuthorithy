@@ -13,3 +13,7 @@ on conflict (code) do update
 set
   name = excluded.name,
   is_active = excluded.is_active;
+
+update public.service_requests
+set request_type = 'METER'
+where request_type is null;
