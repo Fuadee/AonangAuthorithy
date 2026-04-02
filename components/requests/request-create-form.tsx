@@ -1,7 +1,8 @@
 "use client";
 
 import { useActionState } from "react";
-import { createRequestAction, INITIAL_CREATE_REQUEST_STATE } from "@/app/actions/request-actions";
+import { createRequestAction } from "@/app/actions/request-actions";
+import { INITIAL_CREATE_REQUEST_STATE } from "@/app/actions/request-action-state";
 
 export function RequestCreateForm() {
   const [state, formAction, isPending] = useActionState(createRequestAction, INITIAL_CREATE_REQUEST_STATE);
