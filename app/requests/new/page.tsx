@@ -1,0 +1,31 @@
+import { RequestForm } from '@/components/request-form';
+import { Area, Assignee } from '@/lib/requests/types';
+import { createServerSupabaseClient } from '@/lib/supabase/server';
+
+export const dynamic = 'force-dynamic';
+
+export default async function CreateRequestPage() {
+  const supabase = createServerSupabaseClient();
+
+  const [{ data: areas, error: areasError }, { data: assignees, error: assigneesError }] =
+    await Promise.all([
+      supabase.from('areas').select('id,code,name').order('code', { ascending: true }),
+      supabase
+        .from('assignees')
+        .select('id,code,name,is_active')
+        .eq('is_active', true)
+        .order('code', { ascending: true })
+    ]);
+
+  if (areasError || assigneesError) {
+    throw new Error(areasError?.message ?? assigneesError?.message);
+  }
+
+  return (
+    <div className="mx-auto max-w-2xl space-y-4">
+      <h2 className="text-2xl font-semibold">สร้างคำร้องใหม่</h2>
+      <p className="text-sm text-slate-500">กรอกข้อมูลลูกค้า เลือกพื้นที่ และเลือกผู้รับผิดชอบ</p>
+      <RequestForm areas={(areas ?? []) as Area[]} assignees={(assignees ?? []) as Assignee[]} />
+    </div>
+  );
+}
