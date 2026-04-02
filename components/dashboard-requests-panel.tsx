@@ -6,6 +6,7 @@ import { RequestTable } from '@/components/request-table';
 import { RequestType, ServiceRequest } from '@/lib/requests/types';
 
 type RequestTypeFilter = 'ALL' | RequestType;
+type WorkflowFilter = 'ALL' | 'WAIT_BILLING_ONLY' | 'WAIT_PAYMENT_ONLY';
 
 type DashboardRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -17,16 +18,33 @@ const FILTER_OPTIONS: Array<{ value: RequestTypeFilter; label: string }> = [
   { value: 'EXPANSION', label: 'ขอขยายเขต' }
 ];
 
+const WORKFLOW_FILTER_OPTIONS: Array<{ value: WorkflowFilter; label: string }> = [
+  { value: 'ALL', label: 'ทุกสถานะ' },
+  { value: 'WAIT_BILLING_ONLY', label: 'รอออกใบแจ้งหนี้' },
+  { value: 'WAIT_PAYMENT_ONLY', label: 'รอชำระเงิน' }
+];
+
 export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps) {
   const [activeFilter, setActiveFilter] = useState<RequestTypeFilter>('ALL');
+  const [workflowFilter, setWorkflowFilter] = useState<WorkflowFilter>('ALL');
 
   const filteredRequests = useMemo(() => {
-    if (activeFilter === 'ALL') {
-      return requests;
+    let result = requests;
+
+    if (activeFilter !== 'ALL') {
+      result = result.filter((request) => request.request_type === activeFilter);
     }
 
-    return requests.filter((request) => request.request_type === activeFilter);
-  }, [activeFilter, requests]);
+    if (workflowFilter === 'WAIT_BILLING_ONLY') {
+      result = result.filter((request) => request.status === 'WAIT_BILLING');
+    }
+
+    if (workflowFilter === 'WAIT_PAYMENT_ONLY') {
+      result = result.filter((request) => request.status === 'WAIT_PAYMENT');
+    }
+
+    return result;
+  }, [activeFilter, workflowFilter, requests]);
 
   const meterCount = useMemo(
     () => requests.filter((request) => request.request_type === 'METER').length,
@@ -40,8 +58,12 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
     () => requests.filter((request) => request.status === 'PENDING_SURVEY_REVIEW').length,
     [requests]
   );
-  const surveyCompletedCount = useMemo(
-    () => requests.filter((request) => request.status === 'SURVEY_COMPLETED').length,
+  const waitBillingCount = useMemo(
+    () => requests.filter((request) => request.status === 'WAIT_BILLING').length,
+    [requests]
+  );
+  const waitPaymentCount = useMemo(
+    () => requests.filter((request) => request.status === 'WAIT_PAYMENT').length,
     [requests]
   );
 
@@ -52,10 +74,11 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
         meterCount={meterCount}
         expansionCount={expansionCount}
         pendingSurveyReviewCount={pendingSurveyReviewCount}
-        surveyCompletedCount={surveyCompletedCount}
+        waitBillingCount={waitBillingCount}
+        waitPaymentCount={waitPaymentCount}
       />
 
-      <section className="card p-4">
+      <section className="card space-y-3 p-4">
         <div className="flex flex-wrap items-center gap-2">
           <p className="text-sm font-medium text-slate-600">กรองประเภทคำร้อง:</p>
           {FILTER_OPTIONS.map((option) => {
@@ -71,6 +94,28 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
                 }`}
                 type="button"
                 onClick={() => setActiveFilter(option.value)}
+              >
+                {option.label}
+              </button>
+            );
+          })}
+        </div>
+
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm font-medium text-slate-600">มุมมองงาน:</p>
+          {WORKFLOW_FILTER_OPTIONS.map((option) => {
+            const isActive = workflowFilter === option.value;
+
+            return (
+              <button
+                key={option.value}
+                className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                  isActive
+                    ? 'border-brand-600 bg-brand-50 text-brand-700'
+                    : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                }`}
+                type="button"
+                onClick={() => setWorkflowFilter(option.value)}
               >
                 {option.label}
               </button>

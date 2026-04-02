@@ -3,7 +3,8 @@ type DashboardSummaryProps = {
   meterCount: number;
   expansionCount: number;
   pendingSurveyReviewCount: number;
-  surveyCompletedCount: number;
+  waitBillingCount: number;
+  waitPaymentCount: number;
 };
 
 export function DashboardSummary({
@@ -11,10 +12,11 @@ export function DashboardSummary({
   meterCount,
   expansionCount,
   pendingSurveyReviewCount,
-  surveyCompletedCount
+  waitBillingCount,
+  waitPaymentCount
 }: DashboardSummaryProps) {
   return (
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-5">
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-6">
       <article className="card p-5">
         <p className="text-sm text-slate-500">คำร้องทั้งหมด</p>
         <p className="mt-2 text-3xl font-semibold text-slate-900">{totalCount}</p>
@@ -32,8 +34,12 @@ export function DashboardSummary({
         <p className="mt-2 text-3xl font-semibold text-amber-600">{pendingSurveyReviewCount}</p>
       </article>
       <article className="card p-5">
-        <p className="text-sm text-slate-500">สำรวจแล้ว</p>
-        <p className="mt-2 text-3xl font-semibold text-emerald-700">{surveyCompletedCount}</p>
+        <p className="text-sm text-slate-500">รอออกใบแจ้งหนี้</p>
+        <p className="mt-2 text-3xl font-semibold text-purple-700">{waitBillingCount}</p>
+      </article>
+      <article className="card p-5">
+        <p className="text-sm text-slate-500">รอชำระเงิน</p>
+        <p className="mt-2 text-3xl font-semibold text-emerald-700">{waitPaymentCount}</p>
       </article>
     </section>
   );

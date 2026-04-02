@@ -4,7 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { generateRequestNo } from '@/lib/requests/generateRequestNo';
 import { isAreaCode } from '@/lib/requests/areas';
-import { REQUEST_STATUSES, RequestStatus, REQUEST_TYPES } from '@/lib/requests/types';
+import { REQUEST_STATUSES, RequestStatus, REQUEST_TYPES, RequestType } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 function requiredField(formData: FormData, key: string): string {
@@ -27,6 +27,27 @@ function isValidDateOnly(dateText: string): boolean {
 
 function isValidRequestStatus(status: string): status is RequestStatus {
   return REQUEST_STATUSES.includes(status as RequestStatus);
+}
+
+function parseBillingAmount(value: string): number {
+  const amount = Number(value);
+  if (!Number.isFinite(amount) || amount <= 0) {
+    throw new Error('จำนวนเงินใบแจ้งหนี้ต้องมากกว่า 0');
+  }
+
+  return Number(amount.toFixed(2));
+}
+
+function assertMeterLoopAllowed(requestType: RequestType): void {
+  if (requestType !== 'METER') {
+    throw new Error('รองรับ workflow ออกใบแจ้งหนี้เฉพาะคำร้องขอมิเตอร์เท่านั้น');
+  }
+}
+
+function revalidateRequestPaths(requestId: string): void {
+  revalidatePath('/dashboard');
+  revalidatePath('/surveyor');
+  revalidatePath(`/requests/${requestId}`);
 }
 
 export async function createRequestAction(formData: FormData) {
@@ -122,9 +143,7 @@ export async function updateRequestStatusAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath('/dashboard');
-  revalidatePath('/surveyor');
-  revalidatePath(`/requests/${requestId}`);
+  revalidateRequestPaths(requestId);
   redirect(`/requests/${requestId}`);
 }
 
@@ -224,9 +243,144 @@ export async function updateSurveyorAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath('/dashboard');
-  revalidatePath('/surveyor');
-  revalidatePath(`/requests/${requestId}`);
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function sendMeterRequestToBillingAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const supabase = createServerSupabaseClient();
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if (!isValidRequestStatus(request.status)) {
+    throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
+  }
+
+  assertMeterLoopAllowed(request.request_type as RequestType);
+
+  if (request.status !== 'SURVEY_COMPLETED') {
+    throw new Error('ส่งให้ออกใบแจ้งหนี้ได้เฉพาะงานที่สำรวจแล้ว');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({ status: 'WAIT_BILLING', updated_at: new Date().toISOString() })
+    .eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function issueBillingAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const billedBy = requiredField(formData, 'billed_by');
+  const billingAmount = parseBillingAmount(requiredField(formData, 'billing_amount'));
+  const billingNote = optionalField(formData, 'billing_note');
+
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if (!isValidRequestStatus(request.status)) {
+    throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
+  }
+
+  assertMeterLoopAllowed(request.request_type as RequestType);
+
+  if (request.status !== 'WAIT_BILLING') {
+    throw new Error('ออกใบแจ้งหนี้ได้เฉพาะงานที่อยู่สถานะรอออกใบแจ้งหนี้');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: 'WAIT_SURVEYOR_SIGN',
+      billing_amount: billingAmount,
+      billing_note: billingNote,
+      billed_at: nowIso,
+      billed_by: billedBy,
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function confirmBillingSurveyorSignAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const surveyorSignedBy = requiredField(formData, 'surveyor_signed_by');
+  const paymentNote = optionalField(formData, 'payment_note');
+
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,billing_amount,billed_at')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if (!isValidRequestStatus(request.status)) {
+    throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
+  }
+
+  assertMeterLoopAllowed(request.request_type as RequestType);
+
+  if (request.status !== 'WAIT_SURVEYOR_SIGN' && request.status !== 'BILLED') {
+    throw new Error('เซ็นรับรองได้เฉพาะงานที่รอนักสำรวจเซ็น');
+  }
+
+  if (!request.billing_amount || !request.billed_at) {
+    throw new Error('ยังไม่สามารถเซ็นรับรองได้ เพราะยังไม่พบข้อมูลการออกใบแจ้งหนี้');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: 'WAIT_PAYMENT',
+      surveyor_signed_at: nowIso,
+      surveyor_signed_by: surveyorSignedBy,
+      payment_note: paymentNote,
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
   redirect(`/requests/${requestId}`);
 }
 
@@ -261,8 +415,6 @@ export async function updateRequestAssigneeAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidatePath('/dashboard');
-  revalidatePath('/surveyor');
-  revalidatePath(`/requests/${requestId}`);
+  revalidateRequestPaths(requestId);
   redirect(`/requests/${requestId}`);
 }
