@@ -10,7 +10,9 @@ export default async function DashboardPage() {
 
   const { data: requests, error } = await supabase
     .from('service_requests')
-    .select('id,request_no,customer_name,phone,request_type,area_name,assignee_name,status,created_at,updated_at')
+    .select(
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_name,assigned_surveyor,scheduled_survey_date,status,created_at,updated_at'
+    )
     .order('created_at', { ascending: false });
 
   if (error) {

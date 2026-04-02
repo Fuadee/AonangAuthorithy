@@ -5,6 +5,14 @@ type RequestTableProps = {
   requests: ServiceRequest[];
 };
 
+function formatSurveyDate(value: string | null): string {
+  if (!value) {
+    return '-';
+  }
+
+  return new Date(`${value}T00:00:00`).toLocaleDateString('th-TH', { dateStyle: 'medium' });
+}
+
 export function RequestTable({ requests }: RequestTableProps) {
   return (
     <div className="card mt-6 overflow-hidden">
@@ -18,6 +26,8 @@ export function RequestTable({ requests }: RequestTableProps) {
               <th className="px-4 py-3 font-medium">ประเภทคำร้อง</th>
               <th className="px-4 py-3 font-medium">พื้นที่</th>
               <th className="px-4 py-3 font-medium">ผู้รับผิดชอบ</th>
+              <th className="px-4 py-3 font-medium">ผู้สำรวจ</th>
+              <th className="px-4 py-3 font-medium">วันสำรวจ</th>
               <th className="px-4 py-3 font-medium">สถานะ</th>
               <th className="px-4 py-3 font-medium">สร้างเมื่อ</th>
             </tr>
@@ -35,13 +45,15 @@ export function RequestTable({ requests }: RequestTableProps) {
                 <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
                 <td className="px-4 py-3">{request.area_name}</td>
                 <td className="px-4 py-3">{request.assignee_name}</td>
+                <td className="px-4 py-3">{request.assigned_surveyor ?? '-'}</td>
+                <td className="px-4 py-3">{formatSurveyDate(request.scheduled_survey_date)}</td>
                 <td className="px-4 py-3">{request.status}</td>
                 <td className="px-4 py-3">{new Date(request.created_at).toLocaleString('th-TH')}</td>
               </tr>
             ))}
             {!requests.length && (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-500" colSpan={8}>
+                <td className="px-4 py-6 text-center text-slate-500" colSpan={10}>
                   ยังไม่มีคำร้อง
                 </td>
               </tr>
