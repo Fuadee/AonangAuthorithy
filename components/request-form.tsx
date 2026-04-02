@@ -22,14 +22,14 @@ const WEEKDAY_LABELS: Record<string, string> = {
 
 export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [requestType, setRequestType] = useState('');
-  const [areaId, setAreaId] = useState('');
+  const [areaCode, setAreaCode] = useState('');
   const [assigneeId, setAssigneeId] = useState('');
   const [assignedSurveyor, setAssignedSurveyor] = useState('');
   const [scheduledSurveyDate, setScheduledSurveyDate] = useState('');
   const [surveySuggestion, setSurveySuggestion] = useState<SurveySuggestionResult | null>(null);
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
 
-  const selectedArea = useMemo(() => areas.find((area) => area.id === areaId), [areas, areaId]);
+  const selectedArea = useMemo(() => areas.find((area) => area.code === areaCode), [areas, areaCode]);
   const selectedAssignee = useMemo(
     () => assignees.find((assignee) => assignee.id === assigneeId),
     [assignees, assigneeId]
@@ -39,7 +39,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     const controller = new AbortController();
 
     async function loadSuggestion() {
-      if (!areaId) {
+      if (!areaCode) {
         setSurveySuggestion(null);
         setAssignedSurveyor('');
         setScheduledSurveyDate('');
@@ -48,7 +48,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
 
       setIsLoadingSuggestion(true);
       try {
-        const response = await fetch(`/api/survey-suggestion?area_id=${areaId}`, {
+        const response = await fetch(`/api/survey-suggestion?area_code=${areaCode}`, {
           method: 'GET',
           signal: controller.signal
         });
@@ -62,7 +62,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
         setSurveySuggestion(data);
       } catch {
         setSurveySuggestion({
-          area_id: areaId,
+          area_code: areaCode,
           schedules: [],
           suggestion: null,
           message: 'ไม่สามารถโหลดคำแนะนำคิวสำรวจได้ กรุณาลองใหม่อีกครั้ง'
@@ -75,7 +75,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     loadSuggestion();
 
     return () => controller.abort();
-  }, [areaId]);
+  }, [areaCode]);
 
   const recommendedDateText = surveySuggestion?.suggestion?.suggested_date
     ? new Date(`${surveySuggestion.suggestion.suggested_date}T00:00:00`).toLocaleDateString('th-TH', {
@@ -121,20 +121,20 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
       </div>
 
       <div>
-        <label className="text-sm font-medium" htmlFor="area_id">
+        <label className="text-sm font-medium" htmlFor="area_code">
           พื้นที่
         </label>
         <select
           className="input"
-          id="area_id"
-          name="area_id"
+          id="area_code"
+          name="area_code"
           required
-          value={areaId}
-          onChange={(event) => setAreaId(event.target.value)}
+          value={areaCode}
+          onChange={(event) => setAreaCode(event.target.value)}
         >
           <option value="">-- เลือกพื้นที่ --</option>
           {areas.map((area) => (
-            <option key={area.id} value={area.id}>
+            <option key={area.id} value={area.code}>
               {area.code} | {area.name}
             </option>
           ))}
@@ -218,7 +218,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
           <p className="mt-2 text-sm text-amber-600">{surveySuggestion.message}</p>
         ) : null}
 
-        {!isLoadingSuggestion && !areaId ? (
+        {!isLoadingSuggestion && !areaCode ? (
           <p className="mt-2 text-xs text-slate-500">กรุณาเลือกพื้นที่เพื่อดูคำแนะนำการนัดสำรวจ</p>
         ) : null}
       </section>
