@@ -7,14 +7,8 @@ import { createAdminClient } from "@/lib/supabase/admin";
 import { PermissionDeniedError, requirePermission } from "@/lib/guards/auth";
 import { transitionStatus } from "@/lib/workflow/service";
 import { assignRequestSchema, createRequestSchema, reviewDocumentSchema } from "@/lib/workflow/validators";
+import type { CreateRequestActionState } from "@/app/actions/request-action-state";
 
-export type CreateRequestActionState = {
-  error: string | null;
-};
-
-export const INITIAL_CREATE_REQUEST_STATE: CreateRequestActionState = {
-  error: null
-};
 
 export async function createRequestAction(
   _prevState: CreateRequestActionState,
