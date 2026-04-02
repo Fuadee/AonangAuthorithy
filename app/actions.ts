@@ -3,7 +3,7 @@
 import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { generateRequestNo } from '@/lib/requests/generateRequestNo';
-import { REQUEST_STATUSES } from '@/lib/requests/types';
+import { REQUEST_STATUSES, REQUEST_TYPES } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 function requiredField(formData: FormData, key: string): string {
@@ -20,6 +20,11 @@ export async function createRequestAction(formData: FormData) {
   const phone = requiredField(formData, 'phone');
   const areaId = requiredField(formData, 'area_id');
   const assigneeId = requiredField(formData, 'assignee_id');
+  const requestType = requiredField(formData, 'request_type');
+
+  if (!REQUEST_TYPES.includes(requestType as (typeof REQUEST_TYPES)[number])) {
+    throw new Error('Invalid request type');
+  }
 
   const supabase = createServerSupabaseClient();
 
@@ -53,7 +58,8 @@ export async function createRequestAction(formData: FormData) {
     assignee_id: assignee.id,
     assignee_code: assignee.code,
     assignee_name: assignee.name,
-    status: 'NEW'
+    status: 'NEW',
+    request_type: requestType
   });
 
   if (insertError) {

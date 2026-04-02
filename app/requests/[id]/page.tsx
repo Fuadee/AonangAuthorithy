@@ -2,7 +2,7 @@ import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { RequestAssigneeForm } from '@/components/request-assignee-form';
 import { RequestStatusForm } from '@/components/request-status-form';
-import { Assignee, RequestStatus } from '@/lib/requests/types';
+import { Assignee, REQUEST_TYPE_LABELS, RequestStatus, RequestType } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -20,7 +20,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
       supabase
         .from('service_requests')
         .select(
-          'id,request_no,customer_name,phone,area_name,assignee_id,assignee_name,status,created_at,updated_at'
+          'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,status,created_at,updated_at'
         )
         .eq('id', id)
         .maybeSingle(),
@@ -64,6 +64,10 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           <div>
             <dt className="text-sm text-slate-500">เบอร์โทรศัพท์</dt>
             <dd className="mt-1 font-medium">{request.phone}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">ประเภทคำร้อง</dt>
+            <dd className="mt-1 font-medium">{REQUEST_TYPE_LABELS[request.request_type as RequestType]}</dd>
           </div>
           <div>
             <dt className="text-sm text-slate-500">พื้นที่</dt>

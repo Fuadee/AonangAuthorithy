@@ -26,6 +26,7 @@ create table if not exists public.service_requests (
   area_name text not null,
   assignee_code text not null,
   assignee_name text not null,
+  request_type text not null default 'METER' check (request_type in ('METER', 'EXPANSION')),
   status text not null default 'NEW' check (status in ('NEW', 'IN_PROGRESS', 'COMPLETED', 'CANCELLED')),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
@@ -33,3 +34,4 @@ create table if not exists public.service_requests (
 
 create index if not exists idx_service_requests_created_at on public.service_requests (created_at desc);
 create index if not exists idx_service_requests_status on public.service_requests (status);
+create index if not exists idx_service_requests_request_type on public.service_requests (request_type);
