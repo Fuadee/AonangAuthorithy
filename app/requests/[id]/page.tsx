@@ -1,10 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { RequestAssigneeForm } from '@/components/request-assignee-form';
-import { RequestStatusForm } from '@/components/request-status-form';
-import { SurveyorActionForm } from '@/components/surveyor-action-form';
+import { SurveyorActionWorkflow } from '@/components/surveyor-action-workflow';
 import {
-  Assignee,
   getRequestStatusLabel,
   REQUEST_TYPE_LABELS,
   RequestStatus,
@@ -80,13 +77,13 @@ function getNextStepSummary(status: RequestStatus): { nextStep: string; owner: s
 function getSurveyorStatusMessage(status: RequestStatus): string {
   switch (status) {
     case 'SURVEY_DOCS_INCOMPLETE':
-      return 'รอคนรับคำร้องติดตามเอกสารเพิ่มเติม';
+      return 'รอเจ้าหน้าที่ติดตามเอกสาร';
     case 'SURVEY_COMPLETED':
-      return 'สำรวจหน้างานเสร็จสิ้นแล้ว';
+      return 'สำรวจเสร็จสิ้นแล้ว';
     case 'SURVEY_RESCHEDULE_REQUESTED':
       return 'นักสำรวจขอเลื่อนวันสำรวจ รอยืนยันวันนัดใหม่';
     default:
-      return 'เลือกการดำเนินการที่ตรงกับงานจริง โดยระบบจะอัปเดตสถานะให้อัตโนมัติ';
+      return 'กดปุ่มตามขั้นตอน ระบบจะอัปเดตสถานะให้อัตโนมัติ';
   }
 }
 
@@ -145,32 +142,34 @@ function getTimeline(request: {
   return items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 }
 
+function getActionTitle(status: RequestStatus): string {
+  switch (status) {
+    case 'PENDING_SURVEY_REVIEW':
+      return 'ขั้นตอนสำหรับนักสำรวจ';
+    case 'SURVEY_ACCEPTED':
+      return 'งานที่ทำได้ตอนนี้';
+    case 'SURVEY_DOCS_INCOMPLETE':
+    case 'SURVEY_COMPLETED':
+      return 'สถานะงาน';
+    default:
+      return 'การดำเนินการ';
+  }
+}
+
 export default async function RequestDetailPage({ params }: RequestDetailPageProps) {
   const { id } = await params;
   const supabase = createServerSupabaseClient();
 
-  const [{ data: request, error: requestError }, { data: assignees, error: assigneesError }] =
-    await Promise.all([
-      supabase
-        .from('service_requests')
-        .select(
-          'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,created_at,updated_at'
-        )
-        .eq('id', id)
-        .maybeSingle(),
-      supabase
-        .from('assignees')
-        .select('id,code,name,is_active')
-        .eq('is_active', true)
-        .order('code', { ascending: true })
-    ]);
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select(
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,created_at,updated_at'
+    )
+    .eq('id', id)
+    .maybeSingle();
 
   if (requestError) {
     throw new Error(requestError.message);
-  }
-
-  if (assigneesError) {
-    throw new Error(assigneesError.message);
   }
 
   if (!request) {
@@ -204,7 +203,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
 
       <section className="card p-6">
         <h3 className="text-lg font-semibold">สรุปสถานะงานล่าสุด</h3>
-        <p className="mt-1 text-sm text-slate-500">สรุปให้เห็นทันทีว่างานอยู่ขั้นไหนและใครต้องทำต่อ</p>
+        <p className="mt-1 text-sm text-slate-500">หน้าดูข้อมูลเป็นหลัก กดปุ่มเฉพาะงานที่ต้องทำตอนนี้</p>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
           <div>
             <dt className="text-sm text-slate-500">สถานะปัจจุบัน</dt>
@@ -235,6 +234,18 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         </dl>
       </section>
 
+      <article className="card p-6">
+        <h3 className="text-lg font-semibold">{getActionTitle(requestStatus)}</h3>
+        <p className="mt-1 text-sm text-slate-500">{getSurveyorStatusMessage(requestStatus)}</p>
+        <div className="mt-4">
+          {isSurveyorFlowStatus ? (
+            <SurveyorActionWorkflow requestId={request.id} currentStatus={requestStatus} />
+          ) : (
+            <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{getSurveyorStatusMessage(requestStatus)}</p>
+          )}
+        </div>
+      </article>
+
       <section className="card p-6">
         <h3 className="text-lg font-semibold">ประวัติการดำเนินงาน</h3>
         <p className="mt-1 text-sm text-slate-500">เรียงตามลำดับเวลาเพื่อให้ติดตามงานได้ง่าย</p>
@@ -249,69 +260,35 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         </ol>
       </section>
 
-      <section className="grid gap-6 md:grid-cols-2">
-        <article className="card p-6">
-          <h3 className="text-lg font-semibold">ข้อมูลคำร้อง</h3>
-          <dl className="mt-4 grid gap-4 sm:grid-cols-2">
-            <div>
-              <dt className="text-sm text-slate-500">เลขคำร้อง</dt>
-              <dd className="mt-1 font-medium">{request.request_no}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-slate-500">ชื่อลูกค้า</dt>
-              <dd className="mt-1 font-medium">{request.customer_name}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-slate-500">เบอร์โทรศัพท์</dt>
-              <dd className="mt-1 font-medium">{request.phone}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-slate-500">ประเภทคำร้อง</dt>
-              <dd className="mt-1 font-medium">{REQUEST_TYPE_LABELS[request.request_type as RequestType]}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-slate-500">พื้นที่</dt>
-              <dd className="mt-1 font-medium">{request.area_name}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-slate-500">เจ้าหน้าที่รับคำร้อง</dt>
-              <dd className="mt-1 font-medium">{request.assignee_name}</dd>
-            </div>
-          </dl>
-        </article>
-
-        <article className="card p-6">
-          <h3 className="text-lg font-semibold">เปลี่ยนผู้รับผิดชอบ</h3>
-          <p className="mt-1 text-sm text-slate-500">เลือกเจ้าหน้าที่ที่รับผิดชอบคำร้องนี้</p>
-          <div className="mt-4">
-            <RequestAssigneeForm
-              requestId={request.id}
-              currentAssigneeId={request.assignee_id}
-              assignees={(assignees ?? []) as Assignee[]}
-            />
-          </div>
-        </article>
-      </section>
-
       <article className="card p-6">
-        <h3 className="text-lg font-semibold">Action ฝั่งนักสำรวจ</h3>
-        <p className="mt-1 text-sm text-slate-500">{getSurveyorStatusMessage(requestStatus)}</p>
-        <div className="mt-4">
-          {isSurveyorFlowStatus && !['SURVEY_DOCS_INCOMPLETE', 'SURVEY_COMPLETED'].includes(requestStatus) ? (
-            <SurveyorActionForm requestId={request.id} currentStatus={requestStatus} />
-          ) : (
-            <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">{getSurveyorStatusMessage(requestStatus)}</p>
-          )}
-        </div>
+        <h3 className="text-lg font-semibold">ข้อมูลคำร้อง</h3>
+        <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+          <div>
+            <dt className="text-sm text-slate-500">เลขคำร้อง</dt>
+            <dd className="mt-1 font-medium">{request.request_no}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">ชื่อลูกค้า</dt>
+            <dd className="mt-1 font-medium">{request.customer_name}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">เบอร์โทรศัพท์</dt>
+            <dd className="mt-1 font-medium">{request.phone}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">ประเภทคำร้อง</dt>
+            <dd className="mt-1 font-medium">{REQUEST_TYPE_LABELS[request.request_type as RequestType]}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">พื้นที่</dt>
+            <dd className="mt-1 font-medium">{request.area_name}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">เจ้าหน้าที่รับคำร้อง</dt>
+            <dd className="mt-1 font-medium">{request.assignee_name}</dd>
+          </div>
+        </dl>
       </article>
-
-      <details className="card p-6">
-        <summary className="cursor-pointer text-lg font-semibold">จัดการขั้นสูง (สำหรับผู้ดูแล)</summary>
-        <p className="mt-1 text-sm text-slate-500">กรณีต้องปรับสถานะโดยตรงเท่านั้น</p>
-        <div className="mt-4 max-w-md">
-          <RequestStatusForm requestId={request.id} currentStatus={requestStatus} />
-        </div>
-      </details>
     </div>
   );
 }
