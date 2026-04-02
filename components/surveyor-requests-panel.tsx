@@ -15,6 +15,8 @@ type SurveyorFilter =
   | 'PENDING_SURVEY_REVIEW'
   | 'SURVEY_ACCEPTED'
   | 'SURVEY_DOCS_INCOMPLETE'
+  | 'SURVEY_RESCHEDULE_REQUESTED'
+  | 'WAIT_SURVEYOR_SIGN'
   | 'TODAY'
   | 'SURVEY_COMPLETED';
 
@@ -25,6 +27,8 @@ const FILTER_OPTIONS: Array<{ value: SurveyorFilter; label: string }> = [
   { value: 'PENDING_SURVEY_REVIEW', label: 'รอตรวจเอกสาร' },
   { value: 'SURVEY_ACCEPTED', label: 'รับงานแล้ว' },
   { value: 'SURVEY_DOCS_INCOMPLETE', label: 'เอกสารไม่ครบ' },
+  { value: 'SURVEY_RESCHEDULE_REQUESTED', label: 'ขอเลื่อนวันสำรวจ' },
+  { value: 'WAIT_SURVEYOR_SIGN', label: 'รอนักสำรวจเซ็น' },
   { value: 'TODAY', label: 'วันนี้' },
   { value: 'SURVEY_COMPLETED', label: 'สำรวจแล้ว' }
 ];

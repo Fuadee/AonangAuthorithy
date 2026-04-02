@@ -1,5 +1,11 @@
 import Link from 'next/link';
-import { getRequestStatusLabel, REQUEST_TYPE_LABELS, ServiceRequest } from '@/lib/requests/types';
+import {
+  getRequestQueueGroup,
+  getRequestQueueGroupLabel,
+  getRequestStatusLabel,
+  REQUEST_TYPE_LABELS,
+  ServiceRequest
+} from '@/lib/requests/types';
 
 type RequestTableProps = {
   requests: ServiceRequest[];
@@ -28,6 +34,7 @@ export function RequestTable({ requests }: RequestTableProps) {
               <th className="px-4 py-3 font-medium">ผู้รับผิดชอบ</th>
               <th className="px-4 py-3 font-medium">ผู้สำรวจ</th>
               <th className="px-4 py-3 font-medium">วันสำรวจ</th>
+              <th className="px-4 py-3 font-medium">คิวปัจจุบัน</th>
               <th className="px-4 py-3 font-medium">สถานะ</th>
               <th className="px-4 py-3 font-medium">สร้างเมื่อ</th>
             </tr>
@@ -47,13 +54,14 @@ export function RequestTable({ requests }: RequestTableProps) {
                 <td className="px-4 py-3">{request.assignee_name}</td>
                 <td className="px-4 py-3">{request.assigned_surveyor ?? '-'}</td>
                 <td className="px-4 py-3">{formatSurveyDate(request.scheduled_survey_date)}</td>
+                <td className="px-4 py-3">{getRequestQueueGroupLabel(getRequestQueueGroup(request.status))}</td>
                 <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                 <td className="px-4 py-3">{new Date(request.created_at).toLocaleString('th-TH')}</td>
               </tr>
             ))}
             {!requests.length && (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-500" colSpan={10}>
+                <td className="px-4 py-6 text-center text-slate-500" colSpan={11}>
                   ยังไม่มีคำร้อง
                 </td>
               </tr>

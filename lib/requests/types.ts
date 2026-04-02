@@ -13,9 +13,11 @@ export const REQUEST_STATUSES = [
   'WAIT_PAYMENT'
 ] as const;
 export const REQUEST_TYPES = ['METER', 'EXPANSION'] as const;
+export const REQUEST_QUEUE_GROUPS = ['SURVEY', 'BILLING', 'OTHER'] as const;
 
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 export type RequestType = (typeof REQUEST_TYPES)[number];
+export type RequestQueueGroup = (typeof REQUEST_QUEUE_GROUPS)[number];
 
 export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   METER: 'ขอมิเตอร์',
@@ -35,14 +37,39 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   WAIT_PAYMENT: 'รอชำระเงิน'
 };
 
-export const SURVEYOR_VISIBLE_STATUSES: RequestStatus[] = [
-  'PENDING_SURVEY_REVIEW',
-  'SURVEY_ACCEPTED',
-  'SURVEY_DOCS_INCOMPLETE',
-  'SURVEY_RESCHEDULE_REQUESTED',
-  'SURVEY_COMPLETED',
-  'WAIT_SURVEYOR_SIGN'
-];
+export const REQUEST_QUEUE_GROUP_LABELS: Record<RequestQueueGroup, string> = {
+  SURVEY: 'คิวนักสำรวจ',
+  BILLING: 'คิวการเงิน',
+  OTHER: 'อื่น ๆ'
+};
+
+export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup> = {
+  NEW: 'OTHER',
+  PENDING_SURVEY_REVIEW: 'SURVEY',
+  SURVEY_ACCEPTED: 'SURVEY',
+  SURVEY_DOCS_INCOMPLETE: 'SURVEY',
+  SURVEY_RESCHEDULE_REQUESTED: 'SURVEY',
+  SURVEY_COMPLETED: 'SURVEY',
+  WAIT_BILLING: 'BILLING',
+  BILLED: 'OTHER',
+  WAIT_SURVEYOR_SIGN: 'SURVEY',
+  WAIT_PAYMENT: 'BILLING'
+};
+
+export function getRequestQueueGroup(status: RequestStatus): RequestQueueGroup {
+  return REQUEST_STATUS_QUEUE_GROUP[status];
+}
+
+export function getRequestQueueGroupLabel(queue: RequestQueueGroup): string {
+  return REQUEST_QUEUE_GROUP_LABELS[queue];
+}
+
+export function getStatusesByQueueGroup(queue: RequestQueueGroup): RequestStatus[] {
+  return REQUEST_STATUSES.filter((status) => REQUEST_STATUS_QUEUE_GROUP[status] === queue);
+}
+
+export const SURVEYOR_VISIBLE_STATUSES: RequestStatus[] = getStatusesByQueueGroup('SURVEY');
+export const BILLING_VISIBLE_STATUSES: RequestStatus[] = getStatusesByQueueGroup('BILLING');
 
 export function getRequestStatusLabel(status: RequestStatus): string {
   return REQUEST_STATUS_LABELS[status];
