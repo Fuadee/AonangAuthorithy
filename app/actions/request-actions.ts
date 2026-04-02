@@ -29,8 +29,7 @@ export async function createRequestAction(
       requestType: formData.get("requestType"),
       areaCode: formData.get("areaCode"),
       customerName: formData.get("customerName"),
-      customerPhone: formData.get("customerPhone"),
-      supplyAddress: formData.get("supplyAddress")
+      customerPhone: formData.get("customerPhone")
     });
 
     const supabase = createAdminClient();
@@ -41,7 +40,6 @@ export async function createRequestAction(
         area_code: parsed.areaCode,
         customer_name: parsed.customerName,
         customer_phone: parsed.customerPhone,
-        supply_address: parsed.supplyAddress,
         current_status: "WAITING_SURVEY_ASSIGNMENT",
         created_by: user.id,
         current_owner_id: user.id,

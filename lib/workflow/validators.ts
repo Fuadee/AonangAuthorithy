@@ -6,8 +6,7 @@ export const createRequestSchema = z.object({
   requestType: z.enum(["METER", "EXTENSION"]),
   areaCode: z.string().min(2),
   customerName: z.string().min(2),
-  customerPhone: z.string().min(8),
-  supplyAddress: z.string().min(8)
+  customerPhone: z.string().min(8)
 });
 
 export const assignRequestSchema = z.object({

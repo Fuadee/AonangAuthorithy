@@ -16,7 +16,6 @@ export function RequestCreateForm() {
         <option value="METER">ขอใช้มิเตอร์</option>
         <option value="EXTENSION">ขอขยายเขต</option>
       </select>
-      <textarea className="rounded border p-2 md:col-span-2" name="supplyAddress" placeholder="ที่อยู่/จุดใช้ไฟ" required />
       {state.error ? <p className="md:col-span-2 text-sm text-red-600">{state.error}</p> : null}
       <button className="rounded bg-blue-600 px-4 py-2 text-white md:col-span-2 disabled:opacity-60" disabled={isPending} type="submit">
         {isPending ? "กำลังสร้างคำร้อง..." : "บันทึกคำร้อง"}
