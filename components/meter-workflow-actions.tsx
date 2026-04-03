@@ -13,6 +13,8 @@ import { RequestStatus } from '@/lib/requests/types';
 type MeterWorkflowActionsProps = {
   requestId: string;
   currentStatus: RequestStatus;
+  isInvoiceSigned: boolean;
+  isPaid: boolean;
 };
 
 type MeterAction = 'SEND_TO_BILLING' | 'ISSUE_BILL' | 'SURVEYOR_SIGN' | 'CONFIRM_PAYMENT' | 'MANAGER_APPROVE';
@@ -23,15 +25,6 @@ type MeterActionConfig = {
   title: string;
   description: string;
   confirmLabel: string;
-};
-
-const STATUS_TO_ACTION: Partial<Record<RequestStatus, MeterAction>> = {
-  SURVEY_COMPLETED: 'SEND_TO_BILLING',
-  WAIT_BILLING: 'ISSUE_BILL',
-  WAIT_SURVEYOR_SIGN: 'SURVEYOR_SIGN',
-  BILLED: 'SURVEYOR_SIGN',
-  WAIT_PAYMENT: 'CONFIRM_PAYMENT',
-  WAIT_MANAGER_REVIEW: 'MANAGER_APPROVE'
 };
 
 const ACTION_CONFIG: Record<MeterAction, MeterActionConfig> = {
@@ -46,21 +39,21 @@ const ACTION_CONFIG: Record<MeterAction, MeterActionConfig> = {
     action: 'ISSUE_BILL',
     buttonLabel: 'ออกใบแจ้งหนี้',
     title: 'ออกใบแจ้งหนี้',
-    description: 'กรอกจำนวนเงินและผู้ดำเนินการ แล้วระบบจะส่งต่อไปสถานะ “รอนักสำรวจเซ็น”',
+    description: 'กรอกจำนวนเงินและผู้ดำเนินการ แล้วระบบจะเข้าสู่ช่วง “รอดำเนินการหลังแจ้งหนี้”',
     confirmLabel: 'ยืนยันออกใบแจ้งหนี้'
   },
   SURVEYOR_SIGN: {
     action: 'SURVEYOR_SIGN',
-    buttonLabel: 'เซ็นรับรองใบแจ้งหนี้',
+    buttonLabel: 'เซ็นใบแจ้งหนี้แล้ว',
     title: 'เซ็นรับรองใบแจ้งหนี้',
-    description: 'เมื่อนักสำรวจเซ็นรับรองแล้ว งานจะเข้าสู่สถานะ “รอชำระเงิน”',
+    description: 'บันทึกว่างานนี้เซ็นใบแจ้งหนี้แล้ว (ทำก่อนหรือหลังชำระเงินก็ได้)',
     confirmLabel: 'ยืนยันเซ็นรับรอง'
   },
   CONFIRM_PAYMENT: {
     action: 'CONFIRM_PAYMENT',
     buttonLabel: 'ชำระเงินแล้ว',
     title: 'ยืนยันรับชำระเงินแล้ว',
-    description: 'หลังยืนยัน งานจะย้ายไปสถานะ “รอผู้จัดการตรวจ” ทันที',
+    description: 'บันทึกว่างานนี้ชำระเงินแล้ว (ทำก่อนหรือหลังเซ็นใบแจ้งหนี้ก็ได้)',
     confirmLabel: 'ยืนยันชำระเงินแล้ว'
   },
   MANAGER_APPROVE: {
@@ -152,16 +145,10 @@ function ActionModal({
           <form action={confirmBillingSurveyorSignAction} className="mt-4 space-y-4">
             <input name="request_id" type="hidden" value={requestId} />
             <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="surveyor_signed_by">
+              <label className="text-sm font-medium text-slate-700" htmlFor="invoice_signed_by">
                 ผู้เซ็นรับรอง
               </label>
-              <input className="input" id="surveyor_signed_by" name="surveyor_signed_by" placeholder="ชื่อนักสำรวจ" required type="text" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="payment_note">
-                หมายเหตุขั้นชำระเงิน (ถ้ามี)
-              </label>
-              <textarea className="input min-h-24" id="payment_note" name="payment_note" />
+              <input className="input" id="invoice_signed_by" name="invoice_signed_by" placeholder="ชื่อนักสำรวจ" required type="text" />
             </div>
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" onClick={onClose} type="button">
@@ -212,22 +199,52 @@ function ActionModal({
   );
 }
 
-export function MeterWorkflowActions({ requestId, currentStatus }: MeterWorkflowActionsProps) {
+export function MeterWorkflowActions({ requestId, currentStatus, isInvoiceSigned, isPaid }: MeterWorkflowActionsProps) {
   const [activeAction, setActiveAction] = useState<MeterAction | null>(null);
 
-  const currentAction = STATUS_TO_ACTION[currentStatus];
-
-  if (!currentAction) {
+  if (!['SURVEY_COMPLETED', 'WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION', 'WAIT_MANAGER_REVIEW'].includes(currentStatus)) {
     return <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">สถานะนี้ยังไม่มีงานใน loop ออกใบแจ้งหนี้</p>;
   }
 
-  const config = ACTION_CONFIG[currentAction];
-
   return (
     <>
-      <button className="btn-primary" type="button" onClick={() => setActiveAction(currentAction)}>
-        {config.buttonLabel}
-      </button>
+      <div className="flex flex-wrap gap-2">
+        {currentStatus === 'SURVEY_COMPLETED' ? (
+          <button className="btn-primary" type="button" onClick={() => setActiveAction('SEND_TO_BILLING')}>
+            {ACTION_CONFIG.SEND_TO_BILLING.buttonLabel}
+          </button>
+        ) : null}
+        {currentStatus === 'WAIT_BILLING' ? (
+          <button className="btn-primary" type="button" onClick={() => setActiveAction('ISSUE_BILL')}>
+            {ACTION_CONFIG.ISSUE_BILL.buttonLabel}
+          </button>
+        ) : null}
+        {currentStatus === 'WAIT_ACTION_CONFIRMATION' ? (
+          <>
+            <button
+              className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isInvoiceSigned}
+              type="button"
+              onClick={() => setActiveAction('SURVEYOR_SIGN')}
+            >
+              {isInvoiceSigned ? 'เซ็นใบแจ้งหนี้แล้ว' : ACTION_CONFIG.SURVEYOR_SIGN.buttonLabel}
+            </button>
+            <button
+              className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
+              disabled={isPaid}
+              type="button"
+              onClick={() => setActiveAction('CONFIRM_PAYMENT')}
+            >
+              {isPaid ? 'ชำระเงินแล้ว' : ACTION_CONFIG.CONFIRM_PAYMENT.buttonLabel}
+            </button>
+          </>
+        ) : null}
+        {currentStatus === 'WAIT_MANAGER_REVIEW' ? (
+          <button className="btn-primary" type="button" onClick={() => setActiveAction('MANAGER_APPROVE')}>
+            {ACTION_CONFIG.MANAGER_APPROVE.buttonLabel}
+          </button>
+        ) : null}
+      </div>
 
       {activeAction ? <ActionModal config={ACTION_CONFIG[activeAction]} onClose={() => setActiveAction(null)} requestId={requestId} /> : null}
     </>
