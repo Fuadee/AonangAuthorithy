@@ -7,6 +7,8 @@ export const REQUEST_STATUSES = [
   'SURVEY_DOCS_INCOMPLETE',
   'SURVEY_RESCHEDULE_REQUESTED',
   'SURVEY_COMPLETED',
+  'WAIT_DOCUMENT_REVIEW',
+  'WAIT_DOCUMENT_FOLLOWUP',
   'WAIT_BILLING',
   'WAIT_ACTION_CONFIRMATION',
   'WAIT_MANAGER_REVIEW',
@@ -14,10 +16,12 @@ export const REQUEST_STATUSES = [
 ] as const;
 export const REQUEST_TYPES = ['METER', 'EXPANSION'] as const;
 export const REQUEST_QUEUE_GROUPS = ['SURVEY', 'BILLING', 'MANAGER', 'DONE', 'OTHER'] as const;
+export const DOCUMENT_STATUSES = ['COMPLETE', 'INCOMPLETE'] as const;
 
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 export type RequestType = (typeof REQUEST_TYPES)[number];
 export type RequestQueueGroup = (typeof REQUEST_QUEUE_GROUPS)[number];
+export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
 
 export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   METER: 'ขอมิเตอร์',
@@ -31,6 +35,8 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   SURVEY_DOCS_INCOMPLETE: 'เอกสารไม่ครบ',
   SURVEY_RESCHEDULE_REQUESTED: 'ขอเลื่อนวันสำรวจ',
   SURVEY_COMPLETED: 'สำรวจแล้ว',
+  WAIT_DOCUMENT_REVIEW: 'รอตรวจเอกสาร',
+  WAIT_DOCUMENT_FOLLOWUP: 'รอเจ้าหน้าที่ติดตามเอกสาร',
   WAIT_BILLING: 'รอออกใบแจ้งหนี้',
   WAIT_ACTION_CONFIRMATION: 'รอดำเนินการหลังแจ้งหนี้',
   WAIT_MANAGER_REVIEW: 'รอผู้จัดการตรวจ',
@@ -52,6 +58,8 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   SURVEY_DOCS_INCOMPLETE: 'SURVEY',
   SURVEY_RESCHEDULE_REQUESTED: 'SURVEY',
   SURVEY_COMPLETED: 'SURVEY',
+  WAIT_DOCUMENT_REVIEW: 'SURVEY',
+  WAIT_DOCUMENT_FOLLOWUP: 'SURVEY',
   WAIT_BILLING: 'BILLING',
   WAIT_ACTION_CONFIRMATION: 'BILLING',
   WAIT_MANAGER_REVIEW: 'MANAGER',
@@ -84,6 +92,80 @@ export function isInvoiceSigned(request: Pick<ServiceRequest, 'invoice_signed_at
 
 export function isPaid(request: Pick<ServiceRequest, 'paid_at'>): boolean {
   return Boolean(request.paid_at);
+}
+
+export function isDocumentComplete(request: Pick<ServiceRequest, 'document_status'>): boolean {
+  return request.document_status === 'COMPLETE';
+}
+
+export function isIncompleteButAllowedToProceed(
+  request: Pick<ServiceRequest, 'document_status' | 'allow_proceed_with_incomplete_docs'>
+): boolean {
+  return request.document_status === 'INCOMPLETE' && request.allow_proceed_with_incomplete_docs;
+}
+
+export function canReturnToDocumentReview(request: Pick<ServiceRequest, 'status'>): boolean {
+  return request.status === 'WAIT_DOCUMENT_FOLLOWUP';
+}
+
+export type DocumentWorkflowDecision = 'COMPLETE' | 'INCOMPLETE_WAIT_FOLLOWUP' | 'INCOMPLETE_ALLOW_PROCEED';
+
+export function resolveDocumentWorkflowDecision(decision: DocumentWorkflowDecision): {
+  documentStatus: DocumentStatus;
+  allowProceedWithIncompleteDocs: boolean;
+  nextStatus: Extract<RequestStatus, 'WAIT_DOCUMENT_FOLLOWUP' | 'WAIT_BILLING'>;
+} {
+  if (decision === 'COMPLETE') {
+    return {
+      documentStatus: 'COMPLETE',
+      allowProceedWithIncompleteDocs: false,
+      nextStatus: 'WAIT_BILLING'
+    };
+  }
+
+  if (decision === 'INCOMPLETE_ALLOW_PROCEED') {
+    return {
+      documentStatus: 'INCOMPLETE',
+      allowProceedWithIncompleteDocs: true,
+      nextStatus: 'WAIT_BILLING'
+    };
+  }
+
+  return {
+    documentStatus: 'INCOMPLETE',
+    allowProceedWithIncompleteDocs: false,
+    nextStatus: 'WAIT_DOCUMENT_FOLLOWUP'
+  };
+}
+
+export function getDocumentStatusSummary(
+  request: Pick<
+    ServiceRequest,
+    | 'document_status'
+    | 'allow_proceed_with_incomplete_docs'
+    | 'incomplete_docs_note'
+    | 'proceed_override_by'
+    | 'proceed_override_at'
+    | 'proceed_override_reason'
+  >
+): {
+  documentStatusLabel: string;
+  allowProceedLabel: string;
+  isOverrideCase: boolean;
+  incompleteDocsNote: string | null;
+  proceedOverrideBy: string | null;
+  proceedOverrideAt: string | null;
+  proceedOverrideReason: string | null;
+} {
+  return {
+    documentStatusLabel: isDocumentComplete(request) ? 'ครบ' : 'ไม่ครบ',
+    allowProceedLabel: request.allow_proceed_with_incomplete_docs ? 'ใช่' : 'ไม่ใช่',
+    isOverrideCase: isIncompleteButAllowedToProceed(request),
+    incompleteDocsNote: request.incomplete_docs_note,
+    proceedOverrideBy: request.proceed_override_by,
+    proceedOverrideAt: request.proceed_override_at,
+    proceedOverrideReason: request.proceed_override_reason
+  };
 }
 
 export function canMoveToManagerReview(
@@ -127,6 +209,12 @@ export type ServiceRequest = {
   survey_reschedule_date: string | null;
   survey_reviewed_at: string | null;
   survey_completed_at: string | null;
+  document_status: DocumentStatus | null;
+  allow_proceed_with_incomplete_docs: boolean;
+  incomplete_docs_note: string | null;
+  proceed_override_by: string | null;
+  proceed_override_at: string | null;
+  proceed_override_reason: string | null;
   billing_amount: number | null;
   billing_note: string | null;
   billed_at: string | null;

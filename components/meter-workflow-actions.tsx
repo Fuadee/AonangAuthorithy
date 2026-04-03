@@ -6,7 +6,8 @@ import {
   confirmPaymentReceivedAction,
   confirmBillingSurveyorSignAction,
   issueBillingAction,
-  sendMeterRequestToBillingAction
+  returnToDocumentReviewAction,
+  updateDocumentReviewDecisionAction
 } from '@/app/actions';
 import { RequestStatus } from '@/lib/requests/types';
 
@@ -17,7 +18,15 @@ type MeterWorkflowActionsProps = {
   isPaid: boolean;
 };
 
-type MeterAction = 'SEND_TO_BILLING' | 'ISSUE_BILL' | 'SURVEYOR_SIGN' | 'CONFIRM_PAYMENT' | 'MANAGER_APPROVE';
+type MeterAction =
+  | 'DOC_COMPLETE'
+  | 'DOC_INCOMPLETE_WAIT'
+  | 'DOC_INCOMPLETE_ALLOW'
+  | 'RETURN_TO_REVIEW'
+  | 'ISSUE_BILL'
+  | 'SURVEYOR_SIGN'
+  | 'CONFIRM_PAYMENT'
+  | 'MANAGER_APPROVE';
 
 type MeterActionConfig = {
   action: MeterAction;
@@ -28,12 +37,33 @@ type MeterActionConfig = {
 };
 
 const ACTION_CONFIG: Record<MeterAction, MeterActionConfig> = {
-  SEND_TO_BILLING: {
-    action: 'SEND_TO_BILLING',
-    buttonLabel: 'ส่งให้ออกใบแจ้งหนี้',
-    title: 'ยืนยันส่งงานให้ออกใบแจ้งหนี้',
-    description: 'หลังยืนยัน งานจะไปที่สถานะ “รอออกใบแจ้งหนี้” เพื่อให้เจ้าหน้าที่ออกบิล',
-    confirmLabel: 'ยืนยันส่งงาน'
+  DOC_COMPLETE: {
+    action: 'DOC_COMPLETE',
+    buttonLabel: 'เอกสารครบ',
+    title: 'ยืนยันเอกสารครบ',
+    description: 'ใช้เมื่อเอกสารครบถ้วนและพร้อมส่งต่อไปออกใบแจ้งหนี้',
+    confirmLabel: 'ยืนยันเอกสารครบ'
+  },
+  DOC_INCOMPLETE_WAIT: {
+    action: 'DOC_INCOMPLETE_WAIT',
+    buttonLabel: 'เอกสารไม่ครบ',
+    title: 'ยืนยันเอกสารไม่ครบ',
+    description: 'ระบุรายการเอกสารที่ยังขาด เพื่อรอเจ้าหน้าที่ติดตามเอกสารเพิ่ม',
+    confirmLabel: 'ยืนยันรอติดตามเอกสาร'
+  },
+  DOC_INCOMPLETE_ALLOW: {
+    action: 'DOC_INCOMPLETE_ALLOW',
+    buttonLabel: 'เอกสารไม่ครบ แต่อนุญาตให้ไปต่อ',
+    title: 'อนุญาตให้ดำเนินการต่อแม้เอกสารยังไม่ครบ',
+    description: 'ใช้ในกรณีพิเศษเท่านั้น โดยต้องบันทึกผู้อนุญาตและเหตุผลทุกครั้ง',
+    confirmLabel: 'ยืนยันอนุญาตให้ไปต่อ'
+  },
+  RETURN_TO_REVIEW: {
+    action: 'RETURN_TO_REVIEW',
+    buttonLabel: 'ได้รับเอกสารเพิ่มแล้ว',
+    title: 'ส่งกลับมาตรวจเอกสารอีกครั้ง',
+    description: 'เมื่อได้รับเอกสารเพิ่มแล้ว งานจะย้อนกลับไปสถานะ “รอตรวจเอกสาร”',
+    confirmLabel: 'ยืนยันส่งกลับมาตรวจเอกสาร'
   },
   ISSUE_BILL: {
     action: 'ISSUE_BILL',
@@ -80,14 +110,74 @@ function ActionModal({
     }
   };
 
+  const isDocumentDecision = ['DOC_COMPLETE', 'DOC_INCOMPLETE_WAIT', 'DOC_INCOMPLETE_ALLOW'].includes(config.action);
+
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onBackdropClick}>
       <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
         <h4 className="text-lg font-semibold text-slate-900">{config.title}</h4>
         <p className="mt-1 text-sm text-slate-600">{config.description}</p>
 
-        {config.action === 'SEND_TO_BILLING' ? (
-          <form action={sendMeterRequestToBillingAction} className="mt-4 space-y-4">
+        {isDocumentDecision ? (
+          <form action={updateDocumentReviewDecisionAction} className="mt-4 space-y-4">
+            <input name="request_id" type="hidden" value={requestId} />
+            <input
+              name="decision"
+              type="hidden"
+              value={
+                config.action === 'DOC_COMPLETE'
+                  ? 'COMPLETE'
+                  : config.action === 'DOC_INCOMPLETE_WAIT'
+                    ? 'INCOMPLETE_WAIT_FOLLOWUP'
+                    : 'INCOMPLETE_ALLOW_PROCEED'
+              }
+            />
+
+            {config.action === 'DOC_INCOMPLETE_WAIT' ? (
+              <div>
+                <label className="text-sm font-medium text-slate-700" htmlFor="incomplete_docs_note">
+                  หมายเหตุเอกสารขาด (จำเป็น)
+                </label>
+                <textarea className="input min-h-24" id="incomplete_docs_note" name="incomplete_docs_note" required />
+              </div>
+            ) : null}
+
+            {config.action === 'DOC_INCOMPLETE_ALLOW' ? (
+              <>
+                <div>
+                  <label className="text-sm font-medium text-slate-700" htmlFor="proceed_override_by">
+                    ผู้อนุญาตให้ไปต่อ (จำเป็น)
+                  </label>
+                  <input className="input" id="proceed_override_by" name="proceed_override_by" required type="text" />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700" htmlFor="proceed_override_reason">
+                    เหตุผลการอนุญาต (จำเป็น)
+                  </label>
+                  <textarea className="input min-h-24" id="proceed_override_reason" name="proceed_override_reason" required />
+                </div>
+                <div>
+                  <label className="text-sm font-medium text-slate-700" htmlFor="incomplete_docs_note">
+                    หมายเหตุเอกสารขาด (ถ้ามี)
+                  </label>
+                  <textarea className="input min-h-24" id="incomplete_docs_note" name="incomplete_docs_note" />
+                </div>
+              </>
+            ) : null}
+
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" onClick={onClose} type="button">
+                ยกเลิก
+              </button>
+              <button className="btn-primary" type="submit">
+                {config.confirmLabel}
+              </button>
+            </div>
+          </form>
+        ) : null}
+
+        {config.action === 'RETURN_TO_REVIEW' ? (
+          <form action={returnToDocumentReviewAction} className="mt-4 space-y-4">
             <input name="request_id" type="hidden" value={requestId} />
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" onClick={onClose} type="button">
@@ -202,18 +292,41 @@ function ActionModal({
 export function MeterWorkflowActions({ requestId, currentStatus, isInvoiceSigned, isPaid }: MeterWorkflowActionsProps) {
   const [activeAction, setActiveAction] = useState<MeterAction | null>(null);
 
-  if (!['SURVEY_COMPLETED', 'WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION', 'WAIT_MANAGER_REVIEW'].includes(currentStatus)) {
+  if (
+    ![
+      'WAIT_DOCUMENT_REVIEW',
+      'WAIT_DOCUMENT_FOLLOWUP',
+      'WAIT_BILLING',
+      'WAIT_ACTION_CONFIRMATION',
+      'WAIT_MANAGER_REVIEW'
+    ].includes(currentStatus)
+  ) {
     return <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">สถานะนี้ยังไม่มีงานใน loop ออกใบแจ้งหนี้</p>;
   }
 
   return (
     <>
       <div className="flex flex-wrap gap-2">
-        {currentStatus === 'SURVEY_COMPLETED' ? (
-          <button className="btn-primary" type="button" onClick={() => setActiveAction('SEND_TO_BILLING')}>
-            {ACTION_CONFIG.SEND_TO_BILLING.buttonLabel}
+        {currentStatus === 'WAIT_DOCUMENT_REVIEW' ? (
+          <>
+            <button className="btn-primary" type="button" onClick={() => setActiveAction('DOC_COMPLETE')}>
+              {ACTION_CONFIG.DOC_COMPLETE.buttonLabel}
+            </button>
+            <button className="btn-secondary" type="button" onClick={() => setActiveAction('DOC_INCOMPLETE_WAIT')}>
+              {ACTION_CONFIG.DOC_INCOMPLETE_WAIT.buttonLabel}
+            </button>
+            <button className="btn-secondary" type="button" onClick={() => setActiveAction('DOC_INCOMPLETE_ALLOW')}>
+              {ACTION_CONFIG.DOC_INCOMPLETE_ALLOW.buttonLabel}
+            </button>
+          </>
+        ) : null}
+
+        {currentStatus === 'WAIT_DOCUMENT_FOLLOWUP' ? (
+          <button className="btn-primary" type="button" onClick={() => setActiveAction('RETURN_TO_REVIEW')}>
+            {ACTION_CONFIG.RETURN_TO_REVIEW.buttonLabel}
           </button>
         ) : null}
+
         {currentStatus === 'WAIT_BILLING' ? (
           <button className="btn-primary" type="button" onClick={() => setActiveAction('ISSUE_BILL')}>
             {ACTION_CONFIG.ISSUE_BILL.buttonLabel}
