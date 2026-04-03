@@ -1,6 +1,7 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { MeterWorkflowActions } from '@/components/meter-workflow-actions';
+import { LocationPreview } from '@/components/location-preview';
 import { SurveyorActionWorkflow } from '@/components/surveyor-action-workflow';
 import {
   canStartSurvey,
@@ -379,7 +380,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,latitude,longitude,location_note,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -419,6 +420,10 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const readyForManager = canMoveToManagerReview(request);
   const nextStepSummary = getNextStepSummary(requestStatus, requestType);
   const currentSurveyDate = getCurrentSurveyDate(request);
+  const hasLocation = request.latitude !== null && request.longitude !== null;
+  const googleMapsUrl = hasLocation
+    ? `https://www.google.com/maps?q=${request.latitude},${request.longitude}`
+    : null;
   const surveySummary = getSurveyScheduleSummary(request);
   const customerDelaySummary = getCustomerDelaySummary(request);
   const showRescheduleNotice =
@@ -672,6 +677,26 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           </div>
         </section>
       ) : null}
+
+      <section className="card p-6">
+        <h3 className="text-lg font-semibold">ตำแหน่ง</h3>
+        {hasLocation ? (
+          <>
+            <p className="mt-2 text-sm text-slate-700">
+              Latitude: {request.latitude!.toFixed(6)} | Longitude: {request.longitude!.toFixed(6)}
+            </p>
+            {request.location_note ? <p className="mt-1 text-sm text-slate-600">หมายเหตุจุดเพิ่มเติม: {request.location_note}</p> : null}
+            {googleMapsUrl ? (
+              <Link className="btn-secondary mt-3" href={googleMapsUrl} rel="noreferrer" target="_blank">
+                เปิดใน Google Maps
+              </Link>
+            ) : null}
+            <LocationPreview latitude={request.latitude!} longitude={request.longitude!} />
+          </>
+        ) : (
+          <p className="mt-2 text-sm text-slate-500">ยังไม่มีการปักหมุด</p>
+        )}
+      </section>
 
       <article className="card p-6">
         <h3 className="text-lg font-semibold">{getActionTitle(requestStatus, requestType)}</h3>

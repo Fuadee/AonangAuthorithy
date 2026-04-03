@@ -125,6 +125,10 @@ export function hasCollectedDocsOnSite(request: Pick<ServiceRequest, 'collect_do
   return request.collect_docs_on_site;
 }
 
+export function hasPinnedLocation(request: Pick<ServiceRequest, 'latitude' | 'longitude'>): boolean {
+  return request.latitude !== null && request.longitude !== null;
+}
+
 export function getCurrentSurveyDate(
   request: Pick<ServiceRequest, 'survey_date_current' | 'scheduled_survey_date'>
 ): string | null {
@@ -362,6 +366,9 @@ export type ServiceRequest = {
   request_no: string;
   customer_name: string;
   phone: string;
+  latitude: number | null;
+  longitude: number | null;
+  location_note: string | null;
   area_name: string;
   assignee_name: string;
   assigned_surveyor: string | null;

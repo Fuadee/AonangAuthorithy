@@ -39,6 +39,20 @@ function optionalField(formData: FormData, key: string): string | null {
   return value ? value : null;
 }
 
+function parseOptionalCoordinate(formData: FormData, key: 'latitude' | 'longitude'): number | null {
+  const raw = formData.get(key)?.toString().trim();
+  if (!raw) {
+    return null;
+  }
+
+  const value = Number(raw);
+  if (!Number.isFinite(value)) {
+    throw new Error(`รูปแบบพิกัด ${key} ไม่ถูกต้อง`);
+  }
+
+  return value;
+}
+
 function isValidDateOnly(dateText: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(dateText) && !Number.isNaN(new Date(`${dateText}T00:00:00.000Z`).valueOf());
 }
@@ -83,6 +97,9 @@ export async function createRequestAction(formData: FormData) {
   const requestType = requiredField(formData, 'request_type');
   const assignedSurveyor = optionalField(formData, 'assigned_surveyor');
   const scheduledSurveyDate = optionalField(formData, 'scheduled_survey_date');
+  const latitude = parseOptionalCoordinate(formData, 'latitude');
+  const longitude = parseOptionalCoordinate(formData, 'longitude');
+  const locationNote = optionalField(formData, 'location_note');
 
   if (!REQUEST_TYPES.includes(requestType as (typeof REQUEST_TYPES)[number])) {
     throw new Error('Invalid request type');
@@ -94,6 +111,18 @@ export async function createRequestAction(formData: FormData) {
 
   if (scheduledSurveyDate && !isValidDateOnly(scheduledSurveyDate)) {
     throw new Error('รูปแบบวันสำรวจไม่ถูกต้อง');
+  }
+
+  if ((latitude === null) !== (longitude === null)) {
+    throw new Error('กรุณาระบุพิกัด latitude และ longitude ให้ครบทั้งคู่');
+  }
+
+  if (latitude === null || longitude === null) {
+    throw new Error('กรุณาปักหมุดตำแหน่งก่อนบันทึกคำร้อง');
+  }
+
+  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+    throw new Error('ค่าพิกัดไม่ถูกต้อง');
   }
 
   const supabase = createServerSupabaseClient();
@@ -145,6 +174,9 @@ export async function createRequestAction(formData: FormData) {
     survey_date_current: scheduledSurveyDate,
     status: initialStatus,
     request_type: requestType,
+    latitude,
+    longitude,
+    location_note: locationNote,
     collect_docs_on_site: false
   });
 
