@@ -18,7 +18,13 @@ const DEFAULT_ZOOM = 12;
 export function SurveyMapPanel({ requests, selectedRequestId, onSelectRequest, onMapCenterChange }: SurveyMapPanelProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
+  const onMapCenterChangeRef = useRef(onMapCenterChange);
   const [leaflet, setLeaflet] = useState<LeafletGlobal | null>(null);
+  const [isMapReady, setIsMapReady] = useState(false);
+
+  useEffect(() => {
+    onMapCenterChangeRef.current = onMapCenterChange;
+  }, [onMapCenterChange]);
 
   useEffect(() => {
     let disposed = false;
@@ -43,14 +49,15 @@ export function SurveyMapPanel({ requests, selectedRequestId, onSelectRequest, o
 
         map.on('moveend', () => {
           const center = map.getCenter();
-          onMapCenterChange(center.lat, center.lng);
+          onMapCenterChangeRef.current(center.lat, center.lng);
         });
 
         mapRef.current = map;
         setLeaflet(loadedLeaflet);
+        setIsMapReady(true);
 
         const center = map.getCenter();
-        onMapCenterChange(center.lat, center.lng);
+        onMapCenterChangeRef.current(center.lat, center.lng);
       } catch {
         // noop
       }
@@ -62,9 +69,10 @@ export function SurveyMapPanel({ requests, selectedRequestId, onSelectRequest, o
       disposed = true;
       mapRef.current?.remove();
       mapRef.current = null;
+      setIsMapReady(false);
       setLeaflet(null);
     };
-  }, [onMapCenterChange]);
+  }, []);
 
   const requestsWithCoordinates = useMemo(
     () => requests.filter((request) => request.latitude !== null && request.longitude !== null),
@@ -120,7 +128,7 @@ export function SurveyMapPanel({ requests, selectedRequestId, onSelectRequest, o
   return (
     <div className="card h-[60vh] min-h-[360px] overflow-hidden md:h-[calc(100vh-220px)]">
       <div className="h-full w-full" ref={containerRef} />
-      {leaflet && mapRef.current ? (
+      {leaflet && mapRef.current && isMapReady ? (
         <SurveyMapMarkers
           leaflet={leaflet}
           map={mapRef.current}
