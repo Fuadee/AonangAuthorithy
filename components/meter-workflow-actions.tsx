@@ -1,12 +1,15 @@
 'use client';
 
-import { MouseEvent, useState } from 'react';
+import { MouseEvent, ReactNode, useState } from 'react';
 import {
   approveManagerReviewAction,
+  completeSurveyAction,
+  confirmDocumentsReceivedFromCustomerAction,
+  confirmOnSiteDocumentsCompleteAction,
   confirmPaymentReceivedAction,
   confirmBillingSurveyorSignAction,
   issueBillingAction,
-  returnToDocumentReviewAction,
+  startSurveyAction,
   updateDocumentReviewDecisionAction
 } from '@/app/actions';
 import { RequestStatus } from '@/lib/requests/types';
@@ -16,292 +19,77 @@ type MeterWorkflowActionsProps = {
   currentStatus: RequestStatus;
   isInvoiceSigned: boolean;
   isPaid: boolean;
+  collectDocsOnSite: boolean;
 };
 
 type MeterAction =
   | 'DOC_COMPLETE'
-  | 'DOC_INCOMPLETE_WAIT'
-  | 'DOC_INCOMPLETE_ALLOW'
-  | 'RETURN_TO_REVIEW'
+  | 'DOC_INCOMPLETE_COLLECT_ON_SITE'
+  | 'DOC_INCOMPLETE_WAIT_CUSTOMER'
+  | 'CONFIRM_DOCS_RECEIVED'
+  | 'START_SURVEY'
+  | 'COMPLETE_SURVEY'
+  | 'CONFIRM_ON_SITE_DOCS_COMPLETE'
   | 'ISSUE_BILL'
   | 'SURVEYOR_SIGN'
   | 'CONFIRM_PAYMENT'
   | 'MANAGER_APPROVE';
 
-type MeterActionConfig = {
-  action: MeterAction;
-  buttonLabel: string;
-  title: string;
-  description: string;
-  confirmLabel: string;
+const ACTION_LABELS: Record<MeterAction, string> = {
+  DOC_COMPLETE: 'เอกสารครบ',
+  DOC_INCOMPLETE_COLLECT_ON_SITE: 'เอกสารไม่ครบ (รับเอกสารหน้างาน)',
+  DOC_INCOMPLETE_WAIT_CUSTOMER: 'เอกสารไม่ครบ (รอลูกค้านำมา)',
+  CONFIRM_DOCS_RECEIVED: 'ได้รับเอกสารแล้ว',
+  START_SURVEY: 'รับงาน / ไปสำรวจ',
+  COMPLETE_SURVEY: 'สำรวจเสร็จ',
+  CONFIRM_ON_SITE_DOCS_COMPLETE: 'เอกสารครบแล้ว',
+  ISSUE_BILL: 'ออกใบแจ้งหนี้',
+  SURVEYOR_SIGN: 'เซ็นใบแจ้งหนี้แล้ว',
+  CONFIRM_PAYMENT: 'ชำระเงินแล้ว',
+  MANAGER_APPROVE: 'อนุมัติแล้ว'
 };
 
-const ACTION_CONFIG: Record<MeterAction, MeterActionConfig> = {
-  DOC_COMPLETE: {
-    action: 'DOC_COMPLETE',
-    buttonLabel: 'เอกสารครบ',
-    title: 'ยืนยันเอกสารครบ',
-    description: 'ใช้เมื่อเอกสารครบถ้วนและพร้อมส่งต่อไปออกใบแจ้งหนี้',
-    confirmLabel: 'ยืนยันเอกสารครบ'
-  },
-  DOC_INCOMPLETE_WAIT: {
-    action: 'DOC_INCOMPLETE_WAIT',
-    buttonLabel: 'เอกสารไม่ครบ',
-    title: 'ยืนยันเอกสารไม่ครบ',
-    description: 'ระบุรายการเอกสารที่ยังขาด เพื่อรอเจ้าหน้าที่ติดตามเอกสารเพิ่ม',
-    confirmLabel: 'ยืนยันรอติดตามเอกสาร'
-  },
-  DOC_INCOMPLETE_ALLOW: {
-    action: 'DOC_INCOMPLETE_ALLOW',
-    buttonLabel: 'เอกสารไม่ครบ แต่อนุญาตให้ไปต่อ',
-    title: 'อนุญาตให้ดำเนินการต่อแม้เอกสารยังไม่ครบ',
-    description: 'ใช้ในกรณีพิเศษเท่านั้น โดยต้องบันทึกผู้อนุญาตและเหตุผลทุกครั้ง',
-    confirmLabel: 'ยืนยันอนุญาตให้ไปต่อ'
-  },
-  RETURN_TO_REVIEW: {
-    action: 'RETURN_TO_REVIEW',
-    buttonLabel: 'ได้รับเอกสารเพิ่มแล้ว',
-    title: 'ส่งกลับมาตรวจเอกสารอีกครั้ง',
-    description: 'เมื่อได้รับเอกสารเพิ่มแล้ว งานจะย้อนกลับไปสถานะ “รอตรวจเอกสาร”',
-    confirmLabel: 'ยืนยันส่งกลับมาตรวจเอกสาร'
-  },
-  ISSUE_BILL: {
-    action: 'ISSUE_BILL',
-    buttonLabel: 'ออกใบแจ้งหนี้',
-    title: 'ออกใบแจ้งหนี้',
-    description: 'กรอกจำนวนเงินและผู้ดำเนินการ แล้วระบบจะเข้าสู่ช่วง “รอดำเนินการหลังแจ้งหนี้”',
-    confirmLabel: 'ยืนยันออกใบแจ้งหนี้'
-  },
-  SURVEYOR_SIGN: {
-    action: 'SURVEYOR_SIGN',
-    buttonLabel: 'เซ็นใบแจ้งหนี้แล้ว',
-    title: 'เซ็นรับรองใบแจ้งหนี้',
-    description: 'บันทึกว่างานนี้เซ็นใบแจ้งหนี้แล้ว (ทำก่อนหรือหลังชำระเงินก็ได้)',
-    confirmLabel: 'ยืนยันเซ็นรับรอง'
-  },
-  CONFIRM_PAYMENT: {
-    action: 'CONFIRM_PAYMENT',
-    buttonLabel: 'ชำระเงินแล้ว',
-    title: 'ยืนยันรับชำระเงินแล้ว',
-    description: 'บันทึกว่างานนี้ชำระเงินแล้ว (ทำก่อนหรือหลังเซ็นใบแจ้งหนี้ก็ได้)',
-    confirmLabel: 'ยืนยันชำระเงินแล้ว'
-  },
-  MANAGER_APPROVE: {
-    action: 'MANAGER_APPROVE',
-    buttonLabel: 'อนุมัติแล้ว',
-    title: 'ผู้จัดการอนุมัติปิดงาน',
-    description: 'ยืนยันว่าตรวจครบถ้วนแล้ว และปิดงานเป็น “เสร็จสิ้น”',
-    confirmLabel: 'ยืนยันอนุมัติ'
-  }
-};
-
-function ActionModal({
-  requestId,
-  config,
-  onClose
-}: {
-  requestId: string;
-  config: MeterActionConfig;
-  onClose: () => void;
-}) {
+function Modal({ children, title, onClose }: { children: ReactNode; title: string; onClose: () => void }) {
   const onBackdropClick = (event: MouseEvent<HTMLDivElement>) => {
     if (event.target === event.currentTarget) {
       onClose();
     }
   };
 
-  const isDocumentDecision = ['DOC_COMPLETE', 'DOC_INCOMPLETE_WAIT', 'DOC_INCOMPLETE_ALLOW'].includes(config.action);
-
   return (
     <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={onBackdropClick}>
       <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
-        <h4 className="text-lg font-semibold text-slate-900">{config.title}</h4>
-        <p className="mt-1 text-sm text-slate-600">{config.description}</p>
-
-        {isDocumentDecision ? (
-          <form action={updateDocumentReviewDecisionAction} className="mt-4 space-y-4">
-            <input name="request_id" type="hidden" value={requestId} />
-            <input
-              name="decision"
-              type="hidden"
-              value={
-                config.action === 'DOC_COMPLETE'
-                  ? 'COMPLETE'
-                  : config.action === 'DOC_INCOMPLETE_WAIT'
-                    ? 'INCOMPLETE_WAIT_FOLLOWUP'
-                    : 'INCOMPLETE_ALLOW_PROCEED'
-              }
-            />
-
-            {config.action === 'DOC_INCOMPLETE_WAIT' ? (
-              <div>
-                <label className="text-sm font-medium text-slate-700" htmlFor="incomplete_docs_note">
-                  หมายเหตุเอกสารขาด (จำเป็น)
-                </label>
-                <textarea className="input min-h-24" id="incomplete_docs_note" name="incomplete_docs_note" required />
-              </div>
-            ) : null}
-
-            {config.action === 'DOC_INCOMPLETE_ALLOW' ? (
-              <>
-                <div>
-                  <label className="text-sm font-medium text-slate-700" htmlFor="proceed_override_by">
-                    ผู้อนุญาตให้ไปต่อ (จำเป็น)
-                  </label>
-                  <input className="input" id="proceed_override_by" name="proceed_override_by" required type="text" />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-700" htmlFor="proceed_override_reason">
-                    เหตุผลการอนุญาต (จำเป็น)
-                  </label>
-                  <textarea className="input min-h-24" id="proceed_override_reason" name="proceed_override_reason" required />
-                </div>
-                <div>
-                  <label className="text-sm font-medium text-slate-700" htmlFor="incomplete_docs_note">
-                    หมายเหตุเอกสารขาด (ถ้ามี)
-                  </label>
-                  <textarea className="input min-h-24" id="incomplete_docs_note" name="incomplete_docs_note" />
-                </div>
-              </>
-            ) : null}
-
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" onClick={onClose} type="button">
-                ยกเลิก
-              </button>
-              <button className="btn-primary" type="submit">
-                {config.confirmLabel}
-              </button>
-            </div>
-          </form>
-        ) : null}
-
-        {config.action === 'RETURN_TO_REVIEW' ? (
-          <form action={returnToDocumentReviewAction} className="mt-4 space-y-4">
-            <input name="request_id" type="hidden" value={requestId} />
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" onClick={onClose} type="button">
-                ยกเลิก
-              </button>
-              <button className="btn-primary" type="submit">
-                {config.confirmLabel}
-              </button>
-            </div>
-          </form>
-        ) : null}
-
-        {config.action === 'ISSUE_BILL' ? (
-          <form action={issueBillingAction} className="mt-4 space-y-4">
-            <input name="request_id" type="hidden" value={requestId} />
-            <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="billing_amount">
-                จำนวนเงินใบแจ้งหนี้ (บาท)
-              </label>
-              <input
-                className="input"
-                id="billing_amount"
-                min="0.01"
-                name="billing_amount"
-                placeholder="เช่น 1250"
-                required
-                step="0.01"
-                type="number"
-              />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="billed_by">
-                ออกโดย
-              </label>
-              <input className="input" id="billed_by" name="billed_by" placeholder="ชื่อเจ้าหน้าที่" required type="text" />
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="billing_note">
-                หมายเหตุ (ถ้ามี)
-              </label>
-              <textarea className="input min-h-24" id="billing_note" name="billing_note" />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" onClick={onClose} type="button">
-                ยกเลิก
-              </button>
-              <button className="btn-primary" type="submit">
-                {config.confirmLabel}
-              </button>
-            </div>
-          </form>
-        ) : null}
-
-        {config.action === 'SURVEYOR_SIGN' ? (
-          <form action={confirmBillingSurveyorSignAction} className="mt-4 space-y-4">
-            <input name="request_id" type="hidden" value={requestId} />
-            <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="invoice_signed_by">
-                ผู้เซ็นรับรอง
-              </label>
-              <input className="input" id="invoice_signed_by" name="invoice_signed_by" placeholder="ชื่อนักสำรวจ" required type="text" />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" onClick={onClose} type="button">
-                ยกเลิก
-              </button>
-              <button className="btn-primary" type="submit">
-                {config.confirmLabel}
-              </button>
-            </div>
-          </form>
-        ) : null}
-
-        {config.action === 'CONFIRM_PAYMENT' ? (
-          <form action={confirmPaymentReceivedAction} className="mt-4 space-y-4">
-            <input name="request_id" type="hidden" value={requestId} />
-            <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="paid_by">
-                รับชำระโดย
-              </label>
-              <input className="input" id="paid_by" name="paid_by" placeholder="ชื่อเจ้าหน้าที่การเงิน" required type="text" />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" onClick={onClose} type="button">
-                ยกเลิก
-              </button>
-              <button className="btn-primary" type="submit">
-                {config.confirmLabel}
-              </button>
-            </div>
-          </form>
-        ) : null}
-
-        {config.action === 'MANAGER_APPROVE' ? (
-          <form action={approveManagerReviewAction} className="mt-4 space-y-4">
-            <input name="request_id" type="hidden" value={requestId} />
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" onClick={onClose} type="button">
-                ยกเลิก
-              </button>
-              <button className="btn-primary" type="submit">
-                {config.confirmLabel}
-              </button>
-            </div>
-          </form>
-        ) : null}
+        <h4 className="text-lg font-semibold text-slate-900">{title}</h4>
+        <div className="mt-4">{children}</div>
       </div>
     </div>
   );
 }
 
-export function MeterWorkflowActions({ requestId, currentStatus, isInvoiceSigned, isPaid }: MeterWorkflowActionsProps) {
+export function MeterWorkflowActions({
+  requestId,
+  currentStatus,
+  isInvoiceSigned,
+  isPaid,
+  collectDocsOnSite
+}: MeterWorkflowActionsProps) {
   const [activeAction, setActiveAction] = useState<MeterAction | null>(null);
+
+  const closeModal = () => setActiveAction(null);
 
   if (
     ![
       'WAIT_DOCUMENT_REVIEW',
-      'WAIT_DOCUMENT_FOLLOWUP',
+      'WAIT_DOCUMENT_FROM_CUSTOMER',
+      'READY_FOR_SURVEY',
+      'IN_SURVEY',
+      'SURVEY_COMPLETED',
       'WAIT_BILLING',
       'WAIT_ACTION_CONFIRMATION',
       'WAIT_MANAGER_REVIEW'
     ].includes(currentStatus)
   ) {
-    return <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">สถานะนี้ยังไม่มีงานใน loop ออกใบแจ้งหนี้</p>;
+    return <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">สถานะนี้ยังไม่มีงานใน workflow ขอมิเตอร์</p>;
   }
 
   return (
@@ -310,56 +98,206 @@ export function MeterWorkflowActions({ requestId, currentStatus, isInvoiceSigned
         {currentStatus === 'WAIT_DOCUMENT_REVIEW' ? (
           <>
             <button className="btn-primary" type="button" onClick={() => setActiveAction('DOC_COMPLETE')}>
-              {ACTION_CONFIG.DOC_COMPLETE.buttonLabel}
+              {ACTION_LABELS.DOC_COMPLETE}
             </button>
-            <button className="btn-secondary" type="button" onClick={() => setActiveAction('DOC_INCOMPLETE_WAIT')}>
-              {ACTION_CONFIG.DOC_INCOMPLETE_WAIT.buttonLabel}
+            <button className="btn-secondary" type="button" onClick={() => setActiveAction('DOC_INCOMPLETE_COLLECT_ON_SITE')}>
+              {ACTION_LABELS.DOC_INCOMPLETE_COLLECT_ON_SITE}
             </button>
-            <button className="btn-secondary" type="button" onClick={() => setActiveAction('DOC_INCOMPLETE_ALLOW')}>
-              {ACTION_CONFIG.DOC_INCOMPLETE_ALLOW.buttonLabel}
+            <button className="btn-secondary" type="button" onClick={() => setActiveAction('DOC_INCOMPLETE_WAIT_CUSTOMER')}>
+              {ACTION_LABELS.DOC_INCOMPLETE_WAIT_CUSTOMER}
             </button>
           </>
         ) : null}
 
-        {currentStatus === 'WAIT_DOCUMENT_FOLLOWUP' ? (
-          <button className="btn-primary" type="button" onClick={() => setActiveAction('RETURN_TO_REVIEW')}>
-            {ACTION_CONFIG.RETURN_TO_REVIEW.buttonLabel}
+        {currentStatus === 'WAIT_DOCUMENT_FROM_CUSTOMER' ? (
+          <button className="btn-primary" type="button" onClick={() => setActiveAction('CONFIRM_DOCS_RECEIVED')}>
+            {ACTION_LABELS.CONFIRM_DOCS_RECEIVED}
+          </button>
+        ) : null}
+
+        {currentStatus === 'READY_FOR_SURVEY' ? (
+          <button className="btn-primary" type="button" onClick={() => setActiveAction('START_SURVEY')}>
+            {ACTION_LABELS.START_SURVEY}
+          </button>
+        ) : null}
+
+        {currentStatus === 'IN_SURVEY' ? (
+          <button className="btn-primary" type="button" onClick={() => setActiveAction('COMPLETE_SURVEY')}>
+            {ACTION_LABELS.COMPLETE_SURVEY}
+          </button>
+        ) : null}
+
+        {currentStatus === 'SURVEY_COMPLETED' && collectDocsOnSite ? (
+          <button className="btn-primary" type="button" onClick={() => setActiveAction('CONFIRM_ON_SITE_DOCS_COMPLETE')}>
+            {ACTION_LABELS.CONFIRM_ON_SITE_DOCS_COMPLETE}
           </button>
         ) : null}
 
         {currentStatus === 'WAIT_BILLING' ? (
           <button className="btn-primary" type="button" onClick={() => setActiveAction('ISSUE_BILL')}>
-            {ACTION_CONFIG.ISSUE_BILL.buttonLabel}
+            {ACTION_LABELS.ISSUE_BILL}
           </button>
         ) : null}
+
         {currentStatus === 'WAIT_ACTION_CONFIRMATION' ? (
           <>
-            <button
-              className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={isInvoiceSigned}
-              type="button"
-              onClick={() => setActiveAction('SURVEYOR_SIGN')}
-            >
-              {isInvoiceSigned ? 'เซ็นใบแจ้งหนี้แล้ว' : ACTION_CONFIG.SURVEYOR_SIGN.buttonLabel}
+            <button className="btn-primary disabled:cursor-not-allowed disabled:opacity-50" disabled={isInvoiceSigned} type="button" onClick={() => setActiveAction('SURVEYOR_SIGN')}>
+              {isInvoiceSigned ? 'เซ็นใบแจ้งหนี้แล้ว' : ACTION_LABELS.SURVEYOR_SIGN}
             </button>
-            <button
-              className="btn-primary disabled:cursor-not-allowed disabled:opacity-50"
-              disabled={isPaid}
-              type="button"
-              onClick={() => setActiveAction('CONFIRM_PAYMENT')}
-            >
-              {isPaid ? 'ชำระเงินแล้ว' : ACTION_CONFIG.CONFIRM_PAYMENT.buttonLabel}
+            <button className="btn-primary disabled:cursor-not-allowed disabled:opacity-50" disabled={isPaid} type="button" onClick={() => setActiveAction('CONFIRM_PAYMENT')}>
+              {isPaid ? 'ชำระเงินแล้ว' : ACTION_LABELS.CONFIRM_PAYMENT}
             </button>
           </>
         ) : null}
+
         {currentStatus === 'WAIT_MANAGER_REVIEW' ? (
           <button className="btn-primary" type="button" onClick={() => setActiveAction('MANAGER_APPROVE')}>
-            {ACTION_CONFIG.MANAGER_APPROVE.buttonLabel}
+            {ACTION_LABELS.MANAGER_APPROVE}
           </button>
         ) : null}
       </div>
 
-      {activeAction ? <ActionModal config={ACTION_CONFIG[activeAction]} onClose={() => setActiveAction(null)} requestId={requestId} /> : null}
+      {activeAction === 'DOC_COMPLETE' ? (
+        <Modal title="ยืนยันเอกสารครบ" onClose={closeModal}>
+          <form action={updateDocumentReviewDecisionAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <input name="decision" type="hidden" value="COMPLETE" />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'DOC_INCOMPLETE_COLLECT_ON_SITE' || activeAction === 'DOC_INCOMPLETE_WAIT_CUSTOMER' ? (
+        <Modal
+          title={activeAction === 'DOC_INCOMPLETE_COLLECT_ON_SITE' ? 'ระบุว่าเอกสารไม่ครบ (รับเอกสารหน้างาน)' : 'ระบุว่าเอกสารไม่ครบ (รอลูกค้านำเอกสารมา)'}
+          onClose={closeModal}
+        >
+          <form action={updateDocumentReviewDecisionAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <input
+              name="decision"
+              type="hidden"
+              value={activeAction === 'DOC_INCOMPLETE_COLLECT_ON_SITE' ? 'INCOMPLETE_COLLECT_ON_SITE' : 'INCOMPLETE_WAIT_CUSTOMER'}
+            />
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor="incomplete_docs_note">หมายเหตุเอกสารขาด</label>
+              <textarea className="input min-h-24" id="incomplete_docs_note" name="incomplete_docs_note" required />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'CONFIRM_DOCS_RECEIVED' ? (
+        <Modal title="ยืนยันว่าได้รับเอกสารครบแล้ว" onClose={closeModal}>
+          <form action={confirmDocumentsReceivedFromCustomerAction}>
+            <input name="request_id" type="hidden" value={requestId} />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'START_SURVEY' ? (
+        <Modal title="ยืนยันรับงานและเริ่มสำรวจ" onClose={closeModal}>
+          <form action={startSurveyAction}>
+            <input name="request_id" type="hidden" value={requestId} />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'COMPLETE_SURVEY' ? (
+        <Modal title="ยืนยันสำรวจเสร็จ" onClose={closeModal}>
+          <form action={completeSurveyAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor="survey_note">หมายเหตุ (ถ้ามี)</label>
+              <textarea className="input min-h-24" id="survey_note" name="survey_note" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'CONFIRM_ON_SITE_DOCS_COMPLETE' ? (
+        <Modal title="ยืนยันเอกสารครบแล้วหลังสำรวจ" onClose={closeModal}>
+          <form action={confirmOnSiteDocumentsCompleteAction}>
+            <input name="request_id" type="hidden" value={requestId} />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'ISSUE_BILL' ? (
+        <Modal title="ออกใบแจ้งหนี้" onClose={closeModal}>
+          <form action={issueBillingAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <input className="input" min="0.01" name="billing_amount" placeholder="จำนวนเงิน" required step="0.01" type="number" />
+            <input className="input" name="billed_by" placeholder="ออกโดย" required type="text" />
+            <textarea className="input min-h-24" name="billing_note" placeholder="หมายเหตุ (ถ้ามี)" />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยันออกใบแจ้งหนี้</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'SURVEYOR_SIGN' ? (
+        <Modal title="เซ็นรับรองใบแจ้งหนี้" onClose={closeModal}>
+          <form action={confirmBillingSurveyorSignAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <input className="input" name="invoice_signed_by" placeholder="ผู้เซ็นรับรอง" required type="text" />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'CONFIRM_PAYMENT' ? (
+        <Modal title="ยืนยันรับชำระเงิน" onClose={closeModal}>
+          <form action={confirmPaymentReceivedAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <input className="input" name="paid_by" placeholder="รับชำระโดย" required type="text" />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'MANAGER_APPROVE' ? (
+        <Modal title="ผู้จัดการอนุมัติปิดงาน" onClose={closeModal}>
+          <form action={approveManagerReviewAction}>
+            <input name="request_id" type="hidden" value={requestId} />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยันอนุมัติ</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
     </>
   );
 }

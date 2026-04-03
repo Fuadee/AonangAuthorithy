@@ -63,8 +63,8 @@ const STATUS_ACTIONS: Partial<Record<RequestStatus, SurveyorAction[]>> = {
 const STATUS_MESSAGES: Partial<Record<RequestStatus, string>> = {
   SURVEY_DOCS_INCOMPLETE: 'รอเจ้าหน้าที่ติดตามเอกสาร',
   SURVEY_COMPLETED: 'สำรวจเสร็จสิ้นแล้ว',
-  WAIT_DOCUMENT_REVIEW: 'สำรวจเสร็จแล้ว รอเจ้าหน้าที่ตรวจเอกสารหลังสำรวจ',
-  WAIT_DOCUMENT_FOLLOWUP: 'กำลังติดตามเอกสารเพิ่มเติม'
+  WAIT_DOCUMENT_REVIEW: 'รอตรวจเอกสารก่อนรับงาน',
+  WAIT_DOCUMENT_FROM_CUSTOMER: 'รอผู้ใช้ไฟนำเอกสารมาให้'
 };
 
 function ActionModal({

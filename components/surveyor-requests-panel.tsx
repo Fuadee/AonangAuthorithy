@@ -17,7 +17,9 @@ type SurveyorFilter =
   | 'SURVEY_DOCS_INCOMPLETE'
   | 'SURVEY_RESCHEDULE_REQUESTED'
   | 'WAIT_DOCUMENT_REVIEW'
-  | 'WAIT_DOCUMENT_FOLLOWUP'
+  | 'WAIT_DOCUMENT_FROM_CUSTOMER'
+  | 'READY_FOR_SURVEY'
+  | 'IN_SURVEY'
   | 'TODAY'
   | 'SURVEY_COMPLETED';
 
@@ -29,8 +31,10 @@ const FILTER_OPTIONS: Array<{ value: SurveyorFilter; label: string }> = [
   { value: 'SURVEY_ACCEPTED', label: 'รับงานแล้ว' },
   { value: 'SURVEY_DOCS_INCOMPLETE', label: 'เอกสารไม่ครบ' },
   { value: 'SURVEY_RESCHEDULE_REQUESTED', label: 'ขอเลื่อนวันสำรวจ' },
-  { value: 'WAIT_DOCUMENT_REVIEW', label: 'รอตรวจเอกสารหลังสำรวจ' },
-  { value: 'WAIT_DOCUMENT_FOLLOWUP', label: 'รอติดตามเอกสาร' },
+  { value: 'WAIT_DOCUMENT_REVIEW', label: 'รอตรวจเอกสารก่อนรับงาน' },
+  { value: 'WAIT_DOCUMENT_FROM_CUSTOMER', label: 'รอผู้ใช้ไฟนำเอกสารมาให้' },
+  { value: 'READY_FOR_SURVEY', label: 'พร้อมรับงานสำรวจ' },
+  { value: 'IN_SURVEY', label: 'กำลังสำรวจ' },
   { value: 'TODAY', label: 'วันนี้' },
   { value: 'SURVEY_COMPLETED', label: 'สำรวจแล้ว' }
 ];
@@ -102,7 +106,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
       accepted: surveyorFilteredRequests.filter((request) => request.status === 'SURVEY_ACCEPTED').length,
       docsIncomplete: surveyorFilteredRequests.filter((request) => request.status === 'SURVEY_DOCS_INCOMPLETE').length,
       waitDocumentReview: surveyorFilteredRequests.filter((request) => request.status === 'WAIT_DOCUMENT_REVIEW').length,
-      waitDocumentFollowup: surveyorFilteredRequests.filter((request) => request.status === 'WAIT_DOCUMENT_FOLLOWUP').length,
+      waitDocumentFromCustomer: surveyorFilteredRequests.filter((request) => request.status === 'WAIT_DOCUMENT_FROM_CUSTOMER').length,
       today: surveyorFilteredRequests.filter((request) => isToday(request.scheduled_survey_date)).length,
       completed: surveyorFilteredRequests.filter((request) => request.status === 'SURVEY_COMPLETED').length
     }),
@@ -164,12 +168,12 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
           <p className="mt-2 text-2xl font-semibold text-amber-600">{summary.docsIncomplete}</p>
         </article>
         <article className="card p-4">
-          <p className="text-sm text-slate-500">รอตรวจเอกสารหลังสำรวจ</p>
+          <p className="text-sm text-slate-500">รอตรวจเอกสารก่อนรับงาน</p>
           <p className="mt-2 text-2xl font-semibold text-orange-600">{summary.waitDocumentReview}</p>
         </article>
         <article className="card p-4">
-          <p className="text-sm text-slate-500">รอติดตามเอกสารหลังสำรวจ</p>
-          <p className="mt-2 text-2xl font-semibold text-orange-700">{summary.waitDocumentFollowup}</p>
+          <p className="text-sm text-slate-500">รอผู้ใช้ไฟนำเอกสารมาให้</p>
+          <p className="mt-2 text-2xl font-semibold text-orange-700">{summary.waitDocumentFromCustomer}</p>
         </article>
         <article className="card p-4">
           <p className="text-sm text-slate-500">งานนัดสำรวจวันนี้</p>
