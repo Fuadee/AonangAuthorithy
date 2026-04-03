@@ -1,9 +1,18 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { DashboardSummary } from '@/components/dashboard-summary';
 import { RequestTable } from '@/components/request-table';
-import { getCurrentSurveyDate, getRequestQueueGroup, hasSurveyBeenRescheduled, RequestType, ServiceRequest } from '@/lib/requests/types';
+import {
+  getCurrentSurveyDate,
+  getRequestQueueGroup,
+  hasSurveyBeenRescheduled,
+  RequestType,
+  ServiceRequest,
+  SURVEY_MAP_DEFAULT_STATUSES,
+  SURVEY_MAP_ELIGIBLE_STATUSES
+} from '@/lib/requests/types';
 
 type RequestTypeFilter = 'ALL' | RequestType;
 type WorkflowFilter =
@@ -150,6 +159,26 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
   const waitFixReviewCount = useMemo(() => requests.filter((request) => request.status === 'WAIT_FIX_REVIEW').length, [requests]);
   const readyForResurveyCount = useMemo(() => requests.filter((request) => request.status === 'READY_FOR_RESURVEY').length, [requests]);
   const approvedViaPhotoCount = useMemo(() => requests.filter((request) => request.fix_approved_via === 'PHOTO').length, [requests]);
+  const surveyMapStatusParam = useMemo(() => {
+    if (workflowFilter === 'IN_SURVEY_ONLY') {
+      return 'IN_SURVEY';
+    }
+
+    if (workflowFilter === 'WAIT_CUSTOMER_FIX_ONLY') {
+      return 'WAIT_CUSTOMER_FIX';
+    }
+
+    if (workflowFilter === 'WAIT_FIX_REVIEW_ONLY') {
+      return 'WAIT_FIX_REVIEW';
+    }
+
+    if (workflowFilter === 'READY_FOR_RESURVEY_ONLY') {
+      return 'READY_FOR_RESURVEY';
+    }
+
+    const statuses = workflowFilter === 'ALL' ? SURVEY_MAP_DEFAULT_STATUSES : SURVEY_MAP_ELIGIBLE_STATUSES;
+    return statuses.join(',');
+  }, [workflowFilter]);
 
   return (
     <>
@@ -217,6 +246,10 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
               </button>
             );
           })}
+
+          <Link className="btn-secondary ml-auto" href={`/survey/map?status=${encodeURIComponent(surveyMapStatusParam)}`}>
+            ดูคิวนี้บนแผนที่
+          </Link>
         </div>
       </section>
 
