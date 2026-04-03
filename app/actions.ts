@@ -4,7 +4,14 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { generateRequestNo } from '@/lib/requests/generateRequestNo';
 import { isAreaCode } from '@/lib/requests/areas';
-import { REQUEST_STATUSES, RequestStatus, REQUEST_TYPES, RequestType } from '@/lib/requests/types';
+import {
+  canMoveToManagerReview,
+  REQUEST_STATUSES,
+  RequestStatus,
+  REQUEST_TYPES,
+  RequestType,
+  resolvePostBillingPhase
+} from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 function requiredField(formData: FormData, key: string): string {
@@ -53,7 +60,7 @@ function revalidateRequestPaths(requestId: string): void {
 }
 
 const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>> = {
-  WAIT_PAYMENT: ['WAIT_MANAGER_REVIEW'],
+  WAIT_ACTION_CONFIRMATION: ['WAIT_MANAGER_REVIEW'],
   WAIT_MANAGER_REVIEW: ['COMPLETED']
 };
 
@@ -142,7 +149,11 @@ export async function updateRequestStatusAction(formData: FormData) {
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status').eq('id', requestId).single();
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,invoice_signed_at,paid_at')
+    .eq('id', requestId)
+    .single();
 
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
@@ -155,6 +166,18 @@ export async function updateRequestStatusAction(formData: FormData) {
   const allowedTransitions = ALLOWED_STATUS_TRANSITIONS[request.status];
   if (allowedTransitions && !allowedTransitions.includes(nextStatus)) {
     throw new Error('ไม่สามารถข้ามสถานะได้');
+  }
+
+  if (request.status === 'WAIT_BILLING' && (nextStatus === 'WAIT_MANAGER_REVIEW' || nextStatus === 'COMPLETED')) {
+    throw new Error('ห้ามข้ามจากรอออกใบแจ้งหนี้ไปสถานะปลายทางโดยตรง');
+  }
+
+  if (request.status === 'WAIT_ACTION_CONFIRMATION' && nextStatus === 'COMPLETED') {
+    throw new Error('ต้องผ่านการตรวจของผู้จัดการก่อนปิดงาน');
+  }
+
+  if (nextStatus === 'WAIT_MANAGER_REVIEW' && !canMoveToManagerReview(request)) {
+    throw new Error('ยังส่งให้ผู้จัดการตรวจไม่ได้ เพราะยังเซ็นใบแจ้งหนี้/ชำระเงินไม่ครบ');
   }
 
   const { error } = await supabase
@@ -339,7 +362,7 @@ export async function issueBillingAction(formData: FormData) {
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: 'WAIT_SURVEYOR_SIGN',
+      status: 'WAIT_ACTION_CONFIRMATION',
       billing_amount: billingAmount,
       billing_note: billingNote,
       billed_at: nowIso,
@@ -358,15 +381,14 @@ export async function issueBillingAction(formData: FormData) {
 
 export async function confirmBillingSurveyorSignAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
-  const surveyorSignedBy = requiredField(formData, 'surveyor_signed_by');
-  const paymentNote = optionalField(formData, 'payment_note');
+  const invoiceSignedBy = requiredField(formData, 'invoice_signed_by');
 
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status,request_type,billing_amount,billed_at')
+    .select('id,status,request_type,billing_amount,billed_at,invoice_signed_at,paid_at')
     .eq('id', requestId)
     .single();
 
@@ -380,21 +402,29 @@ export async function confirmBillingSurveyorSignAction(formData: FormData) {
 
   assertMeterLoopAllowed(request.request_type as RequestType);
 
-  if (request.status !== 'WAIT_SURVEYOR_SIGN' && request.status !== 'BILLED') {
-    throw new Error('เซ็นรับรองได้เฉพาะงานที่รอนักสำรวจเซ็น');
+  if (request.status !== 'WAIT_ACTION_CONFIRMATION') {
+    throw new Error('เซ็นรับรองได้เฉพาะงานที่อยู่ช่วงรอดำเนินการหลังแจ้งหนี้');
   }
 
   if (!request.billing_amount || !request.billed_at) {
     throw new Error('ยังไม่สามารถเซ็นรับรองได้ เพราะยังไม่พบข้อมูลการออกใบแจ้งหนี้');
   }
 
+  if (request.invoice_signed_at) {
+    throw new Error('มีการบันทึกการเซ็นใบแจ้งหนี้แล้ว');
+  }
+
+  const resolvedStatus = resolvePostBillingPhase({
+    invoice_signed_at: nowIso,
+    paid_at: request.paid_at
+  });
+
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: 'WAIT_PAYMENT',
-      surveyor_signed_at: nowIso,
-      surveyor_signed_by: surveyorSignedBy,
-      payment_note: paymentNote,
+      status: resolvedStatus,
+      invoice_signed_at: nowIso,
+      invoice_signed_by: invoiceSignedBy,
       updated_at: nowIso
     })
     .eq('id', requestId);
@@ -451,7 +481,7 @@ export async function confirmPaymentReceivedAction(formData: FormData) {
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status,request_type')
+    .select('id,status,request_type,invoice_signed_at,paid_at')
     .eq('id', requestId)
     .single();
 
@@ -465,14 +495,23 @@ export async function confirmPaymentReceivedAction(formData: FormData) {
 
   assertMeterLoopAllowed(request.request_type as RequestType);
 
-  if (request.status !== 'WAIT_PAYMENT') {
-    throw new Error('ยืนยันชำระเงินได้เฉพาะงานที่อยู่สถานะรอชำระเงิน');
+  if (request.status !== 'WAIT_ACTION_CONFIRMATION') {
+    throw new Error('ยืนยันชำระเงินได้เฉพาะงานที่อยู่ช่วงรอดำเนินการหลังแจ้งหนี้');
   }
+
+  if (request.paid_at) {
+    throw new Error('มีการบันทึกการชำระเงินแล้ว');
+  }
+
+  const resolvedStatus = resolvePostBillingPhase({
+    invoice_signed_at: request.invoice_signed_at,
+    paid_at: nowIso
+  });
 
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: 'WAIT_MANAGER_REVIEW',
+      status: resolvedStatus,
       paid_at: nowIso,
       paid_by: paidBy,
       updated_at: nowIso
@@ -494,7 +533,7 @@ export async function approveManagerReviewAction(formData: FormData) {
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status,request_type')
+    .select('id,status,request_type,invoice_signed_at,paid_at')
     .eq('id', requestId)
     .single();
 
@@ -510,6 +549,10 @@ export async function approveManagerReviewAction(formData: FormData) {
 
   if (request.status !== 'WAIT_MANAGER_REVIEW') {
     throw new Error('ผู้จัดการอนุมัติได้เฉพาะงานที่รอผู้จัดการตรวจ');
+  }
+
+  if (!canMoveToManagerReview(request)) {
+    throw new Error('ยังอนุมัติไม่ได้ เพราะยังไม่ครบเงื่อนไขเซ็นใบแจ้งหนี้และชำระเงิน');
   }
 
   const { error } = await supabase

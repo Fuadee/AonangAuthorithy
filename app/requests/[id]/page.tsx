@@ -3,9 +3,12 @@ import { notFound } from 'next/navigation';
 import { MeterWorkflowActions } from '@/components/meter-workflow-actions';
 import { SurveyorActionWorkflow } from '@/components/surveyor-action-workflow';
 import {
+  canMoveToManagerReview,
   getRequestQueueGroup,
   getRequestQueueGroupLabel,
   getRequestStatusLabel,
+  isInvoiceSigned,
+  isPaid,
   REQUEST_TYPE_LABELS,
   RequestStatus,
   RequestType
@@ -66,16 +69,10 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
           nextStep: 'เจ้าหน้าที่ออกใบแจ้งหนี้ พร้อมบันทึกจำนวนเงินและผู้ดำเนินการ',
           owner: 'การเงิน'
         };
-      case 'BILLED':
-      case 'WAIT_SURVEYOR_SIGN':
+      case 'WAIT_ACTION_CONFIRMATION':
         return {
-          nextStep: 'นักสำรวจเซ็นรับรองใบแจ้งหนี้',
-          owner: 'นักสำรวจ'
-        };
-      case 'WAIT_PAYMENT':
-        return {
-          nextStep: 'เจ้าหน้าที่การเงินยืนยันว่าชำระเงินแล้ว เพื่อส่งงานให้ผู้จัดการตรวจ',
-          owner: 'การเงิน'
+          nextStep: 'บันทึก “เซ็นใบแจ้งหนี้” และ “ชำระเงิน” ให้ครบทั้งสองรายการ (ทำสลับลำดับกันได้)',
+          owner: 'นักสำรวจ / การเงิน'
         };
       case 'WAIT_MANAGER_REVIEW':
         return {
@@ -132,7 +129,7 @@ function getTimeline(request: {
   survey_reschedule_date: string | null;
   survey_completed_at: string | null;
   billed_at: string | null;
-  surveyor_signed_at: string | null;
+  invoice_signed_at: string | null;
   paid_at: string | null;
   updated_at: string;
   status: RequestStatus;
@@ -140,7 +137,7 @@ function getTimeline(request: {
   billing_note: string | null;
   billed_by: string | null;
   billing_amount: number | null;
-  surveyor_signed_by: string | null;
+  invoice_signed_by: string | null;
   paid_by: string | null;
 }): TimelineItem[] {
   const items: TimelineItem[] = [
@@ -194,12 +191,12 @@ function getTimeline(request: {
     });
   }
 
-  if (request.surveyor_signed_at) {
+  if (request.invoice_signed_at) {
     items.push({
       key: 'surveyor-signed',
       title: 'นักสำรวจเซ็นรับรองใบแจ้งหนี้',
-      description: request.surveyor_signed_by ? `ผู้เซ็น: ${request.surveyor_signed_by}` : undefined,
-      at: request.surveyor_signed_at
+      description: request.invoice_signed_by ? `ผู้เซ็น: ${request.invoice_signed_by}` : undefined,
+      at: request.invoice_signed_at
     });
   }
 
@@ -227,9 +224,7 @@ function getTimeline(request: {
 function getActionTitle(status: RequestStatus, requestType: RequestType): string {
   if (
     requestType === 'METER' &&
-    ['SURVEY_COMPLETED', 'WAIT_BILLING', 'WAIT_SURVEYOR_SIGN', 'BILLED', 'WAIT_PAYMENT', 'WAIT_MANAGER_REVIEW'].includes(
-      status
-    )
+    ['SURVEY_COMPLETED', 'WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION', 'WAIT_MANAGER_REVIEW'].includes(status)
   ) {
     return 'การดำเนินการงานขอมิเตอร์หลังสำรวจ';
   }
@@ -254,7 +249,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,billing_amount,billing_note,billed_at,billed_by,surveyor_signed_at,surveyor_signed_by,payment_note,paid_at,paid_by,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -273,9 +268,10 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const isSurveyorFlowStatus = currentQueue === 'SURVEY';
   const isMeterLoopStatus =
     requestType === 'METER' &&
-    ['SURVEY_COMPLETED', 'WAIT_BILLING', 'WAIT_SURVEYOR_SIGN', 'BILLED', 'WAIT_PAYMENT', 'WAIT_MANAGER_REVIEW'].includes(
-      requestStatus
-    );
+    ['SURVEY_COMPLETED', 'WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION', 'WAIT_MANAGER_REVIEW'].includes(requestStatus);
+  const invoiceSigned = isInvoiceSigned(request);
+  const paid = isPaid(request);
+  const readyForManager = canMoveToManagerReview(request);
   const nextStepSummary = getNextStepSummary(requestStatus, requestType);
   const timeline = getTimeline({
     created_at: request.created_at,
@@ -283,7 +279,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     survey_reschedule_date: request.survey_reschedule_date,
     survey_completed_at: request.survey_completed_at,
     billed_at: request.billed_at,
-    surveyor_signed_at: request.surveyor_signed_at,
+    invoice_signed_at: request.invoice_signed_at,
     paid_at: request.paid_at,
     updated_at: request.updated_at,
     status: requestStatus,
@@ -291,7 +287,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     billing_note: request.billing_note,
     billed_by: request.billed_by,
     billing_amount: request.billing_amount,
-    surveyor_signed_by: request.surveyor_signed_by,
+    invoice_signed_by: request.invoice_signed_by,
     paid_by: request.paid_by
   });
 
@@ -360,17 +356,42 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
             </div>
             <div>
               <dt className="text-sm text-slate-500">นักสำรวจเซ็นเมื่อ</dt>
-              <dd className="mt-1 font-medium">{formatDateTime(request.surveyor_signed_at)}</dd>
+              <dd className="mt-1 font-medium">{formatDateTime(request.invoice_signed_at)}</dd>
             </div>
             <div>
               <dt className="text-sm text-slate-500">ผู้เซ็น</dt>
-              <dd className="mt-1 font-medium">{request.surveyor_signed_by ?? '-'}</dd>
+              <dd className="mt-1 font-medium">{request.invoice_signed_by ?? '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">ชำระเงินเมื่อ</dt>
+              <dd className="mt-1 font-medium">{formatDateTime(request.paid_at)}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">รับชำระโดย</dt>
+              <dd className="mt-1 font-medium">{request.paid_by ?? '-'}</dd>
             </div>
             <div>
               <dt className="text-sm text-slate-500">หมายเหตุใบแจ้งหนี้</dt>
               <dd className="mt-1 font-medium">{request.billing_note ?? '-'}</dd>
             </div>
           </dl>
+
+          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
+            <p className="text-sm font-semibold text-slate-800">สรุปเงื่อนไขหลังแจ้งหนี้</p>
+            <ul className="mt-2 space-y-2 text-sm text-slate-700">
+              <li>
+                เซ็นใบแจ้งหนี้: {invoiceSigned ? 'เสร็จแล้ว' : 'ยังไม่เสร็จ'} {request.invoice_signed_by ? `(${request.invoice_signed_by})` : ''}
+              </li>
+              <li>
+                ชำระเงิน: {paid ? 'เสร็จแล้ว' : 'ยังไม่เสร็จ'} {request.paid_by ? `(${request.paid_by})` : ''}
+              </li>
+            </ul>
+            {readyForManager ? (
+              <p className="mt-2 text-sm text-emerald-700">ครบทั้ง 2 เงื่อนไขแล้ว ระบบพร้อมส่งต่อผู้จัดการตรวจ</p>
+            ) : (
+              <p className="mt-2 text-sm text-amber-700">ยังต้องดำเนินการอีก {invoiceSigned ? '' : 'เซ็นใบแจ้งหนี้'}{!invoiceSigned && !paid ? ' และ ' : ''}{paid ? '' : 'ชำระเงิน'}</p>
+            )}
+          </div>
         </section>
       ) : null}
 
@@ -378,7 +399,14 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         <h3 className="text-lg font-semibold">{getActionTitle(requestStatus, requestType)}</h3>
         <p className="mt-1 text-sm text-slate-500">ใช้ปุ่มตามหน้าที่ เพื่อกันการเปลี่ยนสถานะข้ามขั้นตอน</p>
         <div className="mt-4">
-          {isMeterLoopStatus ? <MeterWorkflowActions requestId={request.id} currentStatus={requestStatus} /> : null}
+          {isMeterLoopStatus ? (
+            <MeterWorkflowActions
+              requestId={request.id}
+              currentStatus={requestStatus}
+              isInvoiceSigned={invoiceSigned}
+              isPaid={paid}
+            />
+          ) : null}
           {!isMeterLoopStatus && isSurveyorFlowStatus ? (
             <SurveyorActionWorkflow requestId={request.id} currentStatus={requestStatus} />
           ) : null}

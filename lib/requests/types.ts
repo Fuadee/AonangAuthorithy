@@ -8,9 +8,7 @@ export const REQUEST_STATUSES = [
   'SURVEY_RESCHEDULE_REQUESTED',
   'SURVEY_COMPLETED',
   'WAIT_BILLING',
-  'BILLED',
-  'WAIT_SURVEYOR_SIGN',
-  'WAIT_PAYMENT',
+  'WAIT_ACTION_CONFIRMATION',
   'WAIT_MANAGER_REVIEW',
   'COMPLETED'
 ] as const;
@@ -34,9 +32,7 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   SURVEY_RESCHEDULE_REQUESTED: 'ขอเลื่อนวันสำรวจ',
   SURVEY_COMPLETED: 'สำรวจแล้ว',
   WAIT_BILLING: 'รอออกใบแจ้งหนี้',
-  BILLED: 'ออกใบแจ้งหนี้แล้ว',
-  WAIT_SURVEYOR_SIGN: 'รอนักสำรวจเซ็น',
-  WAIT_PAYMENT: 'รอชำระเงิน',
+  WAIT_ACTION_CONFIRMATION: 'รอดำเนินการหลังแจ้งหนี้',
   WAIT_MANAGER_REVIEW: 'รอผู้จัดการตรวจ',
   COMPLETED: 'เสร็จสิ้น'
 };
@@ -57,9 +53,7 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   SURVEY_RESCHEDULE_REQUESTED: 'SURVEY',
   SURVEY_COMPLETED: 'SURVEY',
   WAIT_BILLING: 'BILLING',
-  BILLED: 'OTHER',
-  WAIT_SURVEYOR_SIGN: 'SURVEY',
-  WAIT_PAYMENT: 'BILLING',
+  WAIT_ACTION_CONFIRMATION: 'BILLING',
   WAIT_MANAGER_REVIEW: 'MANAGER',
   COMPLETED: 'DONE'
 };
@@ -82,6 +76,27 @@ export const MANAGER_VISIBLE_STATUSES: RequestStatus[] = getStatusesByQueueGroup
 
 export function getRequestStatusLabel(status: RequestStatus): string {
   return REQUEST_STATUS_LABELS[status];
+}
+
+export function isInvoiceSigned(request: Pick<ServiceRequest, 'invoice_signed_at'>): boolean {
+  return Boolean(request.invoice_signed_at);
+}
+
+export function isPaid(request: Pick<ServiceRequest, 'paid_at'>): boolean {
+  return Boolean(request.paid_at);
+}
+
+export function canMoveToManagerReview(
+  request: Pick<ServiceRequest, 'invoice_signed_at' | 'paid_at'>
+): boolean {
+  return isInvoiceSigned(request) && isPaid(request);
+}
+
+// หลังออกใบแจ้งหนี้ งาน “เซ็น” และ “ชำระ” เป็นเงื่อนไขขนานที่ทำสลับลำดับได้ จึง resolve ด้วย flags ไม่ใช่ status ต่อกัน
+export function resolvePostBillingPhase(
+  request: Pick<ServiceRequest, 'invoice_signed_at' | 'paid_at'>
+): Extract<RequestStatus, 'WAIT_ACTION_CONFIRMATION' | 'WAIT_MANAGER_REVIEW'> {
+  return canMoveToManagerReview(request) ? 'WAIT_MANAGER_REVIEW' : 'WAIT_ACTION_CONFIRMATION';
 }
 
 export type Area = {
@@ -116,9 +131,8 @@ export type ServiceRequest = {
   billing_note: string | null;
   billed_at: string | null;
   billed_by: string | null;
-  surveyor_signed_at: string | null;
-  surveyor_signed_by: string | null;
-  payment_note: string | null;
+  invoice_signed_at: string | null;
+  invoice_signed_by: string | null;
   paid_at: string | null;
   paid_by: string | null;
   created_at: string;

@@ -8,12 +8,12 @@ type BillingRequestsPanelProps = {
   requests: ServiceRequest[];
 };
 
-type BillingFilter = 'ALL' | 'WAIT_BILLING' | 'WAIT_PAYMENT';
+type BillingFilter = 'ALL' | 'WAIT_BILLING' | 'WAIT_ACTION_CONFIRMATION';
 
 const FILTER_OPTIONS: Array<{ value: BillingFilter; label: string }> = [
   { value: 'ALL', label: 'ทั้งหมด' },
   { value: 'WAIT_BILLING', label: 'รอออกใบแจ้งหนี้' },
-  { value: 'WAIT_PAYMENT', label: 'รอชำระเงิน' }
+  { value: 'WAIT_ACTION_CONFIRMATION', label: 'รอดำเนินการหลังแจ้งหนี้' }
 ];
 
 function formatSurveyDate(value: string | null): string {
@@ -42,7 +42,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
   const summary = useMemo(
     () => ({
       waitBilling: requests.filter((request) => request.status === 'WAIT_BILLING').length,
-      waitPayment: requests.filter((request) => request.status === 'WAIT_PAYMENT').length,
+      waitActionConfirmation: requests.filter((request) => request.status === 'WAIT_ACTION_CONFIRMATION').length,
       totalBillingQueue: requests.length
     }),
     [requests]
@@ -64,8 +64,8 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
           <p className="mt-2 text-2xl font-semibold text-purple-700">{summary.waitBilling}</p>
         </article>
         <article className="card p-4">
-          <p className="text-sm text-slate-500">รอชำระเงิน</p>
-          <p className="mt-2 text-2xl font-semibold text-emerald-700">{summary.waitPayment}</p>
+          <p className="text-sm text-slate-500">รอดำเนินการหลังแจ้งหนี้</p>
+          <p className="mt-2 text-2xl font-semibold text-emerald-700">{summary.waitActionConfirmation}</p>
         </article>
         <article className="card p-4">
           <p className="text-sm text-slate-500">รวมงานการเงินทั้งหมด</p>

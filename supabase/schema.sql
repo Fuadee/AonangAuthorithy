@@ -43,7 +43,7 @@ create table if not exists public.service_requests (
   assigned_surveyor text,
   scheduled_survey_date date,
   request_type text not null default 'METER' check (request_type in ('METER', 'EXPANSION')),
-  status text not null default 'NEW' check (status in ('NEW', 'PENDING_SURVEY_REVIEW', 'SURVEY_ACCEPTED', 'SURVEY_DOCS_INCOMPLETE', 'SURVEY_RESCHEDULE_REQUESTED', 'SURVEY_COMPLETED', 'WAIT_BILLING', 'BILLED', 'WAIT_SURVEYOR_SIGN', 'WAIT_PAYMENT', 'WAIT_MANAGER_REVIEW', 'COMPLETED')),
+  status text not null default 'NEW' check (status in ('NEW', 'PENDING_SURVEY_REVIEW', 'SURVEY_ACCEPTED', 'SURVEY_DOCS_INCOMPLETE', 'SURVEY_RESCHEDULE_REQUESTED', 'SURVEY_COMPLETED', 'WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION', 'WAIT_MANAGER_REVIEW', 'COMPLETED')),
   survey_note text,
   survey_reschedule_date date,
   survey_reviewed_at timestamptz,
@@ -52,9 +52,8 @@ create table if not exists public.service_requests (
   billing_note text,
   billed_at timestamptz,
   billed_by text,
-  surveyor_signed_at timestamptz,
-  surveyor_signed_by text,
-  payment_note text,
+  invoice_signed_at timestamptz,
+  invoice_signed_by text,
   paid_at timestamptz,
   paid_by text,
   created_at timestamptz not null default now(),
@@ -70,5 +69,5 @@ create index if not exists idx_service_requests_survey_queue on public.service_r
 create index if not exists idx_service_requests_surveyor_status on public.service_requests (assigned_surveyor, status, scheduled_survey_date);
 
 create index if not exists idx_service_requests_wait_billing on public.service_requests (request_type, status) where status = 'WAIT_BILLING';
-create index if not exists idx_service_requests_wait_payment on public.service_requests (request_type, status) where status = 'WAIT_PAYMENT';
+create index if not exists idx_service_requests_wait_action_confirmation on public.service_requests (request_type, status) where status = 'WAIT_ACTION_CONFIRMATION';
 create index if not exists idx_service_requests_wait_manager_review on public.service_requests (request_type, status) where status = 'WAIT_MANAGER_REVIEW';
