@@ -74,8 +74,18 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
         };
       case 'WAIT_PAYMENT':
         return {
-          nextStep: 'ติดตามการชำระเงินและบันทึกผลการรับชำระ',
+          nextStep: 'เจ้าหน้าที่การเงินยืนยันว่าชำระเงินแล้ว เพื่อส่งงานให้ผู้จัดการตรวจ',
           owner: 'การเงิน'
+        };
+      case 'WAIT_MANAGER_REVIEW':
+        return {
+          nextStep: 'ผู้จัดการตรวจเอกสารและอนุมัติก่อนปิดงาน',
+          owner: 'ผู้จัดการ'
+        };
+      case 'COMPLETED':
+        return {
+          nextStep: 'ปิดงานเรียบร้อยแล้ว',
+          owner: 'เสร็จสิ้น'
         };
       default:
         break;
@@ -123,6 +133,7 @@ function getTimeline(request: {
   survey_completed_at: string | null;
   billed_at: string | null;
   surveyor_signed_at: string | null;
+  paid_at: string | null;
   updated_at: string;
   status: RequestStatus;
   survey_note: string | null;
@@ -130,6 +141,7 @@ function getTimeline(request: {
   billed_by: string | null;
   billing_amount: number | null;
   surveyor_signed_by: string | null;
+  paid_by: string | null;
 }): TimelineItem[] {
   const items: TimelineItem[] = [
     {
@@ -191,6 +203,15 @@ function getTimeline(request: {
     });
   }
 
+  if (request.paid_at) {
+    items.push({
+      key: 'paid',
+      title: 'ยืนยันชำระเงินแล้ว',
+      description: request.paid_by ? `ยืนยันโดย: ${request.paid_by}` : undefined,
+      at: request.paid_at
+    });
+  }
+
   if (request.updated_at !== request.created_at) {
     items.push({
       key: 'updated',
@@ -204,7 +225,12 @@ function getTimeline(request: {
 }
 
 function getActionTitle(status: RequestStatus, requestType: RequestType): string {
-  if (requestType === 'METER' && ['SURVEY_COMPLETED', 'WAIT_BILLING', 'WAIT_SURVEYOR_SIGN', 'BILLED'].includes(status)) {
+  if (
+    requestType === 'METER' &&
+    ['SURVEY_COMPLETED', 'WAIT_BILLING', 'WAIT_SURVEYOR_SIGN', 'BILLED', 'WAIT_PAYMENT', 'WAIT_MANAGER_REVIEW'].includes(
+      status
+    )
+  ) {
     return 'การดำเนินการงานขอมิเตอร์หลังสำรวจ';
   }
 
@@ -228,7 +254,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,billing_amount,billing_note,billed_at,billed_by,surveyor_signed_at,surveyor_signed_by,payment_note,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,billing_amount,billing_note,billed_at,billed_by,surveyor_signed_at,surveyor_signed_by,payment_note,paid_at,paid_by,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -245,7 +271,11 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const requestType = request.request_type as RequestType;
   const currentQueue = getRequestQueueGroup(requestStatus);
   const isSurveyorFlowStatus = currentQueue === 'SURVEY';
-  const isMeterLoopStatus = requestType === 'METER' && ['SURVEY_COMPLETED', 'WAIT_BILLING', 'WAIT_SURVEYOR_SIGN', 'BILLED'].includes(requestStatus);
+  const isMeterLoopStatus =
+    requestType === 'METER' &&
+    ['SURVEY_COMPLETED', 'WAIT_BILLING', 'WAIT_SURVEYOR_SIGN', 'BILLED', 'WAIT_PAYMENT', 'WAIT_MANAGER_REVIEW'].includes(
+      requestStatus
+    );
   const nextStepSummary = getNextStepSummary(requestStatus, requestType);
   const timeline = getTimeline({
     created_at: request.created_at,
@@ -254,13 +284,15 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     survey_completed_at: request.survey_completed_at,
     billed_at: request.billed_at,
     surveyor_signed_at: request.surveyor_signed_at,
+    paid_at: request.paid_at,
     updated_at: request.updated_at,
     status: requestStatus,
     survey_note: request.survey_note,
     billing_note: request.billing_note,
     billed_by: request.billed_by,
     billing_amount: request.billing_amount,
-    surveyor_signed_by: request.surveyor_signed_by
+    surveyor_signed_by: request.surveyor_signed_by,
+    paid_by: request.paid_by
   });
 
   return (

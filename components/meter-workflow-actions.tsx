@@ -2,6 +2,8 @@
 
 import { MouseEvent, useState } from 'react';
 import {
+  approveManagerReviewAction,
+  confirmPaymentReceivedAction,
   confirmBillingSurveyorSignAction,
   issueBillingAction,
   sendMeterRequestToBillingAction
@@ -13,7 +15,7 @@ type MeterWorkflowActionsProps = {
   currentStatus: RequestStatus;
 };
 
-type MeterAction = 'SEND_TO_BILLING' | 'ISSUE_BILL' | 'SURVEYOR_SIGN';
+type MeterAction = 'SEND_TO_BILLING' | 'ISSUE_BILL' | 'SURVEYOR_SIGN' | 'CONFIRM_PAYMENT' | 'MANAGER_APPROVE';
 
 type MeterActionConfig = {
   action: MeterAction;
@@ -27,7 +29,9 @@ const STATUS_TO_ACTION: Partial<Record<RequestStatus, MeterAction>> = {
   SURVEY_COMPLETED: 'SEND_TO_BILLING',
   WAIT_BILLING: 'ISSUE_BILL',
   WAIT_SURVEYOR_SIGN: 'SURVEYOR_SIGN',
-  BILLED: 'SURVEYOR_SIGN'
+  BILLED: 'SURVEYOR_SIGN',
+  WAIT_PAYMENT: 'CONFIRM_PAYMENT',
+  WAIT_MANAGER_REVIEW: 'MANAGER_APPROVE'
 };
 
 const ACTION_CONFIG: Record<MeterAction, MeterActionConfig> = {
@@ -51,6 +55,20 @@ const ACTION_CONFIG: Record<MeterAction, MeterActionConfig> = {
     title: 'เซ็นรับรองใบแจ้งหนี้',
     description: 'เมื่อนักสำรวจเซ็นรับรองแล้ว งานจะเข้าสู่สถานะ “รอชำระเงิน”',
     confirmLabel: 'ยืนยันเซ็นรับรอง'
+  },
+  CONFIRM_PAYMENT: {
+    action: 'CONFIRM_PAYMENT',
+    buttonLabel: 'ชำระเงินแล้ว',
+    title: 'ยืนยันรับชำระเงินแล้ว',
+    description: 'หลังยืนยัน งานจะย้ายไปสถานะ “รอผู้จัดการตรวจ” ทันที',
+    confirmLabel: 'ยืนยันชำระเงินแล้ว'
+  },
+  MANAGER_APPROVE: {
+    action: 'MANAGER_APPROVE',
+    buttonLabel: 'อนุมัติแล้ว',
+    title: 'ผู้จัดการอนุมัติปิดงาน',
+    description: 'ยืนยันว่าตรวจครบถ้วนแล้ว และปิดงานเป็น “เสร็จสิ้น”',
+    confirmLabel: 'ยืนยันอนุมัติ'
   }
 };
 
@@ -145,6 +163,40 @@ function ActionModal({
               </label>
               <textarea className="input min-h-24" id="payment_note" name="payment_note" />
             </div>
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" onClick={onClose} type="button">
+                ยกเลิก
+              </button>
+              <button className="btn-primary" type="submit">
+                {config.confirmLabel}
+              </button>
+            </div>
+          </form>
+        ) : null}
+
+        {config.action === 'CONFIRM_PAYMENT' ? (
+          <form action={confirmPaymentReceivedAction} className="mt-4 space-y-4">
+            <input name="request_id" type="hidden" value={requestId} />
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor="paid_by">
+                รับชำระโดย
+              </label>
+              <input className="input" id="paid_by" name="paid_by" placeholder="ชื่อเจ้าหน้าที่การเงิน" required type="text" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" onClick={onClose} type="button">
+                ยกเลิก
+              </button>
+              <button className="btn-primary" type="submit">
+                {config.confirmLabel}
+              </button>
+            </div>
+          </form>
+        ) : null}
+
+        {config.action === 'MANAGER_APPROVE' ? (
+          <form action={approveManagerReviewAction} className="mt-4 space-y-4">
+            <input name="request_id" type="hidden" value={requestId} />
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" onClick={onClose} type="button">
                 ยกเลิก
