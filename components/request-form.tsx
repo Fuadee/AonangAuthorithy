@@ -1,9 +1,10 @@
 'use client';
 
-import { useEffect, useMemo, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createRequestAction } from '@/app/actions';
 import { Area, Assignee, REQUEST_TYPE_LABELS, REQUEST_TYPES } from '@/lib/requests/types';
 import type { SurveySuggestionResult } from '@/lib/requests/survey-suggestion';
+import { RequestLocationPicker } from '@/components/request-location-picker';
 
 type RequestFormProps = {
   areas: Area[];
@@ -28,6 +29,8 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [scheduledSurveyDate, setScheduledSurveyDate] = useState('');
   const [surveySuggestion, setSurveySuggestion] = useState<SurveySuggestionResult | null>(null);
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
+  const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
+  const [locationError, setLocationError] = useState<string | null>(null);
 
   const selectedArea = useMemo(() => areas.find((area) => area.code === areaCode), [areas, areaCode]);
   const selectedAssignee = useMemo(
@@ -77,6 +80,16 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     return () => controller.abort();
   }, [areaCode]);
 
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (!location) {
+      event.preventDefault();
+      setLocationError('กรุณาปักหมุดตำแหน่งก่อนบันทึกคำร้อง');
+      return;
+    }
+
+    setLocationError(null);
+  }
+
   const recommendedDateText = surveySuggestion?.suggestion?.suggested_date
     ? new Date(`${surveySuggestion.suggestion.suggested_date}T00:00:00`).toLocaleDateString('th-TH', {
         dateStyle: 'full'
@@ -84,7 +97,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     : '-';
 
   return (
-    <form action={createRequestAction} className="card space-y-5 p-6">
+    <form action={createRequestAction} className="card space-y-5 p-6" onSubmit={handleSubmit}>
       <div>
         <label className="text-sm font-medium" htmlFor="request_type">
           ประเภทคำร้อง
@@ -252,6 +265,16 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
           />
         </div>
       </div>
+
+      <RequestLocationPicker
+        onLocationChange={(nextLocation) => {
+          setLocation(nextLocation);
+          if (nextLocation) {
+            setLocationError(null);
+          }
+        }}
+        submitError={locationError}
+      />
 
       <button className="btn-primary w-full" type="submit">
         บันทึกคำร้อง

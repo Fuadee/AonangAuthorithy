@@ -34,6 +34,9 @@ create table if not exists public.service_requests (
   request_no text unique not null,
   customer_name text not null,
   phone text not null,
+  latitude double precision,
+  longitude double precision,
+  location_note text,
   area_id uuid not null references public.areas(id),
   assignee_id uuid not null references public.assignees(id),
   area_code text not null,
@@ -78,6 +81,8 @@ create table if not exists public.service_requests (
   invoice_signed_by text,
   paid_at timestamptz,
   paid_by text,
+  constraint service_requests_location_coordinates_pair
+    check ((latitude is null and longitude is null) or (latitude is not null and longitude is not null)),
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now()
 );

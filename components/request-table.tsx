@@ -7,6 +7,7 @@ import {
   getRequestStatusLabel,
   hasSurveyBeenRescheduled,
   hasCollectedDocsOnSite,
+  hasPinnedLocation,
   needsRescheduleAfterDocuments,
   getFinalApprovalSource,
   REQUEST_TYPE_LABELS,
@@ -89,6 +90,9 @@ export function RequestTable({ requests }: RequestTableProps) {
                     ) : null}
                     {request.fix_approved_via ? (
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">{getFinalApprovalSource(request)}</span>
+                    ) : null}
+                    {hasPinnedLocation(request) ? (
+                      <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">มีพิกัด</span>
                     ) : null}
                   </div>
                   {getCustomerDelaySummary(request) ? <p className="mt-1 text-xs text-slate-500">{getCustomerDelaySummary(request)}</p> : null}
