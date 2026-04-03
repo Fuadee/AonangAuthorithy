@@ -47,6 +47,8 @@ function assertMeterLoopAllowed(requestType: RequestType): void {
 function revalidateRequestPaths(requestId: string): void {
   revalidatePath('/dashboard');
   revalidatePath('/surveyor');
+  revalidatePath('/billing');
+  revalidatePath('/manager');
   revalidatePath(`/requests/${requestId}`);
 }
 
