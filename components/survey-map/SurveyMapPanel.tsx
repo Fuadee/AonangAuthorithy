@@ -78,6 +78,18 @@ export function SurveyMapPanel({ requests, selectedRequestId, onSelectRequest, o
     () => requests.filter((request) => request.latitude !== null && request.longitude !== null),
     [requests]
   );
+  const boundsSignature = useMemo(
+    () =>
+      requestsWithCoordinates
+        .map((request) => `${request.id}:${request.latitude}:${request.longitude}`)
+        .sort()
+        .join('|'),
+    [requestsWithCoordinates]
+  );
+  const selectedRequest = useMemo(
+    () => requests.find((request) => request.id === selectedRequestId) ?? null,
+    [requests, selectedRequestId]
+  );
 
   useEffect(() => {
     if (!mapRef.current || !requestsWithCoordinates.length) {
@@ -98,20 +110,27 @@ export function SurveyMapPanel({ requests, selectedRequestId, onSelectRequest, o
     ];
 
     mapRef.current.fitBounds(bounds, { padding: [30, 30] });
-  }, [requestsWithCoordinates]);
+  }, [boundsSignature, requestsWithCoordinates]);
 
   useEffect(() => {
-    if (!mapRef.current || !selectedRequestId) {
+    if (!mapRef.current || !selectedRequestId || !selectedRequest) {
       return;
     }
 
-    const selected = requests.find((request) => request.id === selectedRequestId);
-    if (!selected || selected.latitude === null || selected.longitude === null) {
+    if (selectedRequest.latitude === null || selectedRequest.longitude === null) {
       return;
     }
 
-    mapRef.current.setView([selected.latitude, selected.longitude], Math.max(mapRef.current.getZoom(), 15));
-  }, [requests, selectedRequestId]);
+    const currentCenter = mapRef.current.getCenter();
+    const isSameCenter =
+      Math.abs(currentCenter.lat - selectedRequest.latitude) < 0.000001 &&
+      Math.abs(currentCenter.lng - selectedRequest.longitude) < 0.000001;
+    const targetZoom = Math.max(mapRef.current.getZoom(), 15);
+
+    if (!isSameCenter || mapRef.current.getZoom() < targetZoom) {
+      mapRef.current.setView([selectedRequest.latitude, selectedRequest.longitude], targetZoom);
+    }
+  }, [selectedRequest, selectedRequestId]);
 
   useEffect(() => {
     if (!mapRef.current) {
