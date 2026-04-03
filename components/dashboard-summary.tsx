@@ -11,8 +11,12 @@ type DashboardSummaryProps = {
   readyToScheduleSurveyCount: number;
   rescheduledSurveyCount: number;
   inSurveyCount: number;
+  waitCustomerFixCount: number;
+  waitFixReviewCount: number;
+  readyForResurveyCount: number;
   waitBillingCount: number;
   waitActionConfirmationCount: number;
+  approvedViaPhotoCount: number;
 };
 
 export function DashboardSummary({
@@ -28,8 +32,12 @@ export function DashboardSummary({
   readyToScheduleSurveyCount,
   rescheduledSurveyCount,
   inSurveyCount,
+  waitCustomerFixCount,
+  waitFixReviewCount,
+  readyForResurveyCount,
   waitBillingCount,
-  waitActionConfirmationCount
+  waitActionConfirmationCount,
+  approvedViaPhotoCount
 }: DashboardSummaryProps) {
   return (
     <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-12">
@@ -82,12 +90,28 @@ export function DashboardSummary({
         <p className="mt-2 text-3xl font-semibold text-sky-700">{inSurveyCount}</p>
       </article>
       <article className="card p-5">
+        <p className="text-sm text-slate-500">รอผู้ใช้ไฟแก้ไข</p>
+        <p className="mt-2 text-3xl font-semibold text-rose-700">{waitCustomerFixCount}</p>
+      </article>
+      <article className="card p-5">
+        <p className="text-sm text-slate-500">รอตรวจจากรูป</p>
+        <p className="mt-2 text-3xl font-semibold text-violet-700">{waitFixReviewCount}</p>
+      </article>
+      <article className="card p-5">
+        <p className="text-sm text-slate-500">รอนัดตรวจซ้ำ</p>
+        <p className="mt-2 text-3xl font-semibold text-cyan-700">{readyForResurveyCount}</p>
+      </article>
+      <article className="card p-5">
         <p className="text-sm text-slate-500">รอออกใบแจ้งหนี้</p>
         <p className="mt-2 text-3xl font-semibold text-purple-700">{waitBillingCount}</p>
       </article>
       <article className="card p-5">
         <p className="text-sm text-slate-500">รอดำเนินการหลังแจ้งหนี้</p>
         <p className="mt-2 text-3xl font-semibold text-emerald-700">{waitActionConfirmationCount}</p>
+      </article>
+      <article className="card p-5">
+        <p className="text-sm text-slate-500">งานผ่านจากรูป</p>
+        <p className="mt-2 text-3xl font-semibold text-emerald-700">{approvedViaPhotoCount}</p>
       </article>
     </section>
   );

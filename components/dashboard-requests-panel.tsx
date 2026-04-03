@@ -13,6 +13,9 @@ type WorkflowFilter =
   | 'READY_TO_SCHEDULE_SURVEY_ONLY'
   | 'RESCHEDULED_SURVEY_ONLY'
   | 'IN_SURVEY_ONLY'
+  | 'WAIT_CUSTOMER_FIX_ONLY'
+  | 'WAIT_FIX_REVIEW_ONLY'
+  | 'READY_FOR_RESURVEY_ONLY'
   | 'WAIT_BILLING_ONLY'
   | 'WAIT_ACTION_CONFIRMATION_ONLY'
   | 'WAIT_MANAGER_REVIEW_ONLY';
@@ -34,6 +37,9 @@ const WORKFLOW_FILTER_OPTIONS: Array<{ value: WorkflowFilter; label: string }> =
   { value: 'READY_TO_SCHEDULE_SURVEY_ONLY', label: 'พร้อมนัดสำรวจ' },
   { value: 'RESCHEDULED_SURVEY_ONLY', label: 'นัดสำรวจใหม่แล้ว' },
   { value: 'IN_SURVEY_ONLY', label: 'กำลังสำรวจ' },
+  { value: 'WAIT_CUSTOMER_FIX_ONLY', label: 'รอผู้ใช้ไฟแก้ไข' },
+  { value: 'WAIT_FIX_REVIEW_ONLY', label: 'รอตรวจจากรูป/ข้อมูลที่ส่งมา' },
+  { value: 'READY_FOR_RESURVEY_ONLY', label: 'รอนัดตรวจซ้ำ' },
   { value: 'WAIT_BILLING_ONLY', label: 'รอออกใบแจ้งหนี้' },
   { value: 'WAIT_ACTION_CONFIRMATION_ONLY', label: 'รอดำเนินการหลังแจ้งหนี้' },
   { value: 'WAIT_MANAGER_REVIEW_ONLY', label: 'รอผู้จัดการตรวจ' }
@@ -69,6 +75,15 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
     }
     if (workflowFilter === 'IN_SURVEY_ONLY') {
       result = result.filter((request) => request.status === 'IN_SURVEY');
+    }
+    if (workflowFilter === 'WAIT_CUSTOMER_FIX_ONLY') {
+      result = result.filter((request) => request.status === 'WAIT_CUSTOMER_FIX');
+    }
+    if (workflowFilter === 'WAIT_FIX_REVIEW_ONLY') {
+      result = result.filter((request) => request.status === 'WAIT_FIX_REVIEW');
+    }
+    if (workflowFilter === 'READY_FOR_RESURVEY_ONLY') {
+      result = result.filter((request) => request.status === 'READY_FOR_RESURVEY');
     }
 
     if (workflowFilter === 'WAIT_ACTION_CONFIRMATION_ONLY') {
@@ -131,6 +146,10 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
     [requests]
   );
   const inSurveyCount = useMemo(() => requests.filter((request) => request.status === 'IN_SURVEY').length, [requests]);
+  const waitCustomerFixCount = useMemo(() => requests.filter((request) => request.status === 'WAIT_CUSTOMER_FIX').length, [requests]);
+  const waitFixReviewCount = useMemo(() => requests.filter((request) => request.status === 'WAIT_FIX_REVIEW').length, [requests]);
+  const readyForResurveyCount = useMemo(() => requests.filter((request) => request.status === 'READY_FOR_RESURVEY').length, [requests]);
+  const approvedViaPhotoCount = useMemo(() => requests.filter((request) => request.fix_approved_via === 'PHOTO').length, [requests]);
 
   return (
     <>
@@ -147,8 +166,12 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
         readyToScheduleSurveyCount={readyToScheduleSurveyCount}
         rescheduledSurveyCount={rescheduledSurveyCount}
         inSurveyCount={inSurveyCount}
+        waitCustomerFixCount={waitCustomerFixCount}
+        waitFixReviewCount={waitFixReviewCount}
+        readyForResurveyCount={readyForResurveyCount}
         waitBillingCount={waitBillingCount}
         waitActionConfirmationCount={waitActionConfirmationCount}
+        approvedViaPhotoCount={approvedViaPhotoCount}
       />
 
       <section className="card space-y-3 p-4">

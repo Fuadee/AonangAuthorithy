@@ -6,9 +6,11 @@ import {
   canStartSurvey,
   canMoveToBilling,
   canMoveToManagerReview,
+  getFinalApprovalSource,
   getCurrentSurveyDate,
   getCustomerDelaySummary,
   getDocumentStatusSummary,
+  getPostSurveyFixSummary,
   getRequestQueueGroup,
   getRequestQueueGroupLabel,
   getSurveyScheduleSummary,
@@ -67,7 +69,6 @@ function formatCurrency(value: number | null): string {
 function getNextStepSummary(status: RequestStatus, requestType: RequestType): { nextStep: string; owner: string } {
   if (requestType === 'METER') {
     switch (status) {
-      case 'SURVEY_COMPLETED':
       case 'WAIT_DOCUMENT_REVIEW':
         return {
           nextStep: 'ตรวจเอกสารก่อนรับงาน หรือยืนยันเอกสารครบหลังสำรวจ (กรณีรับเอกสารหน้างาน)',
@@ -85,7 +86,22 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
         };
       case 'IN_SURVEY':
         return {
-          nextStep: 'สำรวจให้เสร็จแล้วบันทึกผล',
+          nextStep: 'เลือกผลสำรวจว่า “ผ่าน” หรือ “ไม่ผ่านและรอผู้ใช้ไฟแก้ไข”',
+          owner: 'นักสำรวจ'
+        };
+      case 'WAIT_CUSTOMER_FIX':
+        return {
+          nextStep: 'รอผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว จากนั้นเลือกว่า “ตรวจจากรูป” หรือ “นัดตรวจซ้ำ”',
+          owner: 'นักสำรวจ / เจ้าหน้าที่'
+        };
+      case 'WAIT_FIX_REVIEW':
+        return {
+          nextStep: 'ตรวจรูปที่ผู้ใช้ไฟส่งมา แล้วตัดสินใจ “ผ่านจากรูป” หรือ “ตรวจซ้ำ”',
+          owner: 'เจ้าหน้าที่'
+        };
+      case 'READY_FOR_RESURVEY':
+        return {
+          nextStep: 'นัดตรวจซ้ำและออกตรวจซ้ำหน้างาน',
           owner: 'นักสำรวจ'
         };
       case 'WAIT_BILLING':
@@ -172,6 +188,13 @@ function getTimeline(request: {
   survey_rescheduled_at: string | null;
   documents_received_at: string | null;
   awaiting_customer_documents_since: string | null;
+  survey_result: 'PASS' | 'FAIL' | null;
+  customer_fix_note: string | null;
+  customer_fix_reported_at: string | null;
+  photo_review_status: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
+  photo_reviewed_at: string | null;
+  photo_reviewed_by: string | null;
+  fix_approved_via: 'PHOTO' | 'RESURVEY' | null;
 }): TimelineItem[] {
   const items: TimelineItem[] = [
     {
@@ -236,8 +259,26 @@ function getTimeline(request: {
   if (request.survey_completed_at) {
     items.push({
       key: 'completed',
-      title: 'สำรวจหน้างานเสร็จ',
+      title: request.survey_result === 'FAIL' ? 'สำรวจไม่ผ่าน' : 'สำรวจหน้างานเสร็จ',
+      description: request.customer_fix_note ? `รายการที่ต้องแก้: ${request.customer_fix_note}` : undefined,
       at: request.survey_completed_at
+    });
+  }
+
+  if (request.customer_fix_reported_at) {
+    items.push({
+      key: 'customer-fix-reported',
+      title: 'ผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว / ส่งรูปแล้ว',
+      at: request.customer_fix_reported_at
+    });
+  }
+
+  if (request.photo_review_status && request.photo_reviewed_at) {
+    items.push({
+      key: 'photo-review',
+      title: request.photo_review_status === 'APPROVED' ? 'ตรวจรูปแล้วผ่าน' : 'ตรวจรูปแล้วต้องลงพื้นที่ตรวจซ้ำ',
+      description: request.photo_reviewed_by ? `ผู้ตรวจ: ${request.photo_reviewed_by}` : undefined,
+      at: request.photo_reviewed_at
     });
   }
 
@@ -301,11 +342,13 @@ function getActionTitle(status: RequestStatus, requestType: RequestType): string
   if (
     requestType === 'METER' &&
     [
-      'SURVEY_COMPLETED',
       'WAIT_DOCUMENT_REVIEW',
       'WAIT_DOCUMENT_FROM_CUSTOMER',
       'READY_FOR_SURVEY',
+      'READY_FOR_RESURVEY',
       'IN_SURVEY',
+      'WAIT_CUSTOMER_FIX',
+      'WAIT_FIX_REVIEW',
       'WAIT_BILLING',
       'WAIT_ACTION_CONFIRMATION',
       'WAIT_MANAGER_REVIEW'
@@ -336,7 +379,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,document_status,collect_docs_on_site,incomplete_docs_note,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -360,12 +403,16 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
       'WAIT_DOCUMENT_REVIEW',
       'WAIT_DOCUMENT_FROM_CUSTOMER',
       'READY_FOR_SURVEY',
+      'READY_FOR_RESURVEY',
       'IN_SURVEY',
+      'WAIT_CUSTOMER_FIX',
+      'WAIT_FIX_REVIEW',
       'WAIT_BILLING',
       'WAIT_ACTION_CONFIRMATION',
       'WAIT_MANAGER_REVIEW'
     ].includes(requestStatus);
   const documentSummary = getDocumentStatusSummary(request);
+  const postSurveyFixSummary = getPostSurveyFixSummary(request);
   const invoiceSigned = isInvoiceSigned(request);
   const paid = isPaid(request);
   const canGoBilling = canMoveToBilling(request);
@@ -400,7 +447,14 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     survey_reschedule_reason: request.survey_reschedule_reason,
     survey_rescheduled_at: request.survey_rescheduled_at,
     documents_received_at: request.documents_received_at,
-    awaiting_customer_documents_since: request.awaiting_customer_documents_since
+    awaiting_customer_documents_since: request.awaiting_customer_documents_since,
+    survey_result: request.survey_result,
+    customer_fix_note: request.customer_fix_note,
+    customer_fix_reported_at: request.customer_fix_reported_at,
+    photo_review_status: request.photo_review_status,
+    photo_reviewed_at: request.photo_reviewed_at,
+    photo_reviewed_by: request.photo_reviewed_by,
+    fix_approved_via: request.fix_approved_via
   });
 
   return (
@@ -447,6 +501,10 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
             <dt className="text-sm text-slate-500">ผู้ดำเนินการต่อ</dt>
             <dd className="mt-1 font-medium">{nextStepSummary.owner}</dd>
           </div>
+          <div>
+            <dt className="text-sm text-slate-500">วิธีที่อนุมัติให้ผ่านสุดท้าย</dt>
+            <dd className="mt-1 font-medium">{getFinalApprovalSource(request)}</dd>
+          </div>
         </dl>
       </section>
 
@@ -490,6 +548,44 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
               เอกสารเพิ่งครบ รอนัดสำรวจใหม่
             </p>
           ) : null}
+        </section>
+      ) : null}
+
+      {requestType === 'METER' ? (
+        <section className="card p-6">
+          <h3 className="text-lg font-semibold">สรุปผลหลังสำรวจ</h3>
+          <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <dt className="text-sm text-slate-500">ผลสำรวจล่าสุด</dt>
+              <dd className="mt-1 font-medium">{postSurveyFixSummary.surveyResultLabel}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">รายการที่ต้องแก้</dt>
+              <dd className="mt-1 font-medium">{postSurveyFixSummary.customerFixNote}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">วิธีตรวจหลังแก้ไข</dt>
+              <dd className="mt-1 font-medium">{postSurveyFixSummary.fixVerificationModeLabel}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">ผู้ใช้ไฟแจ้งว่าแก้แล้วเมื่อ</dt>
+              <dd className="mt-1 font-medium">{postSurveyFixSummary.customerFixReportedAt}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">สถานะการตรวจรูป</dt>
+              <dd className="mt-1 font-medium">{postSurveyFixSummary.photoReviewStatusLabel}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">ผู้ตรวจรูป / เวลา</dt>
+              <dd className="mt-1 font-medium">
+                {postSurveyFixSummary.photoReviewedBy} / {postSurveyFixSummary.photoReviewedAt}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">วิธีที่อนุมัติให้ผ่านสุดท้าย</dt>
+              <dd className="mt-1 font-medium">{postSurveyFixSummary.finalApprovalSourceLabel}</dd>
+            </div>
+          </dl>
         </section>
       ) : null}
 
@@ -587,7 +683,6 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
               currentStatus={requestStatus}
               isInvoiceSigned={invoiceSigned}
               isPaid={paid}
-              collectDocsOnSite={request.collect_docs_on_site}
               hasCurrentSurveyDate={canStartSurvey(request)}
             />
           ) : null}

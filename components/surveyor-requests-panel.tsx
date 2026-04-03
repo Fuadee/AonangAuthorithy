@@ -19,6 +19,9 @@ type SurveyorFilter =
   | 'WAIT_DOCUMENT_REVIEW'
   | 'WAIT_DOCUMENT_FROM_CUSTOMER'
   | 'READY_FOR_SURVEY'
+  | 'WAIT_CUSTOMER_FIX'
+  | 'WAIT_FIX_REVIEW'
+  | 'READY_FOR_RESURVEY'
   | 'IN_SURVEY'
   | 'TODAY'
   | 'SURVEY_COMPLETED';
@@ -34,6 +37,9 @@ const FILTER_OPTIONS: Array<{ value: SurveyorFilter; label: string }> = [
   { value: 'WAIT_DOCUMENT_REVIEW', label: 'รอตรวจเอกสารก่อนรับงาน' },
   { value: 'WAIT_DOCUMENT_FROM_CUSTOMER', label: 'รอผู้ใช้ไฟนำเอกสารมาให้' },
   { value: 'READY_FOR_SURVEY', label: 'พร้อมรับงานสำรวจ' },
+  { value: 'WAIT_CUSTOMER_FIX', label: 'รอผู้ใช้ไฟแก้ไข' },
+  { value: 'WAIT_FIX_REVIEW', label: 'รอตรวจจากรูป' },
+  { value: 'READY_FOR_RESURVEY', label: 'รอนัดตรวจซ้ำ' },
   { value: 'IN_SURVEY', label: 'กำลังสำรวจ' },
   { value: 'TODAY', label: 'วันนี้' },
   { value: 'SURVEY_COMPLETED', label: 'สำรวจแล้ว' }
