@@ -3,7 +3,7 @@
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { getRequestStatusLabel, RequestStatus, REQUEST_TYPE_LABELS, ServiceRequest } from '@/lib/requests/types';
+import { getCurrentSurveyDate, getRequestStatusLabel, RequestStatus, REQUEST_TYPE_LABELS, ServiceRequest } from '@/lib/requests/types';
 
 type SurveyorRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -107,7 +107,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
       docsIncomplete: surveyorFilteredRequests.filter((request) => request.status === 'SURVEY_DOCS_INCOMPLETE').length,
       waitDocumentReview: surveyorFilteredRequests.filter((request) => request.status === 'WAIT_DOCUMENT_REVIEW').length,
       waitDocumentFromCustomer: surveyorFilteredRequests.filter((request) => request.status === 'WAIT_DOCUMENT_FROM_CUSTOMER').length,
-      today: surveyorFilteredRequests.filter((request) => isToday(request.scheduled_survey_date)).length,
+      today: surveyorFilteredRequests.filter((request) => isToday(getCurrentSurveyDate(request))).length,
       completed: surveyorFilteredRequests.filter((request) => request.status === 'SURVEY_COMPLETED').length
     }),
     [surveyorFilteredRequests]
@@ -132,7 +132,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
     }
 
     if (activeFilter === 'TODAY') {
-      return surveyorFilteredRequests.filter((request) => isToday(request.scheduled_survey_date));
+      return surveyorFilteredRequests.filter((request) => isToday(getCurrentSurveyDate(request)));
     }
 
     return surveyorFilteredRequests.filter((request) => request.status === (activeFilter as RequestStatus));
@@ -254,7 +254,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
                 <th className="px-4 py-3 font-medium">ประเภทคำร้อง</th>
                 <th className="px-4 py-3 font-medium">พื้นที่</th>
                 <th className="px-4 py-3 font-medium">นักสำรวจ</th>
-                <th className="px-4 py-3 font-medium">วันสำรวจ</th>
+                <th className="px-4 py-3 font-medium">วันนัดล่าสุด</th>
                 <th className="px-4 py-3 font-medium">สถานะ</th>
                 <th className="px-4 py-3 font-medium">จัดการ</th>
               </tr>
@@ -267,7 +267,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
                   <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
                   <td className="px-4 py-3">{request.area_name}</td>
                   <td className="px-4 py-3">{request.assigned_surveyor ?? '-'}</td>
-                  <td className="px-4 py-3">{formatSurveyDate(request.scheduled_survey_date)}</td>
+                  <td className="px-4 py-3">{formatSurveyDate(getCurrentSurveyDate(request))}</td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3">
                     <Link className="btn-secondary" href={`/requests/${request.id}`}>

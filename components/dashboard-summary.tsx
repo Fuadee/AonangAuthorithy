@@ -8,6 +8,9 @@ type DashboardSummaryProps = {
   pendingSurveyReviewCount: number;
   waitDocumentReviewCount: number;
   waitDocumentFromCustomerCount: number;
+  readyToScheduleSurveyCount: number;
+  rescheduledSurveyCount: number;
+  inSurveyCount: number;
   waitBillingCount: number;
   waitActionConfirmationCount: number;
 };
@@ -22,6 +25,9 @@ export function DashboardSummary({
   pendingSurveyReviewCount,
   waitDocumentReviewCount,
   waitDocumentFromCustomerCount,
+  readyToScheduleSurveyCount,
+  rescheduledSurveyCount,
+  inSurveyCount,
   waitBillingCount,
   waitActionConfirmationCount
 }: DashboardSummaryProps) {
@@ -62,6 +68,18 @@ export function DashboardSummary({
       <article className="card p-5">
         <p className="text-sm text-slate-500">รอผู้ใช้ไฟนำเอกสารมาให้</p>
         <p className="mt-2 text-3xl font-semibold text-orange-600">{waitDocumentFromCustomerCount}</p>
+      </article>
+      <article className="card p-5">
+        <p className="text-sm text-slate-500">พร้อมนัดสำรวจ</p>
+        <p className="mt-2 text-3xl font-semibold text-cyan-700">{readyToScheduleSurveyCount}</p>
+      </article>
+      <article className="card p-5">
+        <p className="text-sm text-slate-500">นัดสำรวจใหม่แล้ว</p>
+        <p className="mt-2 text-3xl font-semibold text-orange-700">{rescheduledSurveyCount}</p>
+      </article>
+      <article className="card p-5">
+        <p className="text-sm text-slate-500">กำลังสำรวจ</p>
+        <p className="mt-2 text-3xl font-semibold text-sky-700">{inSurveyCount}</p>
       </article>
       <article className="card p-5">
         <p className="text-sm text-slate-500">รอออกใบแจ้งหนี้</p>

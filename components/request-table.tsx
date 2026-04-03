@@ -1,9 +1,13 @@
 import Link from 'next/link';
 import {
+  getCurrentSurveyDate,
+  getCustomerDelaySummary,
   getRequestQueueGroup,
   getRequestQueueGroupLabel,
   getRequestStatusLabel,
+  hasSurveyBeenRescheduled,
   hasCollectedDocsOnSite,
+  needsRescheduleAfterDocuments,
   REQUEST_TYPE_LABELS,
   ServiceRequest
 } from '@/lib/requests/types';
@@ -34,7 +38,7 @@ export function RequestTable({ requests }: RequestTableProps) {
               <th className="px-4 py-3 font-medium">พื้นที่</th>
               <th className="px-4 py-3 font-medium">ผู้รับผิดชอบ</th>
               <th className="px-4 py-3 font-medium">ผู้สำรวจ</th>
-              <th className="px-4 py-3 font-medium">วันสำรวจ</th>
+              <th className="px-4 py-3 font-medium">วันนัดสำรวจล่าสุด</th>
               <th className="px-4 py-3 font-medium">คิวปัจจุบัน</th>
               <th className="px-4 py-3 font-medium">สถานะ</th>
               <th className="px-4 py-3 font-medium">สร้างเมื่อ</th>
@@ -54,7 +58,7 @@ export function RequestTable({ requests }: RequestTableProps) {
                 <td className="px-4 py-3">{request.area_name}</td>
                 <td className="px-4 py-3">{request.assignee_name}</td>
                 <td className="px-4 py-3">{request.assigned_surveyor ?? '-'}</td>
-                <td className="px-4 py-3">{formatSurveyDate(request.scheduled_survey_date)}</td>
+                <td className="px-4 py-3">{formatSurveyDate(getCurrentSurveyDate(request))}</td>
                 <td className="px-4 py-3">{getRequestQueueGroupLabel(getRequestQueueGroup(request.status))}</td>
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap items-center gap-2">
@@ -64,7 +68,17 @@ export function RequestTable({ requests }: RequestTableProps) {
                         รับเอกสารหน้างาน
                       </span>
                     ) : null}
+                    {hasSurveyBeenRescheduled(request) ? (
+                      <span className="rounded-full bg-orange-100 px-2 py-0.5 text-xs font-medium text-orange-700">เลื่อนนัด</span>
+                    ) : null}
+                    {request.status === 'WAIT_DOCUMENT_FROM_CUSTOMER' ? (
+                      <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">รอเอกสารจากผู้ใช้ไฟ</span>
+                    ) : null}
+                    {needsRescheduleAfterDocuments(request) ? (
+                      <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">เอกสารครบ รอนัดใหม่</span>
+                    ) : null}
                   </div>
+                  {getCustomerDelaySummary(request) ? <p className="mt-1 text-xs text-slate-500">{getCustomerDelaySummary(request)}</p> : null}
                 </td>
                 <td className="px-4 py-3">{new Date(request.created_at).toLocaleString('th-TH')}</td>
               </tr>

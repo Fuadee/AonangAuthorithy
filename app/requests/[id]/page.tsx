@@ -3,13 +3,19 @@ import { notFound } from 'next/navigation';
 import { MeterWorkflowActions } from '@/components/meter-workflow-actions';
 import { SurveyorActionWorkflow } from '@/components/surveyor-action-workflow';
 import {
+  canStartSurvey,
   canMoveToBilling,
   canMoveToManagerReview,
+  getCurrentSurveyDate,
+  getCustomerDelaySummary,
   getDocumentStatusSummary,
   getRequestQueueGroup,
   getRequestQueueGroupLabel,
+  getSurveyScheduleSummary,
+  hasSurveyBeenRescheduled,
   getRequestStatusLabel,
   isInvoiceSigned,
+  needsRescheduleAfterDocuments,
   isPaid,
   REQUEST_TYPE_LABELS,
   RequestStatus,
@@ -159,6 +165,13 @@ function getTimeline(request: {
   paid_by: string | null;
   document_status: 'COMPLETE' | 'INCOMPLETE' | null;
   collect_docs_on_site: boolean;
+  survey_date_initial: string | null;
+  survey_date_current: string | null;
+  previous_survey_date: string | null;
+  survey_reschedule_reason: string | null;
+  survey_rescheduled_at: string | null;
+  documents_received_at: string | null;
+  awaiting_customer_documents_since: string | null;
 }): TimelineItem[] {
   const items: TimelineItem[] = [
     {
@@ -183,6 +196,40 @@ function getTimeline(request: {
       title: 'ขอเลื่อนวันสำรวจ',
       description: `วันสำรวจใหม่: ${formatSurveyDate(request.survey_reschedule_date)}`,
       at: `${request.survey_reschedule_date}T00:00:00`
+    });
+  }
+
+  if (request.survey_date_initial) {
+    items.push({
+      key: 'survey-initial',
+      title: 'นัดสำรวจครั้งแรก',
+      description: `วันนัด: ${formatSurveyDate(request.survey_date_initial)}`,
+      at: `${request.survey_date_initial}T00:00:00`
+    });
+  }
+
+  if (request.awaiting_customer_documents_since) {
+    items.push({
+      key: 'awaiting-customer-docs',
+      title: 'เอกสารไม่ครบ / รอผู้ใช้ไฟนำเอกสารมาให้',
+      at: request.awaiting_customer_documents_since
+    });
+  }
+
+  if (request.documents_received_at) {
+    items.push({
+      key: 'documents-received',
+      title: 'ได้รับเอกสารจากลูกค้า',
+      at: request.documents_received_at
+    });
+  }
+
+  if (request.survey_rescheduled_at && request.survey_date_current) {
+    items.push({
+      key: 'rescheduled-latest',
+      title: 'นัดสำรวจใหม่',
+      description: `${formatSurveyDate(request.survey_date_current)}${request.survey_reschedule_reason ? ` | เหตุผล: ${request.survey_reschedule_reason}` : ''}`,
+      at: request.survey_rescheduled_at
     });
   }
 
@@ -289,7 +336,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,document_status,collect_docs_on_site,incomplete_docs_note,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,document_status,collect_docs_on_site,incomplete_docs_note,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -324,6 +371,11 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const canGoBilling = canMoveToBilling(request);
   const readyForManager = canMoveToManagerReview(request);
   const nextStepSummary = getNextStepSummary(requestStatus, requestType);
+  const currentSurveyDate = getCurrentSurveyDate(request);
+  const surveySummary = getSurveyScheduleSummary(request);
+  const customerDelaySummary = getCustomerDelaySummary(request);
+  const showRescheduleNotice =
+    hasSurveyBeenRescheduled(request) && request.survey_reschedule_reason?.includes('รอเอกสารจากผู้ใช้ไฟ');
   const timeline = getTimeline({
     created_at: request.created_at,
     survey_reviewed_at: request.survey_reviewed_at,
@@ -341,7 +393,14 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     invoice_signed_by: request.invoice_signed_by,
     paid_by: request.paid_by,
     document_status: request.document_status,
-    collect_docs_on_site: request.collect_docs_on_site
+    collect_docs_on_site: request.collect_docs_on_site,
+    survey_date_initial: request.survey_date_initial,
+    survey_date_current: request.survey_date_current,
+    previous_survey_date: request.previous_survey_date,
+    survey_reschedule_reason: request.survey_reschedule_reason,
+    survey_rescheduled_at: request.survey_rescheduled_at,
+    documents_received_at: request.documents_received_at,
+    awaiting_customer_documents_since: request.awaiting_customer_documents_since
   });
 
   return (
@@ -377,8 +436,8 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
             <dd className="mt-1 font-medium">{request.assigned_surveyor ?? '-'}</dd>
           </div>
           <div>
-            <dt className="text-sm text-slate-500">วันสำรวจนัดหมาย</dt>
-            <dd className="mt-1 font-medium">{formatSurveyDate(request.scheduled_survey_date)}</dd>
+            <dt className="text-sm text-slate-500">วันนัดสำรวจล่าสุด</dt>
+            <dd className="mt-1 font-medium">{formatSurveyDate(currentSurveyDate)}</dd>
           </div>
           <div>
             <dt className="text-sm text-slate-500">ขั้นตอนถัดไป</dt>
@@ -390,6 +449,49 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           </div>
         </dl>
       </section>
+
+      {requestType === 'METER' ? (
+        <section className="card p-6">
+          <h3 className="text-lg font-semibold">ข้อมูลนัดสำรวจ</h3>
+          <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <dt className="text-sm text-slate-500">วันนัดครั้งแรก</dt>
+              <dd className="mt-1 font-medium">{formatSurveyDate(request.survey_date_initial)}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">วันนัดล่าสุด</dt>
+              <dd className="mt-1 font-medium">{formatSurveyDate(currentSurveyDate)}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">วันเดิมก่อนเลื่อน</dt>
+              <dd className="mt-1 font-medium">{formatSurveyDate(request.previous_survey_date)}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">สาเหตุการเลื่อน</dt>
+              <dd className="mt-1 font-medium">{request.survey_reschedule_reason ?? '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">ได้รับเอกสารจากลูกค้าเมื่อ</dt>
+              <dd className="mt-1 font-medium">{formatDateTime(request.documents_received_at)}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">สถานะนัดสำรวจ</dt>
+              <dd className="mt-1 font-medium">{surveySummary.label}</dd>
+            </div>
+          </dl>
+          {customerDelaySummary ? <p className="mt-3 text-sm text-amber-700">{customerDelaySummary}</p> : null}
+          {showRescheduleNotice ? (
+            <p className="mt-2 rounded-lg border border-amber-300 bg-amber-50 p-3 text-sm text-amber-800">
+              งานนี้เลื่อนนัดสำรวจเนื่องจากรอเอกสารจากผู้ใช้ไฟ
+            </p>
+          ) : null}
+          {needsRescheduleAfterDocuments(request) ? (
+            <p className="mt-2 rounded-lg border border-orange-300 bg-orange-50 p-3 text-sm text-orange-800">
+              เอกสารเพิ่งครบ รอนัดสำรวจใหม่
+            </p>
+          ) : null}
+        </section>
+      ) : null}
 
       {requestType === 'METER' ? (
         <section className="card p-6">
@@ -486,6 +588,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
               isInvoiceSigned={invoiceSigned}
               isPaid={paid}
               collectDocsOnSite={request.collect_docs_on_site}
+              hasCurrentSurveyDate={canStartSurvey(request)}
             />
           ) : null}
           {!isMeterLoopStatus && isSurveyorFlowStatus ? (

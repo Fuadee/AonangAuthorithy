@@ -108,6 +108,78 @@ export function hasCollectedDocsOnSite(request: Pick<ServiceRequest, 'collect_do
   return request.collect_docs_on_site;
 }
 
+export function getCurrentSurveyDate(
+  request: Pick<ServiceRequest, 'survey_date_current' | 'scheduled_survey_date'>
+): string | null {
+  return request.survey_date_current ?? request.scheduled_survey_date;
+}
+
+export function hasSurveyBeenRescheduled(
+  request: Pick<ServiceRequest, 'previous_survey_date' | 'survey_date_initial' | 'survey_date_current' | 'scheduled_survey_date'>
+): boolean {
+  if (request.previous_survey_date) {
+    return true;
+  }
+
+  const initialDate = request.survey_date_initial ?? request.scheduled_survey_date;
+  const currentDate = getCurrentSurveyDate(request);
+  return Boolean(initialDate && currentDate && initialDate !== currentDate);
+}
+
+export function canStartSurvey(
+  request: Pick<ServiceRequest, 'status' | 'survey_date_current' | 'scheduled_survey_date'>
+): boolean {
+  return request.status === 'READY_FOR_SURVEY' && Boolean(getCurrentSurveyDate(request));
+}
+
+export function needsRescheduleAfterDocuments(
+  request: Pick<ServiceRequest, 'status' | 'documents_received_at' | 'survey_date_current' | 'scheduled_survey_date'>
+): boolean {
+  return request.status === 'READY_FOR_SURVEY' && Boolean(request.documents_received_at) && !getCurrentSurveyDate(request);
+}
+
+export function getSurveyScheduleSummary(
+  request: Pick<
+    ServiceRequest,
+    | 'status'
+    | 'survey_date_initial'
+    | 'survey_date_current'
+    | 'previous_survey_date'
+    | 'scheduled_survey_date'
+    | 'survey_reschedule_reason'
+  >
+): { label: string; tone: 'neutral' | 'warning' | 'success' } {
+  if (request.status === 'WAIT_DOCUMENT_FROM_CUSTOMER') {
+    return { label: 'รอเอกสารจากผู้ใช้ไฟ', tone: 'warning' };
+  }
+
+  if (hasSurveyBeenRescheduled(request)) {
+    return { label: request.survey_reschedule_reason ? `เลื่อนนัด: ${request.survey_reschedule_reason}` : 'เลื่อนนัด', tone: 'warning' };
+  }
+
+  if (getCurrentSurveyDate(request)) {
+    return { label: 'นัดสำรวจแล้ว', tone: 'success' };
+  }
+
+  return { label: 'ยังไม่กำหนดวันสำรวจ', tone: 'neutral' };
+}
+
+export function getCustomerDelaySummary(
+  request: Pick<ServiceRequest, 'status' | 'awaiting_customer_documents_since' | 'documents_received_at'>
+): string | null {
+  if (request.status === 'WAIT_DOCUMENT_FROM_CUSTOMER') {
+    return request.awaiting_customer_documents_since
+      ? `รอเอกสารจากผู้ใช้ไฟตั้งแต่ ${new Date(request.awaiting_customer_documents_since).toLocaleString('th-TH')}`
+      : 'รอเอกสารจากผู้ใช้ไฟ';
+  }
+
+  if (request.documents_received_at) {
+    return `ได้รับเอกสารจากผู้ใช้ไฟแล้วเมื่อ ${new Date(request.documents_received_at).toLocaleString('th-TH')}`;
+  }
+
+  return null;
+}
+
 export function canMoveToBilling(request: Pick<ServiceRequest, 'collect_docs_on_site' | 'document_status'>): boolean {
   if (!request.collect_docs_on_site) {
     return true;
@@ -195,6 +267,13 @@ export type ServiceRequest = {
   assignee_name: string;
   assigned_surveyor: string | null;
   scheduled_survey_date: string | null;
+  survey_date_initial: string | null;
+  survey_date_current: string | null;
+  previous_survey_date: string | null;
+  survey_rescheduled_at: string | null;
+  survey_reschedule_reason: string | null;
+  documents_received_at: string | null;
+  awaiting_customer_documents_since: string | null;
   status: RequestStatus;
   request_type: RequestType;
   survey_note: string | null;

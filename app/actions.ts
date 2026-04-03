@@ -6,6 +6,7 @@ import { generateRequestNo } from '@/lib/requests/generateRequestNo';
 import { isAreaCode } from '@/lib/requests/areas';
 import {
   canMoveToBilling,
+  canStartSurvey,
   canMoveToManagerReview,
   DocumentReviewDecision,
   REQUEST_STATUSES,
@@ -24,6 +25,10 @@ function requiredField(formData: FormData, key: string): string {
   }
 
   return value;
+}
+
+function getEffectiveSurveyDate(request: { survey_date_current?: string | null; scheduled_survey_date?: string | null }): string | null {
+  return request.survey_date_current ?? request.scheduled_survey_date ?? null;
 }
 
 function optionalField(formData: FormData, key: string): string | null {
@@ -133,6 +138,8 @@ export async function createRequestAction(formData: FormData) {
     assignee_name: assignee.name,
     assigned_surveyor: assignedSurveyor,
     scheduled_survey_date: scheduledSurveyDate,
+    survey_date_initial: scheduledSurveyDate,
+    survey_date_current: scheduledSurveyDate,
     status: initialStatus,
     request_type: requestType,
     collect_docs_on_site: false
@@ -236,7 +243,7 @@ export async function updateSurveyorAction(formData: FormData) {
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status,request_type,collect_docs_on_site')
+    .select('id,status,request_type,collect_docs_on_site,scheduled_survey_date,survey_date_current')
     .eq('id', requestId)
     .single();
 
@@ -349,7 +356,7 @@ export async function updateDocumentReviewDecisionAction(formData: FormData) {
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status,request_type,collect_docs_on_site')
+    .select('id,status,request_type,collect_docs_on_site,scheduled_survey_date,survey_date_current')
     .eq('id', requestId)
     .single();
 
@@ -368,6 +375,7 @@ export async function updateDocumentReviewDecisionAction(formData: FormData) {
   }
 
   const resolved = resolveDocumentReviewDecision(decision);
+  const effectiveSurveyDate = getEffectiveSurveyDate(request);
 
   if (decision !== 'COMPLETE' && !note) {
     throw new Error('กรณีเอกสารไม่ครบ กรุณาระบุหมายเหตุเอกสารขาด');
@@ -384,6 +392,12 @@ export async function updateDocumentReviewDecisionAction(formData: FormData) {
       document_status: resolved.documentStatus,
       collect_docs_on_site: resolved.collectDocsOnSite,
       incomplete_docs_note: resolved.documentStatus === 'INCOMPLETE' ? note : null,
+      awaiting_customer_documents_since: decision === 'INCOMPLETE_WAIT_CUSTOMER' ? nowIso : null,
+      previous_survey_date: decision === 'INCOMPLETE_WAIT_CUSTOMER' ? effectiveSurveyDate : null,
+      survey_date_current: decision === 'INCOMPLETE_WAIT_CUSTOMER' ? null : request.survey_date_current,
+      survey_rescheduled_at: decision === 'INCOMPLETE_WAIT_CUSTOMER' && effectiveSurveyDate ? nowIso : null,
+      survey_reschedule_reason:
+        decision === 'INCOMPLETE_WAIT_CUSTOMER' && effectiveSurveyDate ? 'รอเอกสารจากผู้ใช้ไฟ' : null,
       updated_at: nowIso
     })
     .eq('id', requestId);
@@ -425,6 +439,7 @@ export async function confirmDocumentsReceivedFromCustomerAction(formData: FormD
       status: 'READY_FOR_SURVEY',
       document_status: 'COMPLETE',
       collect_docs_on_site: false,
+      documents_received_at: nowIso,
       updated_at: nowIso
     })
     .eq('id', requestId);
@@ -444,7 +459,7 @@ export async function startSurveyAction(formData: FormData) {
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status,request_type,collect_docs_on_site')
+    .select('id,status,request_type,collect_docs_on_site,scheduled_survey_date,survey_date_current')
     .eq('id', requestId)
     .single();
 
@@ -458,6 +473,10 @@ export async function startSurveyAction(formData: FormData) {
 
   if (request.status !== 'READY_FOR_SURVEY') {
     throw new Error('รับงาน/ไปสำรวจได้เฉพาะสถานะพร้อมรับงานสำรวจ');
+  }
+
+  if (!canStartSurvey(request)) {
+    throw new Error('ต้องกำหนดวันนัดสำรวจล่าสุดก่อนเริ่มสำรวจ');
   }
 
   const { error } = await supabase.from('service_requests').update({ status: 'IN_SURVEY', updated_at: nowIso }).eq('id', requestId);
@@ -503,6 +522,60 @@ export async function completeSurveyAction(formData: FormData) {
       updated_at: nowIso
     })
     .eq('id', requestId);
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function updateSurveyScheduleAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const surveyDateCurrent = requiredField(formData, 'survey_date_current');
+  const surveyRescheduleReason = optionalField(formData, 'survey_reschedule_reason');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  if (!isValidDateOnly(surveyDateCurrent)) {
+    throw new Error('รูปแบบวันสำรวจไม่ถูกต้อง');
+  }
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if (!['READY_FOR_SURVEY', 'WAIT_DOCUMENT_FROM_CUSTOMER'].includes(request.status)) {
+    throw new Error('กำหนดวันสำรวจได้เฉพาะงานที่พร้อมสำรวจหรือกำลังรอเอกสารจากลูกค้า');
+  }
+
+  const previousSurveyDate = getEffectiveSurveyDate(request);
+  const isReschedule = Boolean(previousSurveyDate && previousSurveyDate !== surveyDateCurrent);
+
+  if (isReschedule && !surveyRescheduleReason) {
+    throw new Error('กรณีแก้ไขวันนัด กรุณาระบุเหตุผลการเลื่อนนัด');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: request.status === 'WAIT_DOCUMENT_FROM_CUSTOMER' ? 'READY_FOR_SURVEY' : request.status,
+      scheduled_survey_date: surveyDateCurrent,
+      survey_date_initial: request.survey_date_initial ?? previousSurveyDate ?? surveyDateCurrent,
+      previous_survey_date: isReschedule ? previousSurveyDate : request.previous_survey_date ?? null,
+      survey_date_current: surveyDateCurrent,
+      survey_rescheduled_at: isReschedule ? nowIso : null,
+      survey_reschedule_reason: isReschedule ? surveyRescheduleReason : null,
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+
   if (error) {
     throw new Error(error.message);
   }
