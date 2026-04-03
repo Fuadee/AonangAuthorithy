@@ -3,6 +3,7 @@ import {
   getRequestQueueGroup,
   getRequestQueueGroupLabel,
   getRequestStatusLabel,
+  isIncompleteButAllowedToProceed,
   REQUEST_TYPE_LABELS,
   ServiceRequest
 } from '@/lib/requests/types';
@@ -55,7 +56,16 @@ export function RequestTable({ requests }: RequestTableProps) {
                 <td className="px-4 py-3">{request.assigned_surveyor ?? '-'}</td>
                 <td className="px-4 py-3">{formatSurveyDate(request.scheduled_survey_date)}</td>
                 <td className="px-4 py-3">{getRequestQueueGroupLabel(getRequestQueueGroup(request.status))}</td>
-                <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
+                <td className="px-4 py-3">
+                  <div className="flex flex-wrap items-center gap-2">
+                    <span>{getRequestStatusLabel(request.status)}</span>
+                    {isIncompleteButAllowedToProceed(request) ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
+                        เอกสารยังไม่ครบ
+                      </span>
+                    ) : null}
+                  </div>
+                </td>
                 <td className="px-4 py-3">{new Date(request.created_at).toLocaleString('th-TH')}</td>
               </tr>
             ))}

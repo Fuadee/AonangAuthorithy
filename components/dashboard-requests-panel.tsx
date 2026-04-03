@@ -6,7 +6,14 @@ import { RequestTable } from '@/components/request-table';
 import { getRequestQueueGroup, RequestType, ServiceRequest } from '@/lib/requests/types';
 
 type RequestTypeFilter = 'ALL' | RequestType;
-type WorkflowFilter = 'ALL' | 'WAIT_BILLING_ONLY' | 'WAIT_ACTION_CONFIRMATION_ONLY' | 'WAIT_MANAGER_REVIEW_ONLY';
+type WorkflowFilter =
+  | 'ALL'
+  | 'WAIT_DOCUMENT_REVIEW_ONLY'
+  | 'WAIT_DOCUMENT_FOLLOWUP_ONLY'
+  | 'INCOMPLETE_ALLOWED_ONLY'
+  | 'WAIT_BILLING_ONLY'
+  | 'WAIT_ACTION_CONFIRMATION_ONLY'
+  | 'WAIT_MANAGER_REVIEW_ONLY';
 
 type DashboardRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -20,6 +27,9 @@ const FILTER_OPTIONS: Array<{ value: RequestTypeFilter; label: string }> = [
 
 const WORKFLOW_FILTER_OPTIONS: Array<{ value: WorkflowFilter; label: string }> = [
   { value: 'ALL', label: 'ทุกสถานะ' },
+  { value: 'WAIT_DOCUMENT_REVIEW_ONLY', label: 'รอตรวจเอกสาร' },
+  { value: 'WAIT_DOCUMENT_FOLLOWUP_ONLY', label: 'รอติดตามเอกสาร' },
+  { value: 'INCOMPLETE_ALLOWED_ONLY', label: 'เอกสารไม่ครบแต่อนุญาตให้ไปต่อ' },
   { value: 'WAIT_BILLING_ONLY', label: 'รอออกใบแจ้งหนี้' },
   { value: 'WAIT_ACTION_CONFIRMATION_ONLY', label: 'รอดำเนินการหลังแจ้งหนี้' },
   { value: 'WAIT_MANAGER_REVIEW_ONLY', label: 'รอผู้จัดการตรวจ' }
@@ -34,6 +44,20 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
 
     if (activeFilter !== 'ALL') {
       result = result.filter((request) => request.request_type === activeFilter);
+    }
+
+    if (workflowFilter === 'WAIT_DOCUMENT_REVIEW_ONLY') {
+      result = result.filter((request) => request.status === 'WAIT_DOCUMENT_REVIEW');
+    }
+
+    if (workflowFilter === 'WAIT_DOCUMENT_FOLLOWUP_ONLY') {
+      result = result.filter((request) => request.status === 'WAIT_DOCUMENT_FOLLOWUP');
+    }
+
+    if (workflowFilter === 'INCOMPLETE_ALLOWED_ONLY') {
+      result = result.filter(
+        (request) => request.document_status === 'INCOMPLETE' && request.allow_proceed_with_incomplete_docs
+      );
     }
 
     if (workflowFilter === 'WAIT_BILLING_ONLY') {
@@ -79,6 +103,18 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
     () => requests.filter((request) => request.status === 'WAIT_BILLING').length,
     [requests]
   );
+  const waitDocumentReviewCount = useMemo(
+    () => requests.filter((request) => request.status === 'WAIT_DOCUMENT_REVIEW').length,
+    [requests]
+  );
+  const waitDocumentFollowupCount = useMemo(
+    () => requests.filter((request) => request.status === 'WAIT_DOCUMENT_FOLLOWUP').length,
+    [requests]
+  );
+  const incompleteAllowedCount = useMemo(
+    () => requests.filter((request) => request.document_status === 'INCOMPLETE' && request.allow_proceed_with_incomplete_docs).length,
+    [requests]
+  );
   const waitActionConfirmationCount = useMemo(
     () => requests.filter((request) => request.status === 'WAIT_ACTION_CONFIRMATION').length,
     [requests]
@@ -94,6 +130,9 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
         billingQueueCount={billingQueueCount}
         managerQueueCount={managerQueueCount}
         pendingSurveyReviewCount={pendingSurveyReviewCount}
+        waitDocumentReviewCount={waitDocumentReviewCount}
+        waitDocumentFollowupCount={waitDocumentFollowupCount}
+        incompleteAllowedCount={incompleteAllowedCount}
         waitBillingCount={waitBillingCount}
         waitActionConfirmationCount={waitActionConfirmationCount}
       />
