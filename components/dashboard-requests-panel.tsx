@@ -6,7 +6,7 @@ import { RequestTable } from '@/components/request-table';
 import { getRequestQueueGroup, RequestType, ServiceRequest } from '@/lib/requests/types';
 
 type RequestTypeFilter = 'ALL' | RequestType;
-type WorkflowFilter = 'ALL' | 'WAIT_BILLING_ONLY' | 'WAIT_PAYMENT_ONLY';
+type WorkflowFilter = 'ALL' | 'WAIT_BILLING_ONLY' | 'WAIT_PAYMENT_ONLY' | 'WAIT_MANAGER_REVIEW_ONLY';
 
 type DashboardRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -21,7 +21,8 @@ const FILTER_OPTIONS: Array<{ value: RequestTypeFilter; label: string }> = [
 const WORKFLOW_FILTER_OPTIONS: Array<{ value: WorkflowFilter; label: string }> = [
   { value: 'ALL', label: 'ทุกสถานะ' },
   { value: 'WAIT_BILLING_ONLY', label: 'รอออกใบแจ้งหนี้' },
-  { value: 'WAIT_PAYMENT_ONLY', label: 'รอชำระเงิน' }
+  { value: 'WAIT_PAYMENT_ONLY', label: 'รอชำระเงิน' },
+  { value: 'WAIT_MANAGER_REVIEW_ONLY', label: 'รอผู้จัดการตรวจ' }
 ];
 
 export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps) {
@@ -41,6 +42,10 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
 
     if (workflowFilter === 'WAIT_PAYMENT_ONLY') {
       result = result.filter((request) => request.status === 'WAIT_PAYMENT');
+    }
+
+    if (workflowFilter === 'WAIT_MANAGER_REVIEW_ONLY') {
+      result = result.filter((request) => request.status === 'WAIT_MANAGER_REVIEW');
     }
 
     return result;
@@ -66,6 +71,10 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
     () => requests.filter((request) => getRequestQueueGroup(request.status) === 'BILLING').length,
     [requests]
   );
+  const managerQueueCount = useMemo(
+    () => requests.filter((request) => getRequestQueueGroup(request.status) === 'MANAGER').length,
+    [requests]
+  );
   const waitBillingCount = useMemo(
     () => requests.filter((request) => request.status === 'WAIT_BILLING').length,
     [requests]
@@ -83,6 +92,7 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
         expansionCount={expansionCount}
         surveyQueueCount={surveyQueueCount}
         billingQueueCount={billingQueueCount}
+        managerQueueCount={managerQueueCount}
         pendingSurveyReviewCount={pendingSurveyReviewCount}
         waitBillingCount={waitBillingCount}
         waitPaymentCount={waitPaymentCount}

@@ -10,10 +10,12 @@ export const REQUEST_STATUSES = [
   'WAIT_BILLING',
   'BILLED',
   'WAIT_SURVEYOR_SIGN',
-  'WAIT_PAYMENT'
+  'WAIT_PAYMENT',
+  'WAIT_MANAGER_REVIEW',
+  'COMPLETED'
 ] as const;
 export const REQUEST_TYPES = ['METER', 'EXPANSION'] as const;
-export const REQUEST_QUEUE_GROUPS = ['SURVEY', 'BILLING', 'OTHER'] as const;
+export const REQUEST_QUEUE_GROUPS = ['SURVEY', 'BILLING', 'MANAGER', 'DONE', 'OTHER'] as const;
 
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 export type RequestType = (typeof REQUEST_TYPES)[number];
@@ -34,12 +36,16 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   WAIT_BILLING: 'รอออกใบแจ้งหนี้',
   BILLED: 'ออกใบแจ้งหนี้แล้ว',
   WAIT_SURVEYOR_SIGN: 'รอนักสำรวจเซ็น',
-  WAIT_PAYMENT: 'รอชำระเงิน'
+  WAIT_PAYMENT: 'รอชำระเงิน',
+  WAIT_MANAGER_REVIEW: 'รอผู้จัดการตรวจ',
+  COMPLETED: 'เสร็จสิ้น'
 };
 
 export const REQUEST_QUEUE_GROUP_LABELS: Record<RequestQueueGroup, string> = {
   SURVEY: 'คิวนักสำรวจ',
   BILLING: 'คิวการเงิน',
+  MANAGER: 'คิวผู้จัดการ',
+  DONE: 'เสร็จสิ้น',
   OTHER: 'อื่น ๆ'
 };
 
@@ -53,7 +59,9 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   WAIT_BILLING: 'BILLING',
   BILLED: 'OTHER',
   WAIT_SURVEYOR_SIGN: 'SURVEY',
-  WAIT_PAYMENT: 'BILLING'
+  WAIT_PAYMENT: 'BILLING',
+  WAIT_MANAGER_REVIEW: 'MANAGER',
+  COMPLETED: 'DONE'
 };
 
 export function getRequestQueueGroup(status: RequestStatus): RequestQueueGroup {
@@ -70,6 +78,7 @@ export function getStatusesByQueueGroup(queue: RequestQueueGroup): RequestStatus
 
 export const SURVEYOR_VISIBLE_STATUSES: RequestStatus[] = getStatusesByQueueGroup('SURVEY');
 export const BILLING_VISIBLE_STATUSES: RequestStatus[] = getStatusesByQueueGroup('BILLING');
+export const MANAGER_VISIBLE_STATUSES: RequestStatus[] = getStatusesByQueueGroup('MANAGER');
 
 export function getRequestStatusLabel(status: RequestStatus): string {
   return REQUEST_STATUS_LABELS[status];
@@ -110,6 +119,8 @@ export type ServiceRequest = {
   surveyor_signed_at: string | null;
   surveyor_signed_by: string | null;
   payment_note: string | null;
+  paid_at: string | null;
+  paid_by: string | null;
   created_at: string;
   updated_at: string;
 };

@@ -50,6 +50,11 @@ function revalidateRequestPaths(requestId: string): void {
   revalidatePath(`/requests/${requestId}`);
 }
 
+const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>> = {
+  WAIT_PAYMENT: ['WAIT_MANAGER_REVIEW'],
+  WAIT_MANAGER_REVIEW: ['COMPLETED']
+};
+
 export async function createRequestAction(formData: FormData) {
   const customerName = requiredField(formData, 'customer_name');
   const phone = requiredField(formData, 'phone');
@@ -133,10 +138,26 @@ export async function updateRequestStatusAction(formData: FormData) {
   }
 
   const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status').eq('id', requestId).single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if (!isValidRequestStatus(request.status)) {
+    throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
+  }
+
+  const allowedTransitions = ALLOWED_STATUS_TRANSITIONS[request.status];
+  if (allowedTransitions && !allowedTransitions.includes(nextStatus)) {
+    throw new Error('ไม่สามารถข้ามสถานะได้');
+  }
 
   const { error } = await supabase
     .from('service_requests')
-    .update({ status: nextStatus, updated_at: new Date().toISOString() })
+    .update({ status: nextStatus, updated_at: nowIso })
     .eq('id', requestId);
 
   if (error) {
@@ -408,6 +429,92 @@ export async function updateRequestAssigneeAction(formData: FormData) {
       assignee_code: assignee.code,
       assignee_name: assignee.name,
       updated_at: new Date().toISOString()
+    })
+    .eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function confirmPaymentReceivedAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const paidBy = requiredField(formData, 'paid_by');
+
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if (!isValidRequestStatus(request.status)) {
+    throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
+  }
+
+  assertMeterLoopAllowed(request.request_type as RequestType);
+
+  if (request.status !== 'WAIT_PAYMENT') {
+    throw new Error('ยืนยันชำระเงินได้เฉพาะงานที่อยู่สถานะรอชำระเงิน');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: 'WAIT_MANAGER_REVIEW',
+      paid_at: nowIso,
+      paid_by: paidBy,
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function approveManagerReviewAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if (!isValidRequestStatus(request.status)) {
+    throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
+  }
+
+  assertMeterLoopAllowed(request.request_type as RequestType);
+
+  if (request.status !== 'WAIT_MANAGER_REVIEW') {
+    throw new Error('ผู้จัดการอนุมัติได้เฉพาะงานที่รอผู้จัดการตรวจ');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: 'COMPLETED',
+      updated_at: nowIso
     })
     .eq('id', requestId);
 
