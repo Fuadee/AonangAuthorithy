@@ -8,7 +8,9 @@ export const REQUEST_STATUSES = [
   'SURVEY_RESCHEDULE_REQUESTED',
   'SURVEY_COMPLETED',
   'WAIT_DOCUMENT_REVIEW',
-  'WAIT_DOCUMENT_FOLLOWUP',
+  'WAIT_DOCUMENT_FROM_CUSTOMER',
+  'READY_FOR_SURVEY',
+  'IN_SURVEY',
   'WAIT_BILLING',
   'WAIT_ACTION_CONFIRMATION',
   'WAIT_MANAGER_REVIEW',
@@ -35,8 +37,10 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   SURVEY_DOCS_INCOMPLETE: 'เอกสารไม่ครบ',
   SURVEY_RESCHEDULE_REQUESTED: 'ขอเลื่อนวันสำรวจ',
   SURVEY_COMPLETED: 'สำรวจแล้ว',
-  WAIT_DOCUMENT_REVIEW: 'รอตรวจเอกสาร',
-  WAIT_DOCUMENT_FOLLOWUP: 'รอเจ้าหน้าที่ติดตามเอกสาร',
+  WAIT_DOCUMENT_REVIEW: 'รอตรวจเอกสารก่อนรับงาน',
+  WAIT_DOCUMENT_FROM_CUSTOMER: 'รอผู้ใช้ไฟนำเอกสารมาให้',
+  READY_FOR_SURVEY: 'พร้อมรับงานสำรวจ',
+  IN_SURVEY: 'กำลังสำรวจหน้างาน',
   WAIT_BILLING: 'รอออกใบแจ้งหนี้',
   WAIT_ACTION_CONFIRMATION: 'รอดำเนินการหลังแจ้งหนี้',
   WAIT_MANAGER_REVIEW: 'รอผู้จัดการตรวจ',
@@ -59,7 +63,9 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   SURVEY_RESCHEDULE_REQUESTED: 'SURVEY',
   SURVEY_COMPLETED: 'SURVEY',
   WAIT_DOCUMENT_REVIEW: 'SURVEY',
-  WAIT_DOCUMENT_FOLLOWUP: 'SURVEY',
+  WAIT_DOCUMENT_FROM_CUSTOMER: 'SURVEY',
+  READY_FOR_SURVEY: 'SURVEY',
+  IN_SURVEY: 'SURVEY',
   WAIT_BILLING: 'BILLING',
   WAIT_ACTION_CONFIRMATION: 'BILLING',
   WAIT_MANAGER_REVIEW: 'MANAGER',
@@ -98,73 +104,59 @@ export function isDocumentComplete(request: Pick<ServiceRequest, 'document_statu
   return request.document_status === 'COMPLETE';
 }
 
-export function isIncompleteButAllowedToProceed(
-  request: Pick<ServiceRequest, 'document_status' | 'allow_proceed_with_incomplete_docs'>
-): boolean {
-  return request.document_status === 'INCOMPLETE' && request.allow_proceed_with_incomplete_docs;
+export function hasCollectedDocsOnSite(request: Pick<ServiceRequest, 'collect_docs_on_site'>): boolean {
+  return request.collect_docs_on_site;
 }
 
-export function canReturnToDocumentReview(request: Pick<ServiceRequest, 'status'>): boolean {
-  return request.status === 'WAIT_DOCUMENT_FOLLOWUP';
+export function canMoveToBilling(request: Pick<ServiceRequest, 'collect_docs_on_site' | 'document_status'>): boolean {
+  if (!request.collect_docs_on_site) {
+    return true;
+  }
+
+  return request.document_status === 'COMPLETE';
 }
 
-export type DocumentWorkflowDecision = 'COMPLETE' | 'INCOMPLETE_WAIT_FOLLOWUP' | 'INCOMPLETE_ALLOW_PROCEED';
+export type DocumentReviewDecision = 'COMPLETE' | 'INCOMPLETE_COLLECT_ON_SITE' | 'INCOMPLETE_WAIT_CUSTOMER';
 
-export function resolveDocumentWorkflowDecision(decision: DocumentWorkflowDecision): {
+export function resolveDocumentReviewDecision(decision: DocumentReviewDecision): {
   documentStatus: DocumentStatus;
-  allowProceedWithIncompleteDocs: boolean;
-  nextStatus: Extract<RequestStatus, 'WAIT_DOCUMENT_FOLLOWUP' | 'WAIT_BILLING'>;
+  collectDocsOnSite: boolean;
+  nextStatus: Extract<RequestStatus, 'READY_FOR_SURVEY' | 'WAIT_DOCUMENT_FROM_CUSTOMER'>;
 } {
   if (decision === 'COMPLETE') {
     return {
       documentStatus: 'COMPLETE',
-      allowProceedWithIncompleteDocs: false,
-      nextStatus: 'WAIT_BILLING'
+      collectDocsOnSite: false,
+      nextStatus: 'READY_FOR_SURVEY'
     };
   }
 
-  if (decision === 'INCOMPLETE_ALLOW_PROCEED') {
+  if (decision === 'INCOMPLETE_COLLECT_ON_SITE') {
     return {
       documentStatus: 'INCOMPLETE',
-      allowProceedWithIncompleteDocs: true,
-      nextStatus: 'WAIT_BILLING'
+      collectDocsOnSite: true,
+      nextStatus: 'READY_FOR_SURVEY'
     };
   }
 
   return {
     documentStatus: 'INCOMPLETE',
-    allowProceedWithIncompleteDocs: false,
-    nextStatus: 'WAIT_DOCUMENT_FOLLOWUP'
+    collectDocsOnSite: false,
+    nextStatus: 'WAIT_DOCUMENT_FROM_CUSTOMER'
   };
 }
 
 export function getDocumentStatusSummary(
-  request: Pick<
-    ServiceRequest,
-    | 'document_status'
-    | 'allow_proceed_with_incomplete_docs'
-    | 'incomplete_docs_note'
-    | 'proceed_override_by'
-    | 'proceed_override_at'
-    | 'proceed_override_reason'
-  >
+  request: Pick<ServiceRequest, 'document_status' | 'collect_docs_on_site' | 'incomplete_docs_note'>
 ): {
   documentStatusLabel: string;
-  allowProceedLabel: string;
-  isOverrideCase: boolean;
+  collectDocsOnSiteLabel: string;
   incompleteDocsNote: string | null;
-  proceedOverrideBy: string | null;
-  proceedOverrideAt: string | null;
-  proceedOverrideReason: string | null;
 } {
   return {
-    documentStatusLabel: isDocumentComplete(request) ? 'ครบ' : 'ไม่ครบ',
-    allowProceedLabel: request.allow_proceed_with_incomplete_docs ? 'ใช่' : 'ไม่ใช่',
-    isOverrideCase: isIncompleteButAllowedToProceed(request),
-    incompleteDocsNote: request.incomplete_docs_note,
-    proceedOverrideBy: request.proceed_override_by,
-    proceedOverrideAt: request.proceed_override_at,
-    proceedOverrideReason: request.proceed_override_reason
+    documentStatusLabel: request.document_status === null ? '-' : isDocumentComplete(request) ? 'ครบ' : 'ไม่ครบ',
+    collectDocsOnSiteLabel: request.collect_docs_on_site ? 'ใช่' : 'ไม่ใช่',
+    incompleteDocsNote: request.incomplete_docs_note
   };
 }
 
@@ -210,11 +202,8 @@ export type ServiceRequest = {
   survey_reviewed_at: string | null;
   survey_completed_at: string | null;
   document_status: DocumentStatus | null;
-  allow_proceed_with_incomplete_docs: boolean;
+  collect_docs_on_site: boolean;
   incomplete_docs_note: string | null;
-  proceed_override_by: string | null;
-  proceed_override_at: string | null;
-  proceed_override_reason: string | null;
   billing_amount: number | null;
   billing_note: string | null;
   billed_at: string | null;

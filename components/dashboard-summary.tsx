@@ -7,8 +7,7 @@ type DashboardSummaryProps = {
   managerQueueCount: number;
   pendingSurveyReviewCount: number;
   waitDocumentReviewCount: number;
-  waitDocumentFollowupCount: number;
-  incompleteAllowedCount: number;
+  waitDocumentFromCustomerCount: number;
   waitBillingCount: number;
   waitActionConfirmationCount: number;
 };
@@ -22,8 +21,7 @@ export function DashboardSummary({
   managerQueueCount,
   pendingSurveyReviewCount,
   waitDocumentReviewCount,
-  waitDocumentFollowupCount,
-  incompleteAllowedCount,
+  waitDocumentFromCustomerCount,
   waitBillingCount,
   waitActionConfirmationCount
 }: DashboardSummaryProps) {
@@ -62,12 +60,8 @@ export function DashboardSummary({
         <p className="mt-2 text-3xl font-semibold text-amber-600">{waitDocumentReviewCount}</p>
       </article>
       <article className="card p-5">
-        <p className="text-sm text-slate-500">รอติดตามเอกสาร</p>
-        <p className="mt-2 text-3xl font-semibold text-orange-600">{waitDocumentFollowupCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">อนุโลมเอกสารไม่ครบ</p>
-        <p className="mt-2 text-3xl font-semibold text-amber-700">{incompleteAllowedCount}</p>
+        <p className="text-sm text-slate-500">รอผู้ใช้ไฟนำเอกสารมาให้</p>
+        <p className="mt-2 text-3xl font-semibold text-orange-600">{waitDocumentFromCustomerCount}</p>
       </article>
       <article className="card p-5">
         <p className="text-sm text-slate-500">รอออกใบแจ้งหนี้</p>

@@ -5,14 +5,14 @@ import { redirect } from 'next/navigation';
 import { generateRequestNo } from '@/lib/requests/generateRequestNo';
 import { isAreaCode } from '@/lib/requests/areas';
 import {
-  canReturnToDocumentReview,
+  canMoveToBilling,
   canMoveToManagerReview,
-  DocumentWorkflowDecision,
+  DocumentReviewDecision,
   REQUEST_STATUSES,
   RequestStatus,
   REQUEST_TYPES,
   RequestType,
-  resolveDocumentWorkflowDecision,
+  resolveDocumentReviewDecision,
   resolvePostBillingPhase
 } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -114,7 +114,12 @@ export async function createRequestAction(formData: FormData) {
 
   const requestNo = await generateRequestNo();
 
-  const initialStatus: RequestStatus = assignedSurveyor && scheduledSurveyDate ? 'PENDING_SURVEY_REVIEW' : 'NEW';
+  const initialStatus: RequestStatus =
+    requestType === 'METER'
+      ? 'WAIT_DOCUMENT_REVIEW'
+      : assignedSurveyor && scheduledSurveyDate
+        ? 'PENDING_SURVEY_REVIEW'
+        : 'NEW';
 
   const { error: insertError } = await supabase.from('service_requests').insert({
     request_no: requestNo,
@@ -129,7 +134,8 @@ export async function createRequestAction(formData: FormData) {
     assigned_surveyor: assignedSurveyor,
     scheduled_survey_date: scheduledSurveyDate,
     status: initialStatus,
-    request_type: requestType
+    request_type: requestType,
+    collect_docs_on_site: false
   });
 
   if (insertError) {
@@ -154,7 +160,7 @@ export async function updateRequestStatusAction(formData: FormData) {
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status,invoice_signed_at,paid_at')
+    .select('id,status,invoice_signed_at,paid_at,request_type,collect_docs_on_site,document_status')
     .eq('id', requestId)
     .single();
 
@@ -172,11 +178,7 @@ export async function updateRequestStatusAction(formData: FormData) {
   }
 
   if (request.status === 'WAIT_DOCUMENT_REVIEW' && nextStatus === 'WAIT_BILLING') {
-    throw new Error('ห้ามเปลี่ยนเป็นรอออกใบแจ้งหนี้โดยตรง ต้องระบุผลตรวจเอกสารก่อน');
-  }
-
-  if (request.status === 'WAIT_DOCUMENT_FOLLOWUP' && nextStatus === 'WAIT_BILLING') {
-    throw new Error('ห้ามข้ามจากรอติดตามเอกสารไปออกใบแจ้งหนี้โดยตรง');
+    throw new Error('ห้ามเปลี่ยนเป็นรอออกใบแจ้งหนี้โดยตรง ต้องผ่านการสำรวจก่อน');
   }
 
   if (request.status === 'WAIT_BILLING' && (nextStatus === 'WAIT_MANAGER_REVIEW' || nextStatus === 'COMPLETED')) {
@@ -185,6 +187,16 @@ export async function updateRequestStatusAction(formData: FormData) {
 
   if (request.status === 'WAIT_ACTION_CONFIRMATION' && nextStatus === 'COMPLETED') {
     throw new Error('ต้องผ่านการตรวจของผู้จัดการก่อนปิดงาน');
+  }
+
+  if (request.request_type === 'METER' && request.status === 'WAIT_DOCUMENT_FROM_CUSTOMER' && nextStatus === 'READY_FOR_SURVEY') {
+    throw new Error('ต้องกด action “ได้รับเอกสารแล้ว” เพื่อยืนยันเอกสารครบก่อนรับงาน');
+  }
+
+  if (request.request_type === 'METER' && request.status === 'SURVEY_COMPLETED' && nextStatus === 'WAIT_BILLING') {
+    if (!canMoveToBilling(request)) {
+      throw new Error('เคสรับเอกสารหน้างาน ต้องยืนยันว่าเอกสารครบแล้วก่อนออกใบแจ้งหนี้');
+    }
   }
 
   if (nextStatus === 'WAIT_MANAGER_REVIEW' && !canMoveToManagerReview(request)) {
@@ -224,7 +236,7 @@ export async function updateSurveyorAction(formData: FormData) {
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status')
+    .select('id,status,request_type,collect_docs_on_site')
     .eq('id', requestId)
     .single();
 
@@ -234,6 +246,10 @@ export async function updateSurveyorAction(formData: FormData) {
 
   if (!isValidRequestStatus(request.status)) {
     throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
+  }
+
+  if ((request.request_type as RequestType) === 'METER') {
+    throw new Error('งานขอมิเตอร์ใช้ workflow ใหม่ กรุณาใช้ action ในหน้า detail');
   }
 
   if (!Object.keys(SURVEYOR_ALLOWED_CURRENT_STATUSES).includes(action)) {
@@ -261,11 +277,8 @@ export async function updateSurveyorAction(formData: FormData) {
     survey_reviewed_at?: string | null;
     survey_completed_at?: string | null;
     document_status?: 'COMPLETE' | 'INCOMPLETE' | null;
-    allow_proceed_with_incomplete_docs?: boolean;
+    collect_docs_on_site?: boolean;
     incomplete_docs_note?: string | null;
-    proceed_override_by?: string | null;
-    proceed_override_at?: string | null;
-    proceed_override_reason?: string | null;
     updated_at: string;
   } = {
     status: 'PENDING_SURVEY_REVIEW',
@@ -299,11 +312,8 @@ export async function updateSurveyorAction(formData: FormData) {
     payload.survey_note = note;
     payload.survey_completed_at = nowIso;
     payload.document_status = null;
-    payload.allow_proceed_with_incomplete_docs = false;
+    payload.collect_docs_on_site = false;
     payload.incomplete_docs_note = null;
-    payload.proceed_override_by = null;
-    payload.proceed_override_at = null;
-    payload.proceed_override_reason = null;
   }
 
   const { error } = await supabase.from('service_requests').update(payload).eq('id', requestId);
@@ -316,12 +326,10 @@ export async function updateSurveyorAction(formData: FormData) {
   redirect(`/requests/${requestId}`);
 }
 
-type DocumentReviewDecision = DocumentWorkflowDecision;
-
 const DOCUMENT_REVIEW_DECISIONS: DocumentReviewDecision[] = [
   'COMPLETE',
-  'INCOMPLETE_WAIT_FOLLOWUP',
-  'INCOMPLETE_ALLOW_PROCEED'
+  'INCOMPLETE_COLLECT_ON_SITE',
+  'INCOMPLETE_WAIT_CUSTOMER'
 ];
 
 function isDocumentReviewDecision(value: string): value is DocumentReviewDecision {
@@ -332,8 +340,6 @@ export async function updateDocumentReviewDecisionAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
   const decision = requiredField(formData, 'decision');
   const note = optionalField(formData, 'incomplete_docs_note');
-  const overrideReason = optionalField(formData, 'proceed_override_reason');
-  const overrideBy = optionalField(formData, 'proceed_override_by');
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
@@ -343,7 +349,7 @@ export async function updateDocumentReviewDecisionAction(formData: FormData) {
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status,request_type')
+    .select('id,status,request_type,collect_docs_on_site')
     .eq('id', requestId)
     .single();
 
@@ -361,23 +367,14 @@ export async function updateDocumentReviewDecisionAction(formData: FormData) {
     throw new Error('บันทึกผลตรวจเอกสารได้เฉพาะงานที่อยู่สถานะรอตรวจเอกสาร');
   }
 
-  const resolved = resolveDocumentWorkflowDecision(decision);
+  const resolved = resolveDocumentReviewDecision(decision);
 
-  if (decision === 'INCOMPLETE_WAIT_FOLLOWUP' && !note) {
-    throw new Error('กรณีเอกสารไม่ครบต้องรอเอกสารเพิ่ม กรุณาระบุหมายเหตุเอกสารขาด');
+  if (decision !== 'COMPLETE' && !note) {
+    throw new Error('กรณีเอกสารไม่ครบ กรุณาระบุหมายเหตุเอกสารขาด');
   }
 
-  if (decision === 'INCOMPLETE_ALLOW_PROCEED') {
-    if (!overrideReason) {
-      throw new Error('กรณีอนุญาตให้ไปต่อทั้งที่เอกสารยังไม่ครบ ต้องระบุเหตุผล');
-    }
-    if (!overrideBy) {
-      throw new Error('กรณีอนุญาตให้ไปต่อทั้งที่เอกสารยังไม่ครบ ต้องระบุผู้อนุญาต');
-    }
-  }
-
-  if (decision === 'COMPLETE' && (note || overrideReason || overrideBy)) {
-    throw new Error('กรณีเอกสารครบ ไม่ต้องระบุข้อมูลเคสเอกสารไม่ครบ');
+  if (decision === 'COMPLETE' && note) {
+    throw new Error('กรณีเอกสารครบ ไม่ต้องระบุหมายเหตุเอกสารขาด');
   }
 
   const { error } = await supabase
@@ -385,11 +382,8 @@ export async function updateDocumentReviewDecisionAction(formData: FormData) {
     .update({
       status: resolved.nextStatus,
       document_status: resolved.documentStatus,
-      allow_proceed_with_incomplete_docs: resolved.allowProceedWithIncompleteDocs,
+      collect_docs_on_site: resolved.collectDocsOnSite,
       incomplete_docs_note: resolved.documentStatus === 'INCOMPLETE' ? note : null,
-      proceed_override_reason: resolved.allowProceedWithIncompleteDocs ? overrideReason : null,
-      proceed_override_by: resolved.allowProceedWithIncompleteDocs ? overrideBy : null,
-      proceed_override_at: resolved.allowProceedWithIncompleteDocs ? nowIso : null,
       updated_at: nowIso
     })
     .eq('id', requestId);
@@ -402,7 +396,7 @@ export async function updateDocumentReviewDecisionAction(formData: FormData) {
   redirect(`/requests/${requestId}`);
 }
 
-export async function returnToDocumentReviewAction(formData: FormData) {
+export async function confirmDocumentsReceivedFromCustomerAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
@@ -421,13 +415,132 @@ export async function returnToDocumentReviewAction(formData: FormData) {
     throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
   }
 
-  if (!canReturnToDocumentReview(request)) {
-    throw new Error('ส่งกลับมาตรวจเอกสารได้เฉพาะงานที่อยู่ระหว่างติดตามเอกสาร');
+  if (request.status !== 'WAIT_DOCUMENT_FROM_CUSTOMER') {
+    throw new Error('ยืนยันรับเอกสารได้เฉพาะงานที่อยู่สถานะรอผู้ใช้ไฟนำเอกสารมาให้');
   }
 
   const { error } = await supabase
     .from('service_requests')
-    .update({ status: 'WAIT_DOCUMENT_REVIEW', updated_at: nowIso })
+    .update({
+      status: 'READY_FOR_SURVEY',
+      document_status: 'COMPLETE',
+      collect_docs_on_site: false,
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function startSurveyAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,collect_docs_on_site')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if ((request.request_type as RequestType) !== 'METER') {
+    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์');
+  }
+
+  if (request.status !== 'READY_FOR_SURVEY') {
+    throw new Error('รับงาน/ไปสำรวจได้เฉพาะสถานะพร้อมรับงานสำรวจ');
+  }
+
+  const { error } = await supabase.from('service_requests').update({ status: 'IN_SURVEY', updated_at: nowIso }).eq('id', requestId);
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function completeSurveyAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const surveyNote = optionalField(formData, 'survey_note');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if ((request.request_type as RequestType) !== 'METER') {
+    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์');
+  }
+
+  if (request.status !== 'IN_SURVEY') {
+    throw new Error('กดสำรวจเสร็จได้เฉพาะสถานะกำลังสำรวจหน้างาน');
+  }
+  const collectDocsOnSite = Boolean((request as { collect_docs_on_site?: boolean }).collect_docs_on_site);
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: collectDocsOnSite ? 'SURVEY_COMPLETED' : 'WAIT_BILLING',
+      survey_note: surveyNote,
+      survey_completed_at: nowIso,
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function confirmOnSiteDocumentsCompleteAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,collect_docs_on_site,document_status')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if ((request.request_type as RequestType) !== 'METER') {
+    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์');
+  }
+
+  if (request.status !== 'SURVEY_COMPLETED') {
+    throw new Error('ยืนยันเอกสารครบหลังสำรวจได้เฉพาะสถานะสำรวจเสร็จ');
+  }
+
+  if (!request.collect_docs_on_site) {
+    throw new Error('งานนี้ไม่ใช่เคสรับเอกสารหน้างาน');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({ status: 'WAIT_BILLING', document_status: 'COMPLETE', updated_at: nowIso })
     .eq('id', requestId);
 
   if (error) {

@@ -3,7 +3,7 @@ import {
   getRequestQueueGroup,
   getRequestQueueGroupLabel,
   getRequestStatusLabel,
-  isIncompleteButAllowedToProceed,
+  hasCollectedDocsOnSite,
   REQUEST_TYPE_LABELS,
   ServiceRequest
 } from '@/lib/requests/types';
@@ -59,9 +59,9 @@ export function RequestTable({ requests }: RequestTableProps) {
                 <td className="px-4 py-3">
                   <div className="flex flex-wrap items-center gap-2">
                     <span>{getRequestStatusLabel(request.status)}</span>
-                    {isIncompleteButAllowedToProceed(request) ? (
+                    {hasCollectedDocsOnSite(request) ? (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
-                        เอกสารยังไม่ครบ
+                        รับเอกสารหน้างาน
                       </span>
                     ) : null}
                   </div>

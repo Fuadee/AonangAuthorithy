@@ -3,12 +3,12 @@ import { notFound } from 'next/navigation';
 import { MeterWorkflowActions } from '@/components/meter-workflow-actions';
 import { SurveyorActionWorkflow } from '@/components/surveyor-action-workflow';
 import {
+  canMoveToBilling,
   canMoveToManagerReview,
   getDocumentStatusSummary,
   getRequestQueueGroup,
   getRequestQueueGroupLabel,
   getRequestStatusLabel,
-  isIncompleteButAllowedToProceed,
   isInvoiceSigned,
   isPaid,
   REQUEST_TYPE_LABELS,
@@ -64,13 +64,23 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
       case 'SURVEY_COMPLETED':
       case 'WAIT_DOCUMENT_REVIEW':
         return {
-          nextStep: 'ตรวจเอกสารหลังสำรวจและเลือกผลการตรวจเอกสาร',
-          owner: 'นักสำรวจ / เจ้าหน้าที่ที่รับผิดชอบเอกสาร'
+          nextStep: 'ตรวจเอกสารก่อนรับงาน หรือยืนยันเอกสารครบหลังสำรวจ (กรณีรับเอกสารหน้างาน)',
+          owner: 'เจ้าหน้าที่รับคำร้อง / นักสำรวจ'
         };
-      case 'WAIT_DOCUMENT_FOLLOWUP':
+      case 'WAIT_DOCUMENT_FROM_CUSTOMER':
         return {
-          nextStep: 'ติดตามเอกสารเพิ่ม แล้วส่งกลับมาตรวจเอกสารรอบใหม่',
+          nextStep: 'รอผู้ใช้ไฟนำเอกสารมาให้ แล้วกดยืนยันได้รับเอกสาร',
           owner: 'เจ้าหน้าที่รับคำร้อง'
+        };
+      case 'READY_FOR_SURVEY':
+        return {
+          nextStep: 'รับงานแล้วไปสำรวจ',
+          owner: 'นักสำรวจ'
+        };
+      case 'IN_SURVEY':
+        return {
+          nextStep: 'สำรวจให้เสร็จแล้วบันทึกผล',
+          owner: 'นักสำรวจ'
         };
       case 'WAIT_BILLING':
         return {
@@ -148,10 +158,7 @@ function getTimeline(request: {
   invoice_signed_by: string | null;
   paid_by: string | null;
   document_status: 'COMPLETE' | 'INCOMPLETE' | null;
-  allow_proceed_with_incomplete_docs: boolean;
-  proceed_override_by: string | null;
-  proceed_override_at: string | null;
-  proceed_override_reason: string | null;
+  collect_docs_on_site: boolean;
 }): TimelineItem[] {
   const items: TimelineItem[] = [
     {
@@ -187,19 +194,12 @@ function getTimeline(request: {
     });
   }
 
-  if (request.document_status === 'INCOMPLETE' && request.allow_proceed_with_incomplete_docs && request.proceed_override_at) {
-    const detail = ['เอกสารยังไม่ครบ แต่อนุญาตให้ดำเนินการต่อ'];
-    if (request.proceed_override_by) {
-      detail.push(`ผู้อนุญาต: ${request.proceed_override_by}`);
-    }
-    if (request.proceed_override_reason) {
-      detail.push(`เหตุผล: ${request.proceed_override_reason}`);
-    }
+  if (request.collect_docs_on_site) {
     items.push({
-      key: 'document-override',
-      title: 'บันทึกอนุโลมเอกสารไม่ครบ',
-      description: detail.join(' | '),
-      at: request.proceed_override_at
+      key: 'collect-docs-on-site',
+      title: 'กำหนดเป็นเคสรับเอกสารหน้างาน',
+      description: 'สามารถรับงานและไปสำรวจได้ แต่ต้องยืนยันเอกสารครบหลังสำรวจ',
+      at: request.updated_at
     });
   }
 
@@ -256,7 +256,9 @@ function getActionTitle(status: RequestStatus, requestType: RequestType): string
     [
       'SURVEY_COMPLETED',
       'WAIT_DOCUMENT_REVIEW',
-      'WAIT_DOCUMENT_FOLLOWUP',
+      'WAIT_DOCUMENT_FROM_CUSTOMER',
+      'READY_FOR_SURVEY',
+      'IN_SURVEY',
       'WAIT_BILLING',
       'WAIT_ACTION_CONFIRMATION',
       'WAIT_MANAGER_REVIEW'
@@ -271,7 +273,7 @@ function getActionTitle(status: RequestStatus, requestType: RequestType): string
     case 'SURVEY_ACCEPTED':
       return 'งานที่ทำได้ตอนนี้';
     case 'SURVEY_DOCS_INCOMPLETE':
-    case 'WAIT_DOCUMENT_FOLLOWUP':
+    case 'WAIT_DOCUMENT_FROM_CUSTOMER':
     case 'SURVEY_COMPLETED':
     case 'WAIT_DOCUMENT_REVIEW':
       return 'สถานะงาน';
@@ -287,7 +289,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,document_status,allow_proceed_with_incomplete_docs,incomplete_docs_note,proceed_override_by,proceed_override_at,proceed_override_reason,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,document_status,collect_docs_on_site,incomplete_docs_note,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -309,15 +311,17 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     [
       'SURVEY_COMPLETED',
       'WAIT_DOCUMENT_REVIEW',
-      'WAIT_DOCUMENT_FOLLOWUP',
+      'WAIT_DOCUMENT_FROM_CUSTOMER',
+      'READY_FOR_SURVEY',
+      'IN_SURVEY',
       'WAIT_BILLING',
       'WAIT_ACTION_CONFIRMATION',
       'WAIT_MANAGER_REVIEW'
     ].includes(requestStatus);
   const documentSummary = getDocumentStatusSummary(request);
-  const overrideCase = isIncompleteButAllowedToProceed(request);
   const invoiceSigned = isInvoiceSigned(request);
   const paid = isPaid(request);
+  const canGoBilling = canMoveToBilling(request);
   const readyForManager = canMoveToManagerReview(request);
   const nextStepSummary = getNextStepSummary(requestStatus, requestType);
   const timeline = getTimeline({
@@ -337,10 +341,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     invoice_signed_by: request.invoice_signed_by,
     paid_by: request.paid_by,
     document_status: request.document_status,
-    allow_proceed_with_incomplete_docs: request.allow_proceed_with_incomplete_docs,
-    proceed_override_by: request.proceed_override_by,
-    proceed_override_at: request.proceed_override_at,
-    proceed_override_reason: request.proceed_override_reason
+    collect_docs_on_site: request.collect_docs_on_site
   });
 
   return (
@@ -400,30 +401,18 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
             </div>
             <div>
               <dt className="text-sm text-slate-500">อนุญาตให้ดำเนินการต่อ</dt>
-              <dd className="mt-1 font-medium">{documentSummary.allowProceedLabel}</dd>
+              <dd className="mt-1 font-medium">{documentSummary.collectDocsOnSiteLabel}</dd>
             </div>
             <div>
               <dt className="text-sm text-slate-500">หมายเหตุเอกสารขาด</dt>
               <dd className="mt-1 font-medium">{documentSummary.incompleteDocsNote ?? '-'}</dd>
             </div>
-            <div>
-              <dt className="text-sm text-slate-500">ผู้อนุญาตให้ไปต่อ</dt>
-              <dd className="mt-1 font-medium">{documentSummary.proceedOverrideBy ?? '-'}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-slate-500">เวลาอนุญาต</dt>
-              <dd className="mt-1 font-medium">{formatDateTime(documentSummary.proceedOverrideAt)}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-slate-500">เหตุผลการอนุญาต</dt>
-              <dd className="mt-1 font-medium">{documentSummary.proceedOverrideReason ?? '-'}</dd>
-            </div>
           </dl>
 
-          {overrideCase ? (
+          {!canGoBilling && request.status === 'SURVEY_COMPLETED' ? (
             <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
-              <p className="text-sm font-semibold text-amber-800">เอกสารยังไม่ครบ แต่ได้รับอนุญาตให้ดำเนินการต่อ</p>
-              <p className="mt-1 text-sm text-amber-700">งานนี้ถูกอนุญาตให้ดำเนินการต่อทั้งที่เอกสารยังไม่ครบ</p>
+              <p className="text-sm font-semibold text-amber-800">เคสรับเอกสารหน้างาน ยังต้องยืนยันเอกสารครบก่อน</p>
+              <p className="mt-1 text-sm text-amber-700">ยังไม่สามารถไปสถานะรอออกใบแจ้งหนี้ได้จนกว่าจะกด “เอกสารครบแล้ว”</p>
             </div>
           ) : null}
         </section>
@@ -496,6 +485,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
               currentStatus={requestStatus}
               isInvoiceSigned={invoiceSigned}
               isPaid={paid}
+              collectDocsOnSite={request.collect_docs_on_site}
             />
           ) : null}
           {!isMeterLoopStatus && isSurveyorFlowStatus ? (
