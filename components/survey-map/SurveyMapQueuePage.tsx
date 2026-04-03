@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { SurveyMapMobileToggle } from '@/components/survey-map/SurveyMapMobileToggle';
 import { SurveyMapPanel } from '@/components/survey-map/SurveyMapPanel';
 import { SurveyQueueList } from '@/components/survey-map/SurveyQueueList';
@@ -42,6 +42,19 @@ export function SurveyMapQueuePage({ requests, activeStatuses }: SurveyMapQueueP
     : distanceReference
       ? 'ศูนย์กลางแผนที่ปัจจุบัน'
       : 'ยังไม่มีจุดอ้างอิง (รอโหลดแผนที่)';
+
+  const handleMapCenterChange = useCallback(
+    (latitude: number, longitude: number) => {
+      setReferencePoint((previous) => {
+        if (previous && Math.abs(previous.latitude - latitude) < 0.000001 && Math.abs(previous.longitude - longitude) < 0.000001) {
+          return previous;
+        }
+
+        return { latitude, longitude };
+      });
+    },
+    [setReferencePoint]
+  );
 
   return (
     <div className="space-y-4">
@@ -93,7 +106,7 @@ export function SurveyMapQueuePage({ requests, activeStatuses }: SurveyMapQueueP
             requests={sortedVisibleRequests}
             selectedRequestId={selectedRequestId}
             onSelectRequest={setSelectedRequestId}
-            onMapCenterChange={(latitude, longitude) => setReferencePoint({ latitude, longitude })}
+            onMapCenterChange={handleMapCenterChange}
           />
         </section>
       </div>

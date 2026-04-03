@@ -34,6 +34,11 @@ export function SurveyMapMarkers({ leaflet, map, requests, selectedRequestId, on
     markerByIdRef.current.forEach((marker) => marker.remove());
     markerByIdRef.current.clear();
     const markerById = markerByIdRef.current;
+    const markerPane = (map as unknown as { getPane?: (name: string) => HTMLElement | undefined }).getPane?.('markerPane');
+
+    if (!markerPane) {
+      return;
+    }
 
     const defaultIcon = leaflet.icon({ iconUrl: DEFAULT_ICON_URL, shadowUrl: SHADOW_URL, iconSize: [25, 41], iconAnchor: [12, 41] });
     const selectedIcon = leaflet.icon({ iconUrl: SELECTED_ICON_URL, shadowUrl: SHADOW_URL, iconSize: [25, 41], iconAnchor: [12, 41] });
