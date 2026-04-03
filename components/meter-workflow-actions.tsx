@@ -2,13 +2,17 @@
 
 import { MouseEvent, ReactNode, useState } from 'react';
 import {
+  approveFixFromPhotoAction,
   approveManagerReviewAction,
-  completeSurveyAction,
   confirmDocumentsReceivedFromCustomerAction,
-  confirmOnSiteDocumentsCompleteAction,
   confirmPaymentReceivedAction,
   confirmBillingSurveyorSignAction,
   issueBillingAction,
+  markSurveyFailedAction,
+  markSurveyPassedAction,
+  moveToResurveyAction,
+  rejectFixPhotoAndRequireResurveyAction,
+  reportCustomerFixAction,
   startSurveyAction,
   updateSurveyScheduleAction,
   updateDocumentReviewDecisionAction
@@ -20,7 +24,6 @@ type MeterWorkflowActionsProps = {
   currentStatus: RequestStatus;
   isInvoiceSigned: boolean;
   isPaid: boolean;
-  collectDocsOnSite: boolean;
   hasCurrentSurveyDate: boolean;
 };
 
@@ -32,8 +35,12 @@ type MeterAction =
   | 'START_SURVEY'
   | 'SCHEDULE_SURVEY'
   | 'EDIT_SURVEY_DATE'
-  | 'COMPLETE_SURVEY'
-  | 'CONFIRM_ON_SITE_DOCS_COMPLETE'
+  | 'SURVEY_PASS'
+  | 'SURVEY_FAIL'
+  | 'CUSTOMER_FIXED'
+  | 'SCHEDULE_RESURVEY'
+  | 'PHOTO_APPROVE'
+  | 'PHOTO_REJECT'
   | 'ISSUE_BILL'
   | 'SURVEYOR_SIGN'
   | 'CONFIRM_PAYMENT'
@@ -47,8 +54,12 @@ const ACTION_LABELS: Record<MeterAction, string> = {
   START_SURVEY: 'รับงาน / ไปสำรวจ',
   SCHEDULE_SURVEY: 'กำหนดวันสำรวจ',
   EDIT_SURVEY_DATE: 'แก้ไขวันนัด',
-  COMPLETE_SURVEY: 'สำรวจเสร็จ',
-  CONFIRM_ON_SITE_DOCS_COMPLETE: 'เอกสารครบแล้ว',
+  SURVEY_PASS: 'สำรวจผ่าน',
+  SURVEY_FAIL: 'สำรวจไม่ผ่าน / ให้ผู้ใช้ไฟแก้ไข',
+  CUSTOMER_FIXED: 'ผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว',
+  SCHEDULE_RESURVEY: 'นัดตรวจซ้ำ',
+  PHOTO_APPROVE: 'อนุมัติผ่านจากรูป',
+  PHOTO_REJECT: 'รูปยังไม่พอ ต้องตรวจซ้ำ',
   ISSUE_BILL: 'ออกใบแจ้งหนี้',
   SURVEYOR_SIGN: 'เซ็นใบแจ้งหนี้แล้ว',
   CONFIRM_PAYMENT: 'ชำระเงินแล้ว',
@@ -77,7 +88,6 @@ export function MeterWorkflowActions({
   currentStatus,
   isInvoiceSigned,
   isPaid,
-  collectDocsOnSite,
   hasCurrentSurveyDate
 }: MeterWorkflowActionsProps) {
   const [activeAction, setActiveAction] = useState<MeterAction | null>(null);
@@ -90,7 +100,9 @@ export function MeterWorkflowActions({
       'WAIT_DOCUMENT_FROM_CUSTOMER',
       'READY_FOR_SURVEY',
       'IN_SURVEY',
-      'SURVEY_COMPLETED',
+      'WAIT_CUSTOMER_FIX',
+      'WAIT_FIX_REVIEW',
+      'READY_FOR_RESURVEY',
       'WAIT_BILLING',
       'WAIT_ACTION_CONFIRMATION',
       'WAIT_MANAGER_REVIEW'
@@ -142,15 +154,47 @@ export function MeterWorkflowActions({
         ) : null}
 
         {currentStatus === 'IN_SURVEY' ? (
-          <button className="btn-primary" type="button" onClick={() => setActiveAction('COMPLETE_SURVEY')}>
-            {ACTION_LABELS.COMPLETE_SURVEY}
-          </button>
+          <>
+            <button className="btn-primary" type="button" onClick={() => setActiveAction('SURVEY_PASS')}>
+              {ACTION_LABELS.SURVEY_PASS}
+            </button>
+            <button className="btn-secondary" type="button" onClick={() => setActiveAction('SURVEY_FAIL')}>
+              {ACTION_LABELS.SURVEY_FAIL}
+            </button>
+          </>
         ) : null}
 
-        {currentStatus === 'SURVEY_COMPLETED' && collectDocsOnSite ? (
-          <button className="btn-primary" type="button" onClick={() => setActiveAction('CONFIRM_ON_SITE_DOCS_COMPLETE')}>
-            {ACTION_LABELS.CONFIRM_ON_SITE_DOCS_COMPLETE}
-          </button>
+        {currentStatus === 'WAIT_CUSTOMER_FIX' ? (
+          <>
+            <button className="btn-primary" type="button" onClick={() => setActiveAction('CUSTOMER_FIXED')}>
+              {ACTION_LABELS.CUSTOMER_FIXED}
+            </button>
+            <button className="btn-secondary" type="button" onClick={() => setActiveAction('SCHEDULE_RESURVEY')}>
+              {ACTION_LABELS.SCHEDULE_RESURVEY}
+            </button>
+          </>
+        ) : null}
+
+        {currentStatus === 'WAIT_FIX_REVIEW' ? (
+          <>
+            <button className="btn-primary" type="button" onClick={() => setActiveAction('PHOTO_APPROVE')}>
+              {ACTION_LABELS.PHOTO_APPROVE}
+            </button>
+            <button className="btn-secondary" type="button" onClick={() => setActiveAction('PHOTO_REJECT')}>
+              {ACTION_LABELS.PHOTO_REJECT}
+            </button>
+          </>
+        ) : null}
+
+        {currentStatus === 'READY_FOR_RESURVEY' ? (
+          <>
+            <button className="btn-primary" type="button" onClick={() => setActiveAction('START_SURVEY')}>
+              ออกตรวจซ้ำ
+            </button>
+            <button className="btn-secondary" type="button" onClick={() => setActiveAction('EDIT_SURVEY_DATE')}>
+              {ACTION_LABELS.EDIT_SURVEY_DATE}
+            </button>
+          </>
         ) : null}
 
         {currentStatus === 'WAIT_BILLING' ? (
@@ -250,7 +294,7 @@ export function MeterWorkflowActions({
       ) : null}
 
       {activeAction === 'START_SURVEY' ? (
-        <Modal title="ยืนยันรับงานและเริ่มสำรวจ" onClose={closeModal}>
+        <Modal title={currentStatus === 'READY_FOR_RESURVEY' ? 'ยืนยันออกตรวจซ้ำหน้างาน' : 'ยืนยันรับงานและเริ่มสำรวจ'} onClose={closeModal}>
           <form action={startSurveyAction}>
             <input name="request_id" type="hidden" value={requestId} />
             <div className="flex justify-end gap-2">
@@ -261,9 +305,9 @@ export function MeterWorkflowActions({
         </Modal>
       ) : null}
 
-      {activeAction === 'COMPLETE_SURVEY' ? (
-        <Modal title="ยืนยันสำรวจเสร็จ" onClose={closeModal}>
-          <form action={completeSurveyAction} className="space-y-3">
+      {activeAction === 'SURVEY_PASS' ? (
+        <Modal title="ยืนยันสำรวจผ่าน" onClose={closeModal}>
+          <form action={markSurveyPassedAction} className="space-y-3">
             <input name="request_id" type="hidden" value={requestId} />
             <div>
               <label className="text-sm font-medium text-slate-700" htmlFor="survey_note">หมายเหตุ (ถ้ามี)</label>
@@ -277,10 +321,85 @@ export function MeterWorkflowActions({
         </Modal>
       ) : null}
 
-      {activeAction === 'CONFIRM_ON_SITE_DOCS_COMPLETE' ? (
-        <Modal title="ยืนยันเอกสารครบแล้วหลังสำรวจ" onClose={closeModal}>
-          <form action={confirmOnSiteDocumentsCompleteAction}>
+      {activeAction === 'SURVEY_FAIL' ? (
+        <Modal title="บันทึกผลสำรวจไม่ผ่าน" onClose={closeModal}>
+          <form action={markSurveyFailedAction} className="space-y-3">
             <input name="request_id" type="hidden" value={requestId} />
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor="customer_fix_note">รายการที่ต้องแก้ (จำเป็น)</label>
+              <textarea className="input min-h-24" id="customer_fix_note" name="customer_fix_note" required />
+            </div>
+            <div>
+              <p className="text-sm font-medium text-slate-700">วิธีตรวจหลังแก้ไข</p>
+              <div className="mt-2 space-y-2 text-sm text-slate-700">
+                <label className="flex items-center gap-2">
+                  <input defaultChecked name="fix_verification_mode" type="radio" value="PHOTO_OR_RESURVEY" />
+                  อนุญาตให้ส่งรูปยืนยัน
+                </label>
+                <label className="flex items-center gap-2">
+                  <input name="fix_verification_mode" type="radio" value="RESURVEY_ONLY" />
+                  ต้องตรวจซ้ำหน้างานเท่านั้น
+                </label>
+              </div>
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor="survey_note_fail">หมายเหตุเพิ่มเติม</label>
+              <textarea className="input min-h-24" id="survey_note_fail" name="survey_note" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'CUSTOMER_FIXED' ? (
+        <Modal title="ผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว" onClose={closeModal}>
+          <form action={reportCustomerFixAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor="customer_fix_note_confirm">หมายเหตุจากผู้ใช้ไฟ (ถ้ามี)</label>
+              <textarea className="input min-h-24" id="customer_fix_note_confirm" name="customer_fix_note" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'SCHEDULE_RESURVEY' ? (
+        <Modal title="ยืนยันนัดตรวจซ้ำ" onClose={closeModal}>
+          <form action={moveToResurveyAction}>
+            <input name="request_id" type="hidden" value={requestId} />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'PHOTO_APPROVE' ? (
+        <Modal title="อนุมัติผ่านจากรูป" onClose={closeModal}>
+          <form action={approveFixFromPhotoAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <input className="input" name="photo_reviewed_by" placeholder="ผู้ตรวจรูป" required type="text" />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'PHOTO_REJECT' ? (
+        <Modal title="รูปยังไม่พอ ต้องตรวจซ้ำ" onClose={closeModal}>
+          <form action={rejectFixPhotoAndRequireResurveyAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <input className="input" name="photo_reviewed_by" placeholder="ผู้ตรวจรูป" required type="text" />
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
               <button className="btn-primary" type="submit">ยืนยัน</button>

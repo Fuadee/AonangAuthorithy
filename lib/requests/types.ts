@@ -11,6 +11,9 @@ export const REQUEST_STATUSES = [
   'WAIT_DOCUMENT_FROM_CUSTOMER',
   'READY_FOR_SURVEY',
   'IN_SURVEY',
+  'WAIT_CUSTOMER_FIX',
+  'WAIT_FIX_REVIEW',
+  'READY_FOR_RESURVEY',
   'WAIT_BILLING',
   'WAIT_ACTION_CONFIRMATION',
   'WAIT_MANAGER_REVIEW',
@@ -19,11 +22,19 @@ export const REQUEST_STATUSES = [
 export const REQUEST_TYPES = ['METER', 'EXPANSION'] as const;
 export const REQUEST_QUEUE_GROUPS = ['SURVEY', 'BILLING', 'MANAGER', 'DONE', 'OTHER'] as const;
 export const DOCUMENT_STATUSES = ['COMPLETE', 'INCOMPLETE'] as const;
+export const SURVEY_RESULTS = ['PASS', 'FAIL'] as const;
+export const FIX_VERIFICATION_MODES = ['PHOTO_OR_RESURVEY', 'RESURVEY_ONLY'] as const;
+export const PHOTO_REVIEW_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const;
+export const FIX_APPROVAL_SOURCES = ['PHOTO', 'RESURVEY'] as const;
 
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 export type RequestType = (typeof REQUEST_TYPES)[number];
 export type RequestQueueGroup = (typeof REQUEST_QUEUE_GROUPS)[number];
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
+export type SurveyResult = (typeof SURVEY_RESULTS)[number];
+export type FixVerificationMode = (typeof FIX_VERIFICATION_MODES)[number];
+export type PhotoReviewStatus = (typeof PHOTO_REVIEW_STATUSES)[number];
+export type FixApprovalSource = (typeof FIX_APPROVAL_SOURCES)[number];
 
 export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   METER: 'ขอมิเตอร์',
@@ -41,6 +52,9 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   WAIT_DOCUMENT_FROM_CUSTOMER: 'รอผู้ใช้ไฟนำเอกสารมาให้',
   READY_FOR_SURVEY: 'พร้อมรับงานสำรวจ',
   IN_SURVEY: 'กำลังสำรวจหน้างาน',
+  WAIT_CUSTOMER_FIX: 'รอผู้ใช้ไฟแก้ไข',
+  WAIT_FIX_REVIEW: 'รอตรวจจากรูป/ข้อมูลที่ส่งมา',
+  READY_FOR_RESURVEY: 'รอนัดตรวจซ้ำ',
   WAIT_BILLING: 'รอออกใบแจ้งหนี้',
   WAIT_ACTION_CONFIRMATION: 'รอดำเนินการหลังแจ้งหนี้',
   WAIT_MANAGER_REVIEW: 'รอผู้จัดการตรวจ',
@@ -66,6 +80,9 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   WAIT_DOCUMENT_FROM_CUSTOMER: 'SURVEY',
   READY_FOR_SURVEY: 'SURVEY',
   IN_SURVEY: 'SURVEY',
+  WAIT_CUSTOMER_FIX: 'SURVEY',
+  WAIT_FIX_REVIEW: 'SURVEY',
+  READY_FOR_RESURVEY: 'SURVEY',
   WAIT_BILLING: 'BILLING',
   WAIT_ACTION_CONFIRMATION: 'BILLING',
   WAIT_MANAGER_REVIEW: 'MANAGER',
@@ -188,6 +205,88 @@ export function canMoveToBilling(request: Pick<ServiceRequest, 'collect_docs_on_
   return request.document_status === 'COMPLETE';
 }
 
+export function canMarkSurveyPassed(request: Pick<ServiceRequest, 'status' | 'request_type'>): boolean {
+  return request.request_type === 'METER' && request.status === 'IN_SURVEY';
+}
+
+export function canMarkSurveyFailed(request: Pick<ServiceRequest, 'status' | 'request_type'>): boolean {
+  return request.request_type === 'METER' && request.status === 'IN_SURVEY';
+}
+
+export function allowsPhotoApproval(
+  request: Pick<ServiceRequest, 'fix_verification_mode'>
+): boolean {
+  return request.fix_verification_mode === 'PHOTO_OR_RESURVEY';
+}
+
+export function canApproveFixFromPhoto(
+  request: Pick<ServiceRequest, 'status' | 'fix_verification_mode'>
+): boolean {
+  return request.status === 'WAIT_FIX_REVIEW' && allowsPhotoApproval(request);
+}
+
+export function needsResurvey(
+  request: Pick<ServiceRequest, 'status' | 'fix_verification_mode'>
+): boolean {
+  return request.status === 'READY_FOR_RESURVEY' || request.fix_verification_mode === 'RESURVEY_ONLY';
+}
+
+export function getFinalApprovalSource(request: Pick<ServiceRequest, 'fix_approved_via' | 'survey_result'>): string {
+  if (request.fix_approved_via === 'PHOTO') {
+    return 'ผ่านจากรูป';
+  }
+  if (request.fix_approved_via === 'RESURVEY' || request.survey_result === 'PASS') {
+    return 'ผ่านจากตรวจซ้ำหน้างาน';
+  }
+  return '-';
+}
+
+export function getPostSurveyFixSummary(
+  request: Pick<
+    ServiceRequest,
+    | 'survey_result'
+    | 'customer_fix_note'
+    | 'fix_verification_mode'
+    | 'customer_fix_reported_at'
+    | 'photo_review_status'
+    | 'photo_reviewed_by'
+    | 'photo_reviewed_at'
+    | 'fix_approved_via'
+  >
+): {
+  surveyResultLabel: string;
+  fixVerificationModeLabel: string;
+  photoReviewStatusLabel: string;
+  finalApprovalSourceLabel: string;
+  customerFixNote: string;
+  customerFixReportedAt: string;
+  photoReviewedBy: string;
+  photoReviewedAt: string;
+} {
+  return {
+    surveyResultLabel: request.survey_result === 'PASS' ? 'ผ่าน' : request.survey_result === 'FAIL' ? 'ไม่ผ่าน' : '-',
+    fixVerificationModeLabel:
+      request.fix_verification_mode === 'PHOTO_OR_RESURVEY'
+        ? 'ส่งรูปได้ หรือ นัดตรวจซ้ำ'
+        : request.fix_verification_mode === 'RESURVEY_ONLY'
+          ? 'ต้องตรวจซ้ำหน้างานเท่านั้น'
+          : '-',
+    photoReviewStatusLabel:
+      request.photo_review_status === 'APPROVED'
+        ? 'ผ่าน'
+        : request.photo_review_status === 'REJECTED'
+          ? 'ไม่ผ่าน'
+          : request.photo_review_status === 'PENDING'
+            ? 'รอตรวจ'
+            : '-',
+    finalApprovalSourceLabel: getFinalApprovalSource(request),
+    customerFixNote: request.customer_fix_note ?? '-',
+    customerFixReportedAt: request.customer_fix_reported_at ? new Date(request.customer_fix_reported_at).toLocaleString('th-TH') : '-',
+    photoReviewedBy: request.photo_reviewed_by ?? '-',
+    photoReviewedAt: request.photo_reviewed_at ? new Date(request.photo_reviewed_at).toLocaleString('th-TH') : '-'
+  };
+}
+
 export type DocumentReviewDecision = 'COMPLETE' | 'INCOMPLETE_COLLECT_ON_SITE' | 'INCOMPLETE_WAIT_CUSTOMER';
 
 export function resolveDocumentReviewDecision(decision: DocumentReviewDecision): {
@@ -280,6 +379,14 @@ export type ServiceRequest = {
   survey_reschedule_date: string | null;
   survey_reviewed_at: string | null;
   survey_completed_at: string | null;
+  survey_result: SurveyResult | null;
+  fix_verification_mode: FixVerificationMode | null;
+  customer_fix_note: string | null;
+  customer_fix_reported_at: string | null;
+  photo_review_status: PhotoReviewStatus | null;
+  photo_reviewed_at: string | null;
+  photo_reviewed_by: string | null;
+  fix_approved_via: FixApprovalSource | null;
   document_status: DocumentStatus | null;
   collect_docs_on_site: boolean;
   incomplete_docs_note: string | null;

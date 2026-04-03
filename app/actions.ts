@@ -5,6 +5,9 @@ import { redirect } from 'next/navigation';
 import { generateRequestNo } from '@/lib/requests/generateRequestNo';
 import { isAreaCode } from '@/lib/requests/areas';
 import {
+  canApproveFixFromPhoto,
+  canMarkSurveyFailed,
+  canMarkSurveyPassed,
   canMoveToBilling,
   canStartSurvey,
   canMoveToManagerReview,
@@ -167,7 +170,7 @@ export async function updateRequestStatusAction(formData: FormData) {
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status,invoice_signed_at,paid_at,request_type,collect_docs_on_site,document_status')
+    .select('id,status,invoice_signed_at,paid_at,request_type,collect_docs_on_site,document_status,fix_verification_mode')
     .eq('id', requestId)
     .single();
 
@@ -186,6 +189,12 @@ export async function updateRequestStatusAction(formData: FormData) {
 
   if (request.status === 'WAIT_DOCUMENT_REVIEW' && nextStatus === 'WAIT_BILLING') {
     throw new Error('ห้ามเปลี่ยนเป็นรอออกใบแจ้งหนี้โดยตรง ต้องผ่านการสำรวจก่อน');
+  }
+  if (request.status === 'WAIT_CUSTOMER_FIX' && nextStatus === 'WAIT_BILLING') {
+    throw new Error('ห้ามข้ามจากรอผู้ใช้ไฟแก้ไขไปออกใบแจ้งหนี้โดยตรง');
+  }
+  if (request.status === 'WAIT_FIX_REVIEW' && nextStatus === 'WAIT_BILLING') {
+    throw new Error('ห้ามข้ามจากรอตรวจรูปไปออกใบแจ้งหนี้โดยตรง');
   }
 
   if (request.status === 'WAIT_BILLING' && (nextStatus === 'WAIT_MANAGER_REVIEW' || nextStatus === 'COMPLETED')) {
@@ -471,11 +480,11 @@ export async function startSurveyAction(formData: FormData) {
     throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์');
   }
 
-  if (request.status !== 'READY_FOR_SURVEY') {
-    throw new Error('รับงาน/ไปสำรวจได้เฉพาะสถานะพร้อมรับงานสำรวจ');
+  if (!['READY_FOR_SURVEY', 'READY_FOR_RESURVEY'].includes(request.status)) {
+    throw new Error('รับงาน/ไปสำรวจได้เฉพาะสถานะพร้อมรับงานสำรวจ หรือรอตรวจซ้ำ');
   }
 
-  if (!canStartSurvey(request)) {
+  if (request.status === 'READY_FOR_SURVEY' && !canStartSurvey(request)) {
     throw new Error('ต้องกำหนดวันนัดสำรวจล่าสุดก่อนเริ่มสำรวจ');
   }
 
@@ -530,6 +539,253 @@ export async function completeSurveyAction(formData: FormData) {
   redirect(`/requests/${requestId}`);
 }
 
+type SurveyVerificationMode = 'PHOTO_OR_RESURVEY' | 'RESURVEY_ONLY';
+
+function isSurveyVerificationMode(value: string): value is SurveyVerificationMode {
+  return ['PHOTO_OR_RESURVEY', 'RESURVEY_ONLY'].includes(value);
+}
+
+export async function markSurveyPassedAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const surveyNote = optionalField(formData, 'survey_note');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if (!canMarkSurveyPassed({ status: request.status as RequestStatus, request_type: request.request_type as RequestType })) {
+    throw new Error('ยืนยันสำรวจผ่านได้เฉพาะงานขอมิเตอร์ที่กำลังสำรวจอยู่');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: 'WAIT_BILLING',
+      survey_result: 'PASS',
+      fix_approved_via: 'RESURVEY',
+      survey_note: surveyNote,
+      survey_completed_at: nowIso,
+      photo_review_status: null,
+      photo_reviewed_at: null,
+      photo_reviewed_by: null,
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function markSurveyFailedAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const customerFixNote = requiredField(formData, 'customer_fix_note');
+  const fixVerificationMode = requiredField(formData, 'fix_verification_mode');
+  const surveyNote = optionalField(formData, 'survey_note');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  if (!isSurveyVerificationMode(fixVerificationMode)) {
+    throw new Error('รูปแบบการตรวจหลังแก้ไขไม่ถูกต้อง');
+  }
+
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if (!canMarkSurveyFailed({ status: request.status as RequestStatus, request_type: request.request_type as RequestType })) {
+    throw new Error('บันทึกผลสำรวจไม่ผ่านได้เฉพาะงานขอมิเตอร์ที่กำลังสำรวจอยู่');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: 'WAIT_CUSTOMER_FIX',
+      survey_result: 'FAIL',
+      customer_fix_note: customerFixNote,
+      fix_verification_mode: fixVerificationMode,
+      survey_note: surveyNote,
+      survey_completed_at: nowIso,
+      customer_fix_reported_at: null,
+      photo_review_status: null,
+      photo_reviewed_at: null,
+      photo_reviewed_by: null,
+      fix_approved_via: null,
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function reportCustomerFixAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const customerFixNote = optionalField(formData, 'customer_fix_note');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,fix_verification_mode,customer_fix_note')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if ((request.request_type as RequestType) !== 'METER') {
+    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์');
+  }
+
+  if (request.status !== 'WAIT_CUSTOMER_FIX') {
+    throw new Error('ยืนยันการแก้ไขของผู้ใช้ไฟได้เฉพาะสถานะรอผู้ใช้ไฟแก้ไข');
+  }
+
+  const photoAllowed = request.fix_verification_mode === 'PHOTO_OR_RESURVEY';
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: photoAllowed ? 'WAIT_FIX_REVIEW' : 'READY_FOR_RESURVEY',
+      customer_fix_reported_at: nowIso,
+      customer_fix_note: customerFixNote ?? request.customer_fix_note ?? null,
+      photo_review_status: photoAllowed ? 'PENDING' : null,
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function moveToResurveyAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if ((request.request_type as RequestType) !== 'METER') {
+    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์');
+  }
+
+  if (!['WAIT_CUSTOMER_FIX', 'WAIT_FIX_REVIEW'].includes(request.status)) {
+    throw new Error('นัดตรวจซ้ำได้เฉพาะสถานะรอผู้ใช้ไฟแก้ไข หรือรอตรวจจากรูป');
+  }
+
+  const { error } = await supabase.from('service_requests').update({ status: 'READY_FOR_RESURVEY', updated_at: nowIso }).eq('id', requestId);
+  if (error) {
+    throw new Error(error.message);
+  }
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function approveFixFromPhotoAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const reviewer = requiredField(formData, 'photo_reviewed_by');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,fix_verification_mode')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if ((request.request_type as RequestType) !== 'METER') {
+    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์');
+  }
+
+  if (!canApproveFixFromPhoto({ status: request.status as RequestStatus, fix_verification_mode: request.fix_verification_mode })) {
+    throw new Error('อนุมัติผ่านจากรูปได้เฉพาะงานที่รอตรวจจากรูป และเคสที่อนุญาตให้ใช้รูป');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: 'WAIT_BILLING',
+      photo_review_status: 'APPROVED',
+      photo_reviewed_at: nowIso,
+      photo_reviewed_by: reviewer,
+      fix_approved_via: 'PHOTO',
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function rejectFixPhotoAndRequireResurveyAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const reviewer = requiredField(formData, 'photo_reviewed_by');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if ((request.request_type as RequestType) !== 'METER') {
+    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์');
+  }
+
+  if (request.status !== 'WAIT_FIX_REVIEW') {
+    throw new Error('สั่งตรวจซ้ำจากรูปได้เฉพาะสถานะรอตรวจจากรูป');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: 'READY_FOR_RESURVEY',
+      photo_review_status: 'REJECTED',
+      photo_reviewed_at: nowIso,
+      photo_reviewed_by: reviewer,
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
 export async function updateSurveyScheduleAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
   const surveyDateCurrent = requiredField(formData, 'survey_date_current');
@@ -551,8 +807,8 @@ export async function updateSurveyScheduleAction(formData: FormData) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
-  if (!['READY_FOR_SURVEY', 'WAIT_DOCUMENT_FROM_CUSTOMER'].includes(request.status)) {
-    throw new Error('กำหนดวันสำรวจได้เฉพาะงานที่พร้อมสำรวจหรือกำลังรอเอกสารจากลูกค้า');
+  if (!['READY_FOR_SURVEY', 'WAIT_DOCUMENT_FROM_CUSTOMER', 'READY_FOR_RESURVEY'].includes(request.status)) {
+    throw new Error('กำหนดวันสำรวจได้เฉพาะงานที่พร้อมสำรวจ/รอตรวจซ้ำ หรือกำลังรอเอกสารจากลูกค้า');
   }
 
   const previousSurveyDate = getEffectiveSurveyDate(request);

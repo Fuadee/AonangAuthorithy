@@ -8,6 +8,7 @@ import {
   hasSurveyBeenRescheduled,
   hasCollectedDocsOnSite,
   needsRescheduleAfterDocuments,
+  getFinalApprovalSource,
   REQUEST_TYPE_LABELS,
   ServiceRequest
 } from '@/lib/requests/types';
@@ -76,6 +77,18 @@ export function RequestTable({ requests }: RequestTableProps) {
                     ) : null}
                     {needsRescheduleAfterDocuments(request) ? (
                       <span className="rounded-full bg-yellow-100 px-2 py-0.5 text-xs font-medium text-yellow-700">เอกสารครบ รอนัดใหม่</span>
+                    ) : null}
+                    {request.status === 'WAIT_CUSTOMER_FIX' ? (
+                      <span className="rounded-full bg-rose-100 px-2 py-0.5 text-xs font-medium text-rose-700">รอผู้ใช้ไฟแก้ไข</span>
+                    ) : null}
+                    {request.status === 'WAIT_FIX_REVIEW' ? (
+                      <span className="rounded-full bg-violet-100 px-2 py-0.5 text-xs font-medium text-violet-700">รอตรวจจากรูป</span>
+                    ) : null}
+                    {request.status === 'READY_FOR_RESURVEY' ? (
+                      <span className="rounded-full bg-cyan-100 px-2 py-0.5 text-xs font-medium text-cyan-700">รอนัดตรวจซ้ำ</span>
+                    ) : null}
+                    {request.fix_approved_via ? (
+                      <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">{getFinalApprovalSource(request)}</span>
                     ) : null}
                   </div>
                   {getCustomerDelaySummary(request) ? <p className="mt-1 text-xs text-slate-500">{getCustomerDelaySummary(request)}</p> : null}
