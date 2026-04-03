@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { getRequestStatusLabel, REQUEST_TYPE_LABELS, ServiceRequest } from '@/lib/requests/types';
+import { getCurrentSurveyDate, getRequestStatusLabel, REQUEST_TYPE_LABELS, ServiceRequest } from '@/lib/requests/types';
 
 type BillingRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -107,7 +107,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                 <th className="px-4 py-3 font-medium">พื้นที่</th>
                 <th className="px-4 py-3 font-medium">นักสำรวจ</th>
                 <th className="px-4 py-3 font-medium">จำนวนเงินใบแจ้งหนี้</th>
-                <th className="px-4 py-3 font-medium">วันสำรวจ</th>
+                <th className="px-4 py-3 font-medium">วันนัดล่าสุด</th>
                 <th className="px-4 py-3 font-medium">สถานะ</th>
                 <th className="px-4 py-3 font-medium">จัดการ</th>
               </tr>
@@ -121,7 +121,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                   <td className="px-4 py-3">{request.area_name}</td>
                   <td className="px-4 py-3">{request.assigned_surveyor ?? '-'}</td>
                   <td className="px-4 py-3">{formatCurrency(request.billing_amount)}</td>
-                  <td className="px-4 py-3">{formatSurveyDate(request.scheduled_survey_date)}</td>
+                  <td className="px-4 py-3">{formatSurveyDate(getCurrentSurveyDate(request))}</td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3">
                     <Link className="btn-secondary" href={`/requests/${request.id}`}>

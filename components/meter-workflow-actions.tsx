@@ -10,6 +10,7 @@ import {
   confirmBillingSurveyorSignAction,
   issueBillingAction,
   startSurveyAction,
+  updateSurveyScheduleAction,
   updateDocumentReviewDecisionAction
 } from '@/app/actions';
 import { RequestStatus } from '@/lib/requests/types';
@@ -20,6 +21,7 @@ type MeterWorkflowActionsProps = {
   isInvoiceSigned: boolean;
   isPaid: boolean;
   collectDocsOnSite: boolean;
+  hasCurrentSurveyDate: boolean;
 };
 
 type MeterAction =
@@ -28,6 +30,8 @@ type MeterAction =
   | 'DOC_INCOMPLETE_WAIT_CUSTOMER'
   | 'CONFIRM_DOCS_RECEIVED'
   | 'START_SURVEY'
+  | 'SCHEDULE_SURVEY'
+  | 'EDIT_SURVEY_DATE'
   | 'COMPLETE_SURVEY'
   | 'CONFIRM_ON_SITE_DOCS_COMPLETE'
   | 'ISSUE_BILL'
@@ -41,6 +45,8 @@ const ACTION_LABELS: Record<MeterAction, string> = {
   DOC_INCOMPLETE_WAIT_CUSTOMER: 'เอกสารไม่ครบ (รอลูกค้านำมา)',
   CONFIRM_DOCS_RECEIVED: 'ได้รับเอกสารแล้ว',
   START_SURVEY: 'รับงาน / ไปสำรวจ',
+  SCHEDULE_SURVEY: 'กำหนดวันสำรวจ',
+  EDIT_SURVEY_DATE: 'แก้ไขวันนัด',
   COMPLETE_SURVEY: 'สำรวจเสร็จ',
   CONFIRM_ON_SITE_DOCS_COMPLETE: 'เอกสารครบแล้ว',
   ISSUE_BILL: 'ออกใบแจ้งหนี้',
@@ -71,7 +77,8 @@ export function MeterWorkflowActions({
   currentStatus,
   isInvoiceSigned,
   isPaid,
-  collectDocsOnSite
+  collectDocsOnSite,
+  hasCurrentSurveyDate
 }: MeterWorkflowActionsProps) {
   const [activeAction, setActiveAction] = useState<MeterAction | null>(null);
 
@@ -116,9 +123,22 @@ export function MeterWorkflowActions({
         ) : null}
 
         {currentStatus === 'READY_FOR_SURVEY' ? (
-          <button className="btn-primary" type="button" onClick={() => setActiveAction('START_SURVEY')}>
-            {ACTION_LABELS.START_SURVEY}
-          </button>
+          <>
+            {!hasCurrentSurveyDate ? (
+              <button className="btn-primary" type="button" onClick={() => setActiveAction('SCHEDULE_SURVEY')}>
+                {ACTION_LABELS.SCHEDULE_SURVEY}
+              </button>
+            ) : (
+              <>
+                <button className="btn-primary" type="button" onClick={() => setActiveAction('START_SURVEY')}>
+                  {ACTION_LABELS.START_SURVEY}
+                </button>
+                <button className="btn-secondary" type="button" onClick={() => setActiveAction('EDIT_SURVEY_DATE')}>
+                  {ACTION_LABELS.EDIT_SURVEY_DATE}
+                </button>
+              </>
+            )}
+          </>
         ) : null}
 
         {currentStatus === 'IN_SURVEY' ? (
@@ -196,11 +216,34 @@ export function MeterWorkflowActions({
 
       {activeAction === 'CONFIRM_DOCS_RECEIVED' ? (
         <Modal title="ยืนยันว่าได้รับเอกสารครบแล้ว" onClose={closeModal}>
-          <form action={confirmDocumentsReceivedFromCustomerAction}>
+          <form action={confirmDocumentsReceivedFromCustomerAction} className="space-y-3">
             <input name="request_id" type="hidden" value={requestId} />
+            <p className="text-sm text-slate-600">หลังยืนยันเอกสาร งานจะกลับไปสถานะ “พร้อมนัดสำรวจ” และยังไม่เริ่มสำรวจทันที</p>
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
               <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'SCHEDULE_SURVEY' || activeAction === 'EDIT_SURVEY_DATE' ? (
+        <Modal title={activeAction === 'SCHEDULE_SURVEY' ? 'กำหนดวันสำรวจ' : 'แก้ไขวันนัดสำรวจ'} onClose={closeModal}>
+          <form action={updateSurveyScheduleAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor="survey_date_current">วันนัดสำรวจล่าสุด</label>
+              <input className="input" id="survey_date_current" name="survey_date_current" required type="date" />
+            </div>
+            {activeAction === 'EDIT_SURVEY_DATE' ? (
+              <div>
+                <label className="text-sm font-medium text-slate-700" htmlFor="survey_reschedule_reason">เหตุผลการเลื่อนนัด</label>
+                <textarea className="input min-h-24" id="survey_reschedule_reason" name="survey_reschedule_reason" required />
+              </div>
+            ) : null}
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">บันทึกวันนัด</button>
             </div>
           </form>
         </Modal>

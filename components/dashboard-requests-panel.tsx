@@ -3,13 +3,16 @@
 import { useMemo, useState } from 'react';
 import { DashboardSummary } from '@/components/dashboard-summary';
 import { RequestTable } from '@/components/request-table';
-import { getRequestQueueGroup, RequestType, ServiceRequest } from '@/lib/requests/types';
+import { getCurrentSurveyDate, getRequestQueueGroup, hasSurveyBeenRescheduled, RequestType, ServiceRequest } from '@/lib/requests/types';
 
 type RequestTypeFilter = 'ALL' | RequestType;
 type WorkflowFilter =
   | 'ALL'
   | 'WAIT_DOCUMENT_REVIEW_ONLY'
   | 'WAIT_DOCUMENT_FROM_CUSTOMER_ONLY'
+  | 'READY_TO_SCHEDULE_SURVEY_ONLY'
+  | 'RESCHEDULED_SURVEY_ONLY'
+  | 'IN_SURVEY_ONLY'
   | 'WAIT_BILLING_ONLY'
   | 'WAIT_ACTION_CONFIRMATION_ONLY'
   | 'WAIT_MANAGER_REVIEW_ONLY';
@@ -28,6 +31,9 @@ const WORKFLOW_FILTER_OPTIONS: Array<{ value: WorkflowFilter; label: string }> =
   { value: 'ALL', label: 'ทุกสถานะ' },
   { value: 'WAIT_DOCUMENT_REVIEW_ONLY', label: 'รอตรวจเอกสารก่อนรับงาน' },
   { value: 'WAIT_DOCUMENT_FROM_CUSTOMER_ONLY', label: 'รอผู้ใช้ไฟนำเอกสารมาให้' },
+  { value: 'READY_TO_SCHEDULE_SURVEY_ONLY', label: 'พร้อมนัดสำรวจ' },
+  { value: 'RESCHEDULED_SURVEY_ONLY', label: 'นัดสำรวจใหม่แล้ว' },
+  { value: 'IN_SURVEY_ONLY', label: 'กำลังสำรวจ' },
   { value: 'WAIT_BILLING_ONLY', label: 'รอออกใบแจ้งหนี้' },
   { value: 'WAIT_ACTION_CONFIRMATION_ONLY', label: 'รอดำเนินการหลังแจ้งหนี้' },
   { value: 'WAIT_MANAGER_REVIEW_ONLY', label: 'รอผู้จัดการตรวจ' }
@@ -54,6 +60,15 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
 
     if (workflowFilter === 'WAIT_BILLING_ONLY') {
       result = result.filter((request) => request.status === 'WAIT_BILLING');
+    }
+    if (workflowFilter === 'READY_TO_SCHEDULE_SURVEY_ONLY') {
+      result = result.filter((request) => request.status === 'READY_FOR_SURVEY' && !getCurrentSurveyDate(request));
+    }
+    if (workflowFilter === 'RESCHEDULED_SURVEY_ONLY') {
+      result = result.filter((request) => hasSurveyBeenRescheduled(request) && Boolean(getCurrentSurveyDate(request)));
+    }
+    if (workflowFilter === 'IN_SURVEY_ONLY') {
+      result = result.filter((request) => request.status === 'IN_SURVEY');
     }
 
     if (workflowFilter === 'WAIT_ACTION_CONFIRMATION_ONLY') {
@@ -107,6 +122,15 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
     () => requests.filter((request) => request.status === 'WAIT_ACTION_CONFIRMATION').length,
     [requests]
   );
+  const readyToScheduleSurveyCount = useMemo(
+    () => requests.filter((request) => request.status === 'READY_FOR_SURVEY' && !getCurrentSurveyDate(request)).length,
+    [requests]
+  );
+  const rescheduledSurveyCount = useMemo(
+    () => requests.filter((request) => hasSurveyBeenRescheduled(request) && Boolean(getCurrentSurveyDate(request))).length,
+    [requests]
+  );
+  const inSurveyCount = useMemo(() => requests.filter((request) => request.status === 'IN_SURVEY').length, [requests]);
 
   return (
     <>
@@ -120,6 +144,9 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
         pendingSurveyReviewCount={pendingSurveyReviewCount}
         waitDocumentReviewCount={waitDocumentReviewCount}
         waitDocumentFromCustomerCount={waitDocumentFromCustomerCount}
+        readyToScheduleSurveyCount={readyToScheduleSurveyCount}
+        rescheduledSurveyCount={rescheduledSurveyCount}
+        inSurveyCount={inSurveyCount}
         waitBillingCount={waitBillingCount}
         waitActionConfirmationCount={waitActionConfirmationCount}
       />
