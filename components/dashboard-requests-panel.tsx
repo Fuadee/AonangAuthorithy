@@ -40,6 +40,19 @@ type FilterGroupProps<T extends string> = {
   onChange: (value: T) => void;
 };
 
+function resolveFilterLabel(value: string, label: string | null | undefined): string {
+  const normalizedLabel = label?.trim();
+  if (normalizedLabel) {
+    return normalizedLabel;
+  }
+
+  if (process.env.NODE_ENV !== 'production') {
+    console.warn(`[DashboardRequestsPanel] Missing filter label for key "${value}"`);
+  }
+
+  return value;
+}
+
 const FILTER_OPTIONS: Array<FilterGroupOption<RequestTypeFilter>> = [
   { value: 'ALL', label: 'ทั้งหมด' },
   { value: 'METER', label: 'ขอมิเตอร์' },
@@ -67,9 +80,9 @@ const QUEUE_STYLE_KEY: Record<RequestQueueGroup, keyof typeof STATUS_STYLES | nu
 };
 
 const FILTER_CHIP_BASE =
-  'inline-flex h-10 items-center justify-center rounded-full border px-4 py-2 text-sm whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
+  'inline-flex h-9 items-center justify-center rounded-full border px-3.5 py-2 text-sm whitespace-nowrap transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
 const FILTER_CHIP_INACTIVE =
-  'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900';
+  'border-slate-300/80 bg-slate-100 text-slate-700 hover:border-slate-400 hover:bg-slate-200 hover:text-slate-800';
 
 function getActiveChipClass(tone: FilterChipProps['tone']) {
   return `border-transparent text-white font-semibold shadow-sm ring-1 ${STATUS_STYLES[tone ?? 'default']}`;
@@ -89,11 +102,22 @@ function FilterChip({ label, isActive, onClick, tone = 'default' }: FilterChipPr
 }
 
 function FilterGroup<T extends string>({ label, options, activeValue, onChange }: FilterGroupProps<T>) {
+  const safeOptions = useMemo(
+    () =>
+      options
+        .map((option) => ({
+          ...option,
+          label: resolveFilterLabel(option.value, option.label)
+        }))
+        .filter((option) => option.label.trim().length > 0),
+    [options]
+  );
+
   return (
     <div className="grid gap-2 md:grid-cols-[72px_minmax(0,1fr)] md:items-center md:gap-3">
       <p className="text-sm font-medium text-slate-600 whitespace-nowrap">{label}</p>
       <div className="flex flex-wrap items-center gap-2">
-        {options.map((option) => (
+        {safeOptions.map((option) => (
           <FilterChip
             key={option.value}
             label={option.label}
@@ -158,10 +182,10 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
 
   const queueFilterOptions: Array<FilterGroupOption<QueueFilter>> = useMemo(
     () => [
-      { value: 'ALL', label: 'ทั้งหมด' },
+      { value: 'ALL', label: resolveFilterLabel('ALL', 'ทั้งหมด') },
       ...queueItems.map((item) => ({
         value: item.queue,
-        label: item.label,
+        label: resolveFilterLabel(item.queue, item.label),
         tone: QUEUE_STYLE_KEY[item.queue] ?? 'default'
       }))
     ],
