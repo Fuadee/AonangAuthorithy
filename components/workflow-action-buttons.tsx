@@ -187,9 +187,11 @@ export function WorkflowActionButtons({
 
   const visibleActions = maxVisibleActions ? actionsForRegularRendering.slice(0, maxVisibleActions) : actionsForRegularRendering;
   const overflowActions = maxVisibleActions ? actionsForRegularRendering.slice(maxVisibleActions) : [];
+  const singleOverflowAction = overflowActions.length === 1 ? overflowActions[0] : null;
+  const dropdownOverflowActions = singleOverflowAction ? [] : overflowActions;
   const hasWorkflowActionButtons =
     (shouldGroupDocumentReviewActions && (Boolean(groupedDocCompleteAction) || groupedDocIncompleteActions.length > 0)) || visibleActions.length > 0;
-  const hasAnyActionControls = hasWorkflowActionButtons || overflowActions.length > 0 || Boolean(detailHref);
+  const hasAnyActionControls = hasWorkflowActionButtons || Boolean(singleOverflowAction) || dropdownOverflowActions.length > 0 || Boolean(detailHref);
 
   useEffect(() => {
     if (activeAction !== null) {
@@ -291,11 +293,23 @@ export function WorkflowActionButtons({
           );
         })}
 
-        {overflowActions.length ? (
+        {singleOverflowAction ? (
+          <button
+            aria-label={`ดำเนินการ ${singleOverflowAction.label}`}
+            className={`${ACTION_BUTTON_CLASS[singleOverflowAction.variant]} ${compact ? 'min-h-9 px-2.5 py-1.5 text-sm' : 'min-h-10'} justify-center whitespace-normal break-words text-left`}
+            disabled={activeAction !== null || isSubmittingIncompleteDecision}
+            type="button"
+            onClick={(event) => handleAction(event, singleOverflowAction.key)}
+          >
+            {singleOverflowAction.label}
+          </button>
+        ) : null}
+
+        {dropdownOverflowActions.length ? (
           <details className="relative">
             <summary className={`btn-secondary cursor-pointer list-none whitespace-nowrap text-sm ${compact ? 'min-h-9 px-2.5 py-1.5' : 'min-h-10 px-3 py-2'}`}>เพิ่มเติม</summary>
             <div className="absolute right-0 z-10 mt-1 min-w-56 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg">
-              {overflowActions.map((action) => (
+              {dropdownOverflowActions.map((action) => (
                 <button
                   key={action.key}
                   aria-label={`ดำเนินการ ${action.label}`}
