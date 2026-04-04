@@ -8,6 +8,7 @@ import {
   getCurrentSurveyDate,
   getDispatchSubStatus,
   REQUEST_TYPE_LABELS,
+  RequestStatus,
   ServiceRequest
 } from '@/lib/requests/types';
 
@@ -26,6 +27,8 @@ function formatSurveyDate(value: string | null): string {
 
   return new Date(`${value}T00:00:00`).toLocaleDateString('th-TH', { dateStyle: 'medium' });
 }
+
+const EMPHASIZED_ROW_STATUSES: RequestStatus[] = ['KRABI_NEEDS_DOCUMENT_FIX', 'WAIT_CUSTOMER_FIX'];
 
 export function RequestTable({
   requests,
@@ -130,12 +133,12 @@ export function RequestTable({
         <table className="w-full table-fixed border-separate border-spacing-0 text-sm">
           <colgroup>
             <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[16%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[16%]' : 'w-[31%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[16%]' : 'w-[20%]'} />
             <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[14%]'} />
             <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[15%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[13%]' : 'w-[13%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[13%]' : 'w-[14%]'} />
             {hasSeparateStatusColumn ? <col className="w-[19%]" /> : null}
-            <col className={hasSeparateStatusColumn ? 'w-[16%]' : 'w-[11%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[16%]' : 'w-[21%]'} />
           </colgroup>
           <thead className="bg-slate-50 text-left">
             <tr>
@@ -145,15 +148,21 @@ export function RequestTable({
               <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">ผู้รับผิดชอบ</th>
               <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">วันนัดสำรวจ</th>
               {hasSeparateStatusColumn ? <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">สถานะ</th> : null}
-              <th className="whitespace-nowrap px-3 py-3 align-middle text-center text-sm font-medium text-[#64748B]">{resolvedActionColumnLabel}</th>
+              <th className="whitespace-nowrap px-3 py-3 align-middle text-center text-sm font-semibold text-slate-700">
+                {resolvedActionColumnLabel}
+              </th>
             </tr>
           </thead>
           <tbody className="bg-white text-[#0F172A]">
             {requests.map((request) => {
               const dispatchSubStatus = getDispatchSubStatus(request);
+              const isEmphasizedRow = EMPHASIZED_ROW_STATUSES.includes(request.status);
 
               return (
-                <tr key={request.id} className="border-b border-[#E2E8F0] hover:bg-slate-50">
+                <tr
+                  key={request.id}
+                  className={`border-b border-[#E2E8F0] hover:bg-slate-50 ${isEmphasizedRow ? 'bg-rose-50/50 hover:bg-rose-100/50' : ''}`}
+                >
                   <td className="max-w-0 px-3 py-3 align-middle" title={request.request_no}>
                     <Link
                       href={`/requests/${request.id}`}
@@ -163,7 +172,7 @@ export function RequestTable({
                     </Link>
                   </td>
                   <td className="max-w-0 px-3 py-3 align-middle" title={request.customer_name}>
-                    <p className="truncate text-[#0F172A]">{request.customer_name}</p>
+                    <p className="max-w-[180px] truncate text-[#0F172A] lg:max-w-[220px]">{request.customer_name}</p>
                   </td>
                   <td className="max-w-0 px-3 py-3 align-middle" title={REQUEST_TYPE_LABELS[request.request_type]}>
                     <p className="truncate whitespace-nowrap text-[#64748B]">{REQUEST_TYPE_LABELS[request.request_type]}</p>
@@ -199,7 +208,9 @@ export function RequestTable({
                         />
                       </div>
                     ) : (
-                      <RequestStatusBadge status={request.status} />
+                      <div className="flex justify-center py-0.5">
+                        <RequestStatusBadge status={request.status} className="px-3 py-1.5 text-[12px] font-semibold" />
+                      </div>
                     )}
                   </td>
                 </tr>
