@@ -176,7 +176,6 @@ export function BillingWorkflowActionRenderer({
             <input name="request_id" type="hidden" value={requestId} />
             <input name="stay_on_queue" type="hidden" value="1" />
             <input name="return_to" type="hidden" value="/billing" />
-            <input className="input" min="0.01" name="billing_amount" placeholder="จำนวนเงิน" required step="0.01" type="number" />
             <input className="input" name="billed_by" placeholder="ออกโดย" required type="text" />
             <textarea className="input min-h-24" name="billing_note" placeholder="หมายเหตุ (ถ้ามี)" />
             {actionError ? <p className="text-sm text-rose-600">{actionError}</p> : null}

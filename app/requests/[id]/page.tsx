@@ -57,17 +57,6 @@ function formatDateTime(value: string | null): string {
   return new Date(value).toLocaleString('th-TH');
 }
 
-function formatCurrency(value: number | null): string {
-  if (value === null) {
-    return '-';
-  }
-
-  return new Intl.NumberFormat('th-TH', {
-    style: 'currency',
-    currency: 'THB',
-    maximumFractionDigits: 2
-  }).format(value);
-}
 
 function getNextStepSummary(status: RequestStatus, requestType: RequestType): { nextStep: string; owner: string } {
   const normalizedStatus = normalizeSurveyWorkflowStatus(status);
@@ -111,7 +100,7 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
         };
       case 'WAIT_BILLING':
         return {
-          nextStep: 'เจ้าหน้าที่ออกใบแจ้งหนี้ พร้อมบันทึกจำนวนเงินและผู้ดำเนินการ',
+          nextStep: 'เจ้าหน้าที่ออกใบแจ้งหนี้และบันทึกผู้ดำเนินการ',
           owner: 'การเงิน'
         };
       case 'WAIT_ACTION_CONFIRMATION':
@@ -227,7 +216,6 @@ function getTimeline(request: {
   survey_note: string | null;
   billing_note: string | null;
   billed_by: string | null;
-  billing_amount: number | null;
   invoice_signed_by: string | null;
   paid_by: string | null;
   document_status: 'COMPLETE' | 'INCOMPLETE' | null;
@@ -392,7 +380,7 @@ function getTimeline(request: {
   }
 
   if (request.billed_at) {
-    const detail = [`จำนวนเงิน: ${formatCurrency(request.billing_amount)}`];
+    const detail: string[] = [];
     if (request.billed_by) {
       detail.push(`ออกโดย: ${request.billed_by}`);
     }
@@ -403,7 +391,7 @@ function getTimeline(request: {
     items.push({
       key: 'billed',
       title: 'ออกใบแจ้งหนี้แล้ว',
-      description: detail.join(' | '),
+      description: detail.length ? detail.join(' | ') : undefined,
       at: request.billed_at
     });
   }
@@ -561,7 +549,6 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     survey_note: request.survey_note,
     billing_note: request.billing_note,
     billed_by: request.billed_by,
-    billing_amount: request.billing_amount,
     invoice_signed_by: request.invoice_signed_by,
     paid_by: request.paid_by,
     document_status: request.document_status,
@@ -786,10 +773,6 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         <section className="card p-6">
           <h3 className="text-lg font-semibold">ข้อมูลใบแจ้งหนี้งานขอมิเตอร์</h3>
           <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <dt className="text-sm text-slate-500">จำนวนเงินใบแจ้งหนี้</dt>
-              <dd className="mt-1 font-medium">{formatCurrency(request.billing_amount)}</dd>
-            </div>
             <div>
               <dt className="text-sm text-slate-500">ออกใบแจ้งหนี้เมื่อ</dt>
               <dd className="mt-1 font-medium">{formatDateTime(request.billed_at)}</dd>
