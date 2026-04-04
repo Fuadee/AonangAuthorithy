@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { DashboardSummary } from '@/components/dashboard-summary';
 import { RequestTable } from '@/components/request-table';
@@ -123,9 +122,6 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
             );
           })}
         </div>
-        <Link className="btn-secondary w-fit" href={queueFilter === 'ALL' ? '/dashboard' : REQUEST_QUEUE_GROUP_META[queueFilter].href}>
-          เปิดหน้าคิวที่เลือก
-        </Link>
       </section>
 
       <RequestTable requests={filteredRequests} />
