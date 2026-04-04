@@ -44,8 +44,7 @@ export function RequestTable({ requests }: RequestTableProps) {
             <col className="w-[10%]" />
             <col className="w-[12%]" />
             <col className="w-[10%]" />
-            <col className="w-[14%]" />
-            <col className="w-[4%]" />
+            <col className="w-[18%]" />
           </colgroup>
           <thead className="bg-slate-100 text-left">
             <tr>
@@ -57,14 +56,19 @@ export function RequestTable({ requests }: RequestTableProps) {
               <th className={headClass}>วันนัดสำรวจล่าสุด</th>
               <th className={headClass}>คิวปัจจุบัน</th>
               <th className={headClass}>สถานะ</th>
-              <th className={headClass}>ดู</th>
             </tr>
           </thead>
           <tbody className="bg-white text-slate-700">
             {requests.map((request) => (
               <tr key={request.id} className="hover:bg-slate-50">
                 <td className={`${singleLineCellClass} border-b border-slate-200 font-semibold text-brand-700`} title={request.request_no}>
-                  <p className="truncate whitespace-nowrap">{request.request_no}</p>
+                  <Link
+                    href={`/requests/${request.id}`}
+                    className="truncate whitespace-nowrap hover:underline"
+                    aria-label={`เปิดรายละเอียดคำร้อง ${request.request_no}`}
+                  >
+                    {request.request_no}
+                  </Link>
                 </td>
                 <td className={`${singleLineCellClass} border-b border-slate-200`} title={request.customer_name}>
                   <p className="truncate whitespace-nowrap">{request.customer_name}</p>
@@ -100,16 +104,11 @@ export function RequestTable({ requests }: RequestTableProps) {
                   </div>
                   {getCustomerDelaySummary(request) ? <p className="mt-1 text-xs text-slate-500">{getCustomerDelaySummary(request)}</p> : null}
                 </td>
-                <td className={`${compactCellClass} border-b border-slate-200`}>
-                  <Link href={`/requests/${request.id}`} className="text-[13px] font-medium text-brand-700 hover:underline">
-                    เปิด
-                  </Link>
-                </td>
               </tr>
             ))}
             {!requests.length && (
               <tr>
-                <td className="px-3 py-6 text-center text-slate-500" colSpan={9}>
+                <td className="px-3 py-6 text-center text-slate-500" colSpan={8}>
                   ยังไม่มีคำร้อง
                 </td>
               </tr>
