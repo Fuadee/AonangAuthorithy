@@ -603,6 +603,28 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
       </div>
 
       <section className="card p-6">
+        <h3 className="text-lg font-semibold">ข้อมูลผู้ยื่นคำร้อง</h3>
+        <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+          <div>
+            <dt className="text-sm text-slate-500">ชื่อลูกค้า</dt>
+            <dd className="mt-1 font-medium">{request.customer_name}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">โทรศัพท์</dt>
+            <dd className="mt-1 font-medium">{request.phone || '-'}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">พื้นที่</dt>
+            <dd className="mt-1 font-medium">{request.area_name || '-'}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">ประเภทคำร้อง</dt>
+            <dd className="mt-1 font-medium">{REQUEST_TYPE_LABELS[requestType]}</dd>
+          </div>
+        </dl>
+      </section>
+
+      <section className="card p-6">
         <h3 className="text-lg font-semibold">สรุปสถานะงานล่าสุด</h3>
         <p className="mt-1 text-sm text-slate-500">หน้าดูข้อมูลเป็นหลัก กดปุ่มเฉพาะงานที่ต้องทำตอนนี้</p>
         <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
