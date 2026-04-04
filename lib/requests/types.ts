@@ -77,7 +77,7 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   WAIT_FIX_REVIEW: 'รอตรวจจากรูป/ข้อมูลที่ส่งมา',
   READY_FOR_RESURVEY: 'รอนัดตรวจซ้ำ',
   WAIT_BILLING: 'รอออกใบแจ้งหนี้',
-  WAIT_ACTION_CONFIRMATION: 'รอดำเนินการหลังแจ้งหนี้',
+  WAIT_ACTION_CONFIRMATION: 'รอดำเนินการ',
   WAIT_MANAGER_REVIEW: 'รอผู้จัดการตรวจ',
   COMPLETED: 'เสร็จสิ้น'
 };

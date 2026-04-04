@@ -2,18 +2,23 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
-import { getCurrentSurveyDate, getRequestStatusLabel, REQUEST_TYPE_LABELS, ServiceRequest } from '@/lib/requests/types';
+import { getCurrentSurveyDate, getRequestStatusLabel, REQUEST_TYPE_LABELS, RequestStatus, ServiceRequest } from '@/lib/requests/types';
 
 type BillingRequestsPanelProps = {
   requests: ServiceRequest[];
 };
 
-type BillingFilter = 'ALL' | 'WAIT_BILLING' | 'WAIT_ACTION_CONFIRMATION';
+type BillingQueueStatus = Extract<RequestStatus, 'WAIT_BILLING' | 'WAIT_ACTION_CONFIRMATION'>;
+type BillingFilter = 'ALL' | BillingQueueStatus;
+
+const BILLING_FILTER_STATUSES: BillingQueueStatus[] = ['WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION'];
 
 const FILTER_OPTIONS: Array<{ value: BillingFilter; label: string }> = [
   { value: 'ALL', label: 'ทั้งหมด' },
-  { value: 'WAIT_BILLING', label: 'รอออกใบแจ้งหนี้' },
-  { value: 'WAIT_ACTION_CONFIRMATION', label: 'รอดำเนินการหลังแจ้งหนี้' }
+  ...BILLING_FILTER_STATUSES.map((status) => ({
+    value: status,
+    label: getRequestStatusLabel(status)
+  }))
 ];
 
 function formatSurveyDate(value: string | null): string {
