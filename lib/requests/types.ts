@@ -59,7 +59,7 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   SURVEY_RESCHEDULE_REQUESTED: 'ขอเลื่อนวันสำรวจ (สถานะเดิม)',
   SURVEY_COMPLETED: 'สำรวจแล้ว',
   WAIT_LAYOUT_DRAWING: 'รอวาดผัง',
-  WAITING_TO_SEND_TO_KRABI: 'รอส่งเอกสารให้กระบี่',
+  WAITING_TO_SEND_TO_KRABI: 'รอจัดส่งเอกสาร',
   SENT_TO_KRABI: 'ส่งเอกสารไปกระบี่แล้ว',
   WAIT_KRABI_DOCUMENT_CHECK: 'รอกระบี่ตรวจรับเอกสาร',
   KRABI_NEEDS_DOCUMENT_FIX: 'กระบี่ตีกลับให้แก้ไขเอกสาร',
@@ -207,17 +207,9 @@ export function getRequestStatusLabel(status: RequestStatus): string {
 }
 
 export function getDispatchSubStatus(
-  request: Pick<ServiceRequest, 'status' | 'is_document_ready' | 'planned_dispatch_date'>
+  _request: Pick<ServiceRequest, 'status' | 'is_document_ready' | 'planned_dispatch_date'>
 ): string | null {
-  if (request.status !== 'WAITING_TO_SEND_TO_KRABI') {
-    return null;
-  }
-
-  if (!request.is_document_ready) {
-    return '🛠️ กำลังจัดเตรียมเอกสาร';
-  }
-
-  return `🚚 รอส่งรอบถัดไป${request.planned_dispatch_date ? ` (${request.planned_dispatch_date})` : ''}`;
+  return null;
 }
 
 export function normalizeSurveyWorkflowStatus(status: RequestStatus): RequestStatus {

@@ -17,7 +17,6 @@ import {
   markSentToKrabiAction,
   markSurveyPassedAction,
   moveToResurveyAction,
-  markDocumentReadyAction,
   rejectFixPhotoAndRequireResurveyAction,
   reportCustomerFixAction,
   startSurveyAction,
@@ -47,7 +46,6 @@ const ACTION_EXECUTORS: Partial<Record<WorkflowActionKey, ActionExecutor>> = {
   PHOTO_REJECT_TO_RESURVEY: rejectFixPhotoAndRequireResurveyAction,
   MANAGER_APPROVE: approveManagerReviewAction,
   LAYOUT_DRAWING_DONE: completeLayoutDrawingAction,
-  MARK_DOCUMENT_READY: markDocumentReadyAction,
   DISPATCHED_TO_KRABI: markSentToKrabiAction,
   KRABI_ACCEPT_AND_START: markKrabiInProgressAction,
   KRABI_RETURN_FOR_FIX: markKrabiNeedsDocumentFixAction,
@@ -378,26 +376,10 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
     );
   }
 
-  if (actionKey === 'MARK_DOCUMENT_READY') {
-    return (
-      <ModalShell title="ยืนยันจัดเตรียมเอกสารเสร็จ" onClose={onClose}>
-        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('MARK_DOCUMENT_READY')}>
-          <input name="request_id" type="hidden" value={requestId} />
-          <QueueStayInput stayOnQueue={stayOnQueue} />
-          <p className="text-sm text-slate-600">หลังยืนยัน ระบบจะเปลี่ยนเป็นรอรอบส่งถัดไปอัตโนมัติ</p>
-          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
-          <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยันจัดเตรียมเสร็จ'}</button>
-          </div>
-        </form>
-      </ModalShell>
-    );
-  }
 
   if (actionKey === 'DISPATCHED_TO_KRABI') {
     return (
-      <ModalShell title="บันทึกการส่งเอกสารไปกระบี่" onClose={onClose}>
+      <ModalShell title="บันทึกการส่งให้กระบี่" onClose={onClose}>
         <form className="space-y-3" onSubmit={onSubmitWorkflowAction('DISPATCHED_TO_KRABI')}>
           <input name="request_id" type="hidden" value={requestId} />
           <QueueStayInput stayOnQueue={stayOnQueue} />

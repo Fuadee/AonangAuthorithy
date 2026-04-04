@@ -152,7 +152,7 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
       };
     case 'WAITING_TO_SEND_TO_KRABI':
       return {
-        nextStep: 'เตรียมเอกสารให้ครบ แล้วรอออกรอบส่งวันพุธ/ศุกร์',
+        nextStep: 'พร้อมจัดส่งเอกสารให้กระบี่',
         owner: 'ฝ่ายส่งเอกสาร'
       };
     case 'SENT_TO_KRABI':
@@ -309,7 +309,7 @@ function getTimeline(request: {
   if (request.document_prepared_at) {
     items.push({
       key: 'document-prepared',
-      title: 'จัดเตรียมเอกสารเสร็จ',
+      title: 'เอกสารพร้อมจัดส่ง',
       description: request.planned_dispatch_date ? `รอบส่ง: ${formatSurveyDate(request.planned_dispatch_date)}` : undefined,
       at: request.document_prepared_at
     });
