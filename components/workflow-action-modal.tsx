@@ -1,6 +1,7 @@
 'use client';
 
-import { MouseEvent, ReactNode } from 'react';
+import { FormEvent, MouseEvent, ReactNode, useEffect, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   approveFixFromPhotoAction,
   approveManagerReviewAction,
@@ -50,22 +51,70 @@ function QueueStayInput({ stayOnQueue }: { stayOnQueue: boolean }) {
 }
 
 export function WorkflowActionModal({ actionKey, requestId, onClose, currentStatus, stayOnQueue = false }: WorkflowActionModalProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
+  const [submitError, setSubmitError] = useState<string | null>(null);
+
+  const isDocumentReviewAction =
+    actionKey === 'DOC_COMPLETE' || actionKey === 'DOC_INCOMPLETE_COLLECT_ON_SITE' || actionKey === 'DOC_INCOMPLETE_WAIT_CUSTOMER';
+
+  useEffect(() => {
+    setSubmitError(null);
+  }, [actionKey]);
+
   if (!actionKey) {
     return null;
   }
 
-  const handleSubmit = stayOnQueue ? onClose : undefined;
+  const handleSubmit = stayOnQueue && !isDocumentReviewAction ? onClose : undefined;
+
+  const mapDocumentReviewError = (message: string): { userMessage: string; shouldRefresh: boolean } => {
+    if (message.includes('บันทึกผลตรวจเอกสารได้เฉพาะงานที่อยู่สถานะรอตรวจเอกสาร')) {
+      return {
+        userMessage: 'งานนี้ไม่ได้อยู่ในขั้นตอนรอตรวจเอกสารแล้ว กรุณารีเฟรชรายการ',
+        shouldRefresh: true
+      };
+    }
+
+    return {
+      userMessage: message || 'ไม่สามารถบันทึกผลตรวจเอกสารได้ กรุณาลองใหม่อีกครั้ง',
+      shouldRefresh: false
+    };
+  };
+
+  const onSubmitDocumentReview = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitError(null);
+    const formData = new FormData(event.currentTarget);
+
+    startTransition(async () => {
+      try {
+        await updateDocumentReviewDecisionAction(formData);
+        setSubmitError(null);
+        onClose();
+        router.refresh();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดที่ไม่คาดคิด';
+        const mapped = mapDocumentReviewError(message);
+        setSubmitError(mapped.userMessage);
+        if (mapped.shouldRefresh) {
+          router.refresh();
+        }
+      }
+    });
+  };
 
   if (actionKey === 'DOC_COMPLETE') {
     return (
       <ModalShell title="ยืนยันเอกสารครบ" onClose={onClose}>
-        <form action={updateDocumentReviewDecisionAction} className="space-y-3">
+        <form className="space-y-3" onSubmit={onSubmitDocumentReview}>
           <input name="request_id" type="hidden" value={requestId} />
           <input name="decision" type="hidden" value="COMPLETE" />
           <QueueStayInput stayOnQueue={stayOnQueue} />
+          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
+            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -80,17 +129,18 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
         title={isCollectOnSite ? 'ระบุว่าเอกสารไม่ครบ (รับเอกสารหน้างาน)' : 'ระบุว่าเอกสารไม่ครบ (รอลูกค้านำเอกสารมา)'}
         onClose={onClose}
       >
-        <form action={updateDocumentReviewDecisionAction} className="space-y-3">
+        <form className="space-y-3" onSubmit={onSubmitDocumentReview}>
           <input name="request_id" type="hidden" value={requestId} />
           <input name="decision" type="hidden" value={isCollectOnSite ? 'INCOMPLETE_COLLECT_ON_SITE' : 'INCOMPLETE_WAIT_CUSTOMER'} />
           <QueueStayInput stayOnQueue={stayOnQueue} />
+          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div>
             <label className="text-sm font-medium text-slate-700" htmlFor="incomplete_docs_note">หมายเหตุเอกสารขาด</label>
-            <textarea className="input min-h-24" id="incomplete_docs_note" name="incomplete_docs_note" required />
+            <textarea className="input min-h-24" disabled={isPending} id="incomplete_docs_note" name="incomplete_docs_note" required />
           </div>
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
+            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
