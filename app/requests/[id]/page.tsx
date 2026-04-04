@@ -173,8 +173,18 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
       };
     case 'SENT_TO_KRABI':
       return {
-        nextStep: 'รอกระบี่รับเอกสารและเริ่มดำเนินการ',
+        nextStep: 'เอกสารถูกส่งถึงกระบี่แล้ว รอเข้าขั้นตรวจรับเอกสาร',
         owner: 'ฝ่ายกระบี่'
+      };
+    case 'WAIT_KRABI_DOCUMENT_CHECK':
+      return {
+        nextStep: 'กระบี่ตรวจรับเอกสาร หากครบจึงรับดำเนินการ หากไม่ครบให้ส่งกลับแก้ไข',
+        owner: 'ฝ่ายกระบี่'
+      };
+    case 'KRABI_NEEDS_DOCUMENT_FIX':
+      return {
+        nextStep: 'อ่าวนางแก้ไขเอกสารตามเหตุผลที่กระบี่ตีกลับ แล้วกดพร้อมส่งใหม่',
+        owner: 'ฝ่ายอ่าวนาง'
       };
     case 'KRABI_IN_PROGRESS':
       return {
@@ -342,7 +352,7 @@ function getTimeline(request: {
   if (request.krabi_in_progress_at) {
     items.push({
       key: 'krabi-in-progress',
-      title: 'กระบี่เริ่มดำเนินการ',
+      title: 'กระบี่รับดำเนินการ / กำลังประมาณการ',
       at: request.krabi_in_progress_at
     });
   }
@@ -459,6 +469,8 @@ function getActionTitle(status: RequestStatus, requestType: RequestType): string
     case 'READY_TO_SEND_KRABI':
     case 'QUEUED_FOR_KRABI_DISPATCH':
     case 'SENT_TO_KRABI':
+    case 'WAIT_KRABI_DOCUMENT_CHECK':
+    case 'KRABI_NEEDS_DOCUMENT_FIX':
     case 'KRABI_IN_PROGRESS':
     case 'KRABI_ESTIMATION_COMPLETED':
     case 'BILL_ISSUED':
@@ -512,6 +524,8 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
       'READY_TO_SEND_KRABI',
       'QUEUED_FOR_KRABI_DISPATCH',
       'SENT_TO_KRABI',
+      'WAIT_KRABI_DOCUMENT_CHECK',
+      'KRABI_NEEDS_DOCUMENT_FIX',
       'KRABI_IN_PROGRESS',
       'KRABI_ESTIMATION_COMPLETED',
       'BILL_ISSUED',

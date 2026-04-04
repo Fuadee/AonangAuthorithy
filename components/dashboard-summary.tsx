@@ -17,6 +17,8 @@ type DashboardSummaryProps = {
   waitLayoutDrawingCount: number;
   readyToSendKrabiCount: number;
   queuedForKrabiDispatchCount: number;
+  waitKrabiDocumentCheckCount: number;
+  krabiNeedsDocumentFixCount: number;
   krabiInProgressCount: number;
   krabiCompletedCount: number;
   waitBillingCount: number;
@@ -43,6 +45,8 @@ export function DashboardSummary({
   waitLayoutDrawingCount,
   readyToSendKrabiCount,
   queuedForKrabiDispatchCount,
+  waitKrabiDocumentCheckCount,
+  krabiNeedsDocumentFixCount,
   krabiInProgressCount,
   krabiCompletedCount,
   waitBillingCount,
@@ -124,7 +128,15 @@ export function DashboardSummary({
         <p className="mt-2 text-3xl font-semibold text-orange-700">{queuedForKrabiDispatchCount}</p>
       </article>
       <article className="card p-5">
-        <p className="text-sm text-slate-500">คิวกระบี่กำลังดำเนินการ</p>
+        <p className="text-sm text-slate-500">รอกระบี่ตรวจรับเอกสาร</p>
+        <p className="mt-2 text-3xl font-semibold text-violet-700">{waitKrabiDocumentCheckCount}</p>
+      </article>
+      <article className="card p-5">
+        <p className="text-sm text-slate-500">กระบี่ตีกลับให้แก้ไขเอกสาร</p>
+        <p className="mt-2 text-3xl font-semibold text-rose-700">{krabiNeedsDocumentFixCount}</p>
+      </article>
+      <article className="card p-5">
+        <p className="text-sm text-slate-500">กระบี่กำลังประมาณการ</p>
         <p className="mt-2 text-3xl font-semibold text-violet-700">{krabiInProgressCount}</p>
       </article>
       <article className="card p-5">

@@ -7,7 +7,9 @@ import {
   completeLayoutDrawingAction,
   markKrabiEstimationCompletedAction,
   markExpansionBillIssuedAction,
+  markKrabiDocumentFixCompletedAction,
   markKrabiInProgressAction,
+  markKrabiNeedsDocumentFixAction,
   markSentToKrabiAction,
   markCoordinatedWithConstructionAction,
   confirmBillingSurveyorSignAction,
@@ -58,7 +60,9 @@ type MeterAction =
   | 'LAYOUT_DRAWING_DONE'
   | 'QUEUE_KRABI_DISPATCH'
   | 'DISPATCHED_TO_KRABI'
-  | 'KRABI_IN_PROGRESS'
+  | 'KRABI_ACCEPT_AND_START'
+  | 'KRABI_RETURN_FOR_FIX'
+  | 'KRABI_FIX_COMPLETED'
   | 'KRABI_ESTIMATION_COMPLETED'
   | 'KRABI_BILL_ISSUED'
   | 'COORDINATED_WITH_CONSTRUCTION';
@@ -85,7 +89,9 @@ const ACTION_LABELS: Record<MeterAction, string> = {
   LAYOUT_DRAWING_DONE: 'วาดผังเสร็จ',
   QUEUE_KRABI_DISPATCH: 'เข้าคิวส่งกระบี่',
   DISPATCHED_TO_KRABI: 'ส่งเอกสารแล้ว',
-  KRABI_IN_PROGRESS: 'กระบี่เริ่มดำเนินการ',
+  KRABI_ACCEPT_AND_START: 'เอกสารครบ รับดำเนินการ',
+  KRABI_RETURN_FOR_FIX: 'เอกสารไม่พร้อม ส่งกลับแก้ไข',
+  KRABI_FIX_COMPLETED: 'แก้ไขเอกสารแล้ว / พร้อมส่งใหม่',
   KRABI_ESTIMATION_COMPLETED: 'ประมาณการเสร็จ',
   KRABI_BILL_ISSUED: 'ออกใบแจ้งหนี้แล้ว',
   COORDINATED_WITH_CONSTRUCTION: 'ประสานงานแผนกก่อสร้างแล้ว'
@@ -137,6 +143,8 @@ export function MeterWorkflowActions({
       'READY_TO_SEND_KRABI',
       'QUEUED_FOR_KRABI_DISPATCH',
       'SENT_TO_KRABI',
+      'WAIT_KRABI_DOCUMENT_CHECK',
+      'KRABI_NEEDS_DOCUMENT_FIX',
       'KRABI_IN_PROGRESS',
       'KRABI_ESTIMATION_COMPLETED',
       'BILL_ISSUED',
@@ -282,9 +290,20 @@ export function MeterWorkflowActions({
         </button>
       ) : null}
 
-      {requestType === 'EXPANSION' && currentStatus === 'SENT_TO_KRABI' ? (
-        <button className="btn-primary mt-2" type="button" onClick={() => setActiveAction('KRABI_IN_PROGRESS')}>
-          {ACTION_LABELS.KRABI_IN_PROGRESS}
+      {requestType === 'EXPANSION' && ['SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK'].includes(currentStatus) ? (
+        <div className="mt-2 flex flex-wrap gap-2">
+          <button className="btn-primary" type="button" onClick={() => setActiveAction('KRABI_ACCEPT_AND_START')}>
+            {ACTION_LABELS.KRABI_ACCEPT_AND_START}
+          </button>
+          <button className="btn-secondary" type="button" onClick={() => setActiveAction('KRABI_RETURN_FOR_FIX')}>
+            {ACTION_LABELS.KRABI_RETURN_FOR_FIX}
+          </button>
+        </div>
+      ) : null}
+
+      {requestType === 'EXPANSION' && currentStatus === 'KRABI_NEEDS_DOCUMENT_FIX' ? (
+        <button className="btn-primary mt-2" type="button" onClick={() => setActiveAction('KRABI_FIX_COMPLETED')}>
+          {ACTION_LABELS.KRABI_FIX_COMPLETED}
         </button>
       ) : null}
 
@@ -348,9 +367,37 @@ export function MeterWorkflowActions({
         </Modal>
       ) : null}
 
-      {activeAction === 'KRABI_IN_PROGRESS' ? (
-        <Modal title="ยืนยันว่ากระบี่เริ่มดำเนินการ" onClose={closeModal}>
+      {activeAction === 'KRABI_ACCEPT_AND_START' ? (
+        <Modal title="ยืนยันว่าเอกสารครบและกระบี่รับดำเนินการ" onClose={closeModal}>
           <form action={markKrabiInProgressAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'KRABI_RETURN_FOR_FIX' ? (
+        <Modal title="ส่งกลับให้อ่าวนางแก้ไขเอกสาร" onClose={closeModal}>
+          <form action={markKrabiNeedsDocumentFixAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor="krabi_incomplete_docs_note">เหตุผลที่ส่งกลับ</label>
+              <textarea className="input min-h-24" id="krabi_incomplete_docs_note" name="incomplete_docs_note" required />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยันส่งกลับ</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'KRABI_FIX_COMPLETED' ? (
+        <Modal title="ยืนยันว่าแก้ไขเอกสารแล้วและพร้อมส่งกระบี่ใหม่" onClose={closeModal}>
+          <form action={markKrabiDocumentFixCompletedAction} className="space-y-3">
             <input name="request_id" type="hidden" value={requestId} />
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
