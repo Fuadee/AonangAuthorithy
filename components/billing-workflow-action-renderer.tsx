@@ -51,15 +51,12 @@ export function BillingWorkflowActionRenderer({
     event.stopPropagation();
     setActiveAction(action);
   };
-  const handleModalAction = (
-    serverAction: (formData: FormData) => Promise<void>,
-    formData: FormData
-  ) => {
-    formData.set('stay_on_queue', '1');
-    startTransition(async () => {
-      await serverAction(formData);
-      closeModal();
-      router.refresh();
+  const debugSubmit = (action: BillingAction, formData: FormData) => {
+    console.info('[billing-table] submit action', {
+      action,
+      requestId,
+      stay_on_queue: formData.get('stay_on_queue'),
+      return_to: formData.get('return_to')
     });
   };
 
@@ -104,8 +101,15 @@ export function BillingWorkflowActionRenderer({
 
       {activeAction === 'ISSUE_BILL' ? (
         <Modal title="ออกใบแจ้งหนี้" onClose={closeModal}>
-          <form action={(formData) => handleModalAction(issueBillingAction, formData)} className="space-y-3" onClick={(event) => event.stopPropagation()}>
+          <form
+            action={issueBillingAction}
+            className="space-y-3"
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={(event) => debugSubmit('ISSUE_BILL', new FormData(event.currentTarget))}
+          >
             <input name="request_id" type="hidden" value={requestId} />
+            <input name="stay_on_queue" type="hidden" value="1" />
+            <input name="return_to" type="hidden" value="/billing" />
             <input className="input" min="0.01" name="billing_amount" placeholder="จำนวนเงิน" required step="0.01" type="number" />
             <input className="input" name="billed_by" placeholder="ออกโดย" required type="text" />
             <textarea className="input min-h-24" name="billing_note" placeholder="หมายเหตุ (ถ้ามี)" />
@@ -120,11 +124,14 @@ export function BillingWorkflowActionRenderer({
       {activeAction === 'SURVEYOR_SIGN' ? (
         <Modal title="เซ็นรับรองใบแจ้งหนี้" onClose={closeModal}>
           <form
-            action={(formData) => handleModalAction(confirmBillingSurveyorSignAction, formData)}
+            action={confirmBillingSurveyorSignAction}
             className="space-y-3"
             onClick={(event) => event.stopPropagation()}
+            onSubmit={(event) => debugSubmit('SURVEYOR_SIGN', new FormData(event.currentTarget))}
           >
             <input name="request_id" type="hidden" value={requestId} />
+            <input name="stay_on_queue" type="hidden" value="1" />
+            <input name="return_to" type="hidden" value="/billing" />
             <input className="input" name="invoice_signed_by" placeholder="ผู้เซ็นรับรอง" required type="text" />
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
@@ -137,11 +144,14 @@ export function BillingWorkflowActionRenderer({
       {activeAction === 'CONFIRM_PAYMENT' ? (
         <Modal title="ยืนยันรับชำระเงิน" onClose={closeModal}>
           <form
-            action={(formData) => handleModalAction(confirmPaymentReceivedAction, formData)}
+            action={confirmPaymentReceivedAction}
             className="space-y-3"
             onClick={(event) => event.stopPropagation()}
+            onSubmit={(event) => debugSubmit('CONFIRM_PAYMENT', new FormData(event.currentTarget))}
           >
             <input name="request_id" type="hidden" value={requestId} />
+            <input name="stay_on_queue" type="hidden" value="1" />
+            <input name="return_to" type="hidden" value="/billing" />
             <input className="input" name="paid_by" placeholder="รับชำระโดย" required type="text" />
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>

@@ -87,12 +87,23 @@ function revalidateRequestPaths(requestId: string): void {
 }
 
 function shouldStayOnQueue(formData: FormData): boolean {
-  return formData.get('stay_on_queue')?.toString() === '1';
+  const stayOnQueue = formData.get('stay_on_queue')?.toString() === '1';
+  const returnTo = formData.get('return_to')?.toString();
+  return stayOnQueue || returnTo === '/billing';
 }
 
 function finalizeWorkflowAction(requestId: string, formData: FormData): void {
+  const stayOnQueue = shouldStayOnQueue(formData);
+  const returnTo = formData.get('return_to')?.toString() ?? null;
+
+  console.info('[workflow-action] finalize', {
+    requestId,
+    stayOnQueue,
+    returnTo
+  });
+
   revalidateRequestPaths(requestId);
-  if (!shouldStayOnQueue(formData)) {
+  if (!stayOnQueue) {
     redirect(`/requests/${requestId}`);
   }
 }
@@ -1237,6 +1248,12 @@ export async function issueBillingAction(formData: FormData) {
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
+  console.info('[billing-action] issueBillingAction', {
+    requestId,
+    stay_on_queue: formData.get('stay_on_queue')?.toString() ?? null,
+    return_to: formData.get('return_to')?.toString() ?? null
+  });
+
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select('id,status,request_type')
@@ -1282,6 +1299,12 @@ export async function confirmBillingSurveyorSignAction(formData: FormData) {
 
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
+
+  console.info('[billing-action] confirmBillingSurveyorSignAction', {
+    requestId,
+    stay_on_queue: formData.get('stay_on_queue')?.toString() ?? null,
+    return_to: formData.get('return_to')?.toString() ?? null
+  });
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
@@ -1374,6 +1397,12 @@ export async function confirmPaymentReceivedAction(formData: FormData) {
 
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
+
+  console.info('[billing-action] confirmPaymentReceivedAction', {
+    requestId,
+    stay_on_queue: formData.get('stay_on_queue')?.toString() ?? null,
+    return_to: formData.get('return_to')?.toString() ?? null
+  });
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
