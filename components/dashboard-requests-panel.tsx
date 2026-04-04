@@ -24,13 +24,13 @@ type FilterChipProps = {
   label: string;
   isActive: boolean;
   onClick: () => void;
-  activeClassName?: string;
+  tone?: 'default' | 'survey' | 'finance' | 'manager' | 'document' | 'operation' | 'done';
 };
 
 type FilterGroupOption<T extends string> = {
   value: T;
   label: string;
-  activeClassName?: string;
+  tone?: FilterChipProps['tone'];
 };
 
 type FilterGroupProps<T extends string> = {
@@ -47,12 +47,13 @@ const FILTER_OPTIONS: Array<FilterGroupOption<RequestTypeFilter>> = [
 ];
 
 const STATUS_STYLES = {
-  survey: 'bg-blue-600',
-  finance: 'bg-amber-500',
-  manager: 'bg-indigo-600',
-  document: 'bg-slate-500',
-  operation: 'bg-purple-600',
-  done: 'bg-green-600'
+  default: 'bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-300 ring-brand-300/40',
+  survey: 'bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-300 ring-blue-300/40',
+  finance: 'bg-amber-500 hover:bg-amber-600 focus-visible:ring-amber-300 ring-amber-300/40',
+  manager: 'bg-indigo-600 hover:bg-indigo-700 focus-visible:ring-indigo-300 ring-indigo-300/40',
+  document: 'bg-slate-600 hover:bg-slate-700 focus-visible:ring-slate-300 ring-slate-300/40',
+  operation: 'bg-purple-600 hover:bg-purple-700 focus-visible:ring-purple-300 ring-purple-300/40',
+  done: 'bg-emerald-600 hover:bg-emerald-700 focus-visible:ring-emerald-300 ring-emerald-300/40'
 } as const;
 
 const QUEUE_STYLE_KEY: Record<RequestQueueGroup, keyof typeof STATUS_STYLES | null> = {
@@ -65,14 +66,19 @@ const QUEUE_STYLE_KEY: Record<RequestQueueGroup, keyof typeof STATUS_STYLES | nu
   OTHER: null
 };
 
-const FILTER_CHIP_BASE = 'rounded-full px-3 py-1.5 text-sm whitespace-nowrap transition-all';
-const FILTER_CHIP_INACTIVE = 'bg-slate-100 text-slate-600 hover:bg-slate-200';
-const FILTER_CHIP_ACTIVE = 'bg-[#1E3A8A] text-white';
+const FILTER_CHIP_BASE =
+  'inline-flex h-10 items-center justify-center rounded-full border px-4 py-2 text-sm whitespace-nowrap transition-all duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
+const FILTER_CHIP_INACTIVE =
+  'border-slate-200 bg-white text-slate-700 hover:border-slate-300 hover:bg-slate-50 hover:text-slate-900';
 
-function FilterChip({ label, isActive, onClick, activeClassName }: FilterChipProps) {
+function getActiveChipClass(tone: FilterChipProps['tone']) {
+  return `border-transparent text-white font-semibold shadow-sm ring-1 ${STATUS_STYLES[tone ?? 'default']}`;
+}
+
+function FilterChip({ label, isActive, onClick, tone = 'default' }: FilterChipProps) {
   return (
     <button
-      className={`${FILTER_CHIP_BASE} ${isActive ? activeClassName ?? FILTER_CHIP_ACTIVE : FILTER_CHIP_INACTIVE}`}
+      className={`${FILTER_CHIP_BASE} ${isActive ? getActiveChipClass(tone) : FILTER_CHIP_INACTIVE} ${isActive ? '' : 'font-medium'}`}
       type="button"
       onClick={onClick}
       title={label}
@@ -84,20 +90,18 @@ function FilterChip({ label, isActive, onClick, activeClassName }: FilterChipPro
 
 function FilterGroup<T extends string>({ label, options, activeValue, onChange }: FilterGroupProps<T>) {
   return (
-    <div className="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-3">
+    <div className="grid gap-2 md:grid-cols-[72px_minmax(0,1fr)] md:items-center md:gap-3">
       <p className="text-sm font-medium text-slate-600 whitespace-nowrap">{label}</p>
-      <div className="overflow-x-auto">
-        <div className="flex min-w-max items-center gap-2">
-          {options.map((option) => (
-            <FilterChip
-              key={option.value}
-              label={option.label}
-              isActive={activeValue === option.value}
-              activeClassName={option.activeClassName}
-              onClick={() => onChange(option.value)}
-            />
-          ))}
-        </div>
+      <div className="flex flex-wrap items-center gap-2">
+        {options.map((option) => (
+          <FilterChip
+            key={option.value}
+            label={option.label}
+            isActive={activeValue === option.value}
+            tone={option.tone}
+            onClick={() => onChange(option.value)}
+          />
+        ))}
       </div>
     </div>
   );
@@ -158,7 +162,7 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
       ...queueItems.map((item) => ({
         value: item.queue,
         label: item.label,
-        activeClassName: QUEUE_STYLE_KEY[item.queue] ? STATUS_STYLES[QUEUE_STYLE_KEY[item.queue]] : undefined
+        tone: QUEUE_STYLE_KEY[item.queue] ?? 'default'
       }))
     ],
     [queueItems]
