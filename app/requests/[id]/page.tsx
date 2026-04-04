@@ -167,8 +167,8 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
       };
     case 'KRABI_NEEDS_DOCUMENT_FIX':
       return {
-        nextStep: 'อ่าวนางแก้ไขเอกสารตามเหตุผลที่กระบี่ตีกลับ แล้วกดพร้อมส่งใหม่',
-        owner: 'ฝ่ายอ่าวนาง'
+        nextStep: 'แก้ไขเอกสารตามเหตุผลที่กระบี่ตีกลับ แล้วส่งเอกสารใหม่เข้าคิวกระบี่',
+        owner: 'ฝ่ายเอกสาร / ผู้จัดเตรียมเอกสาร'
       };
     case 'KRABI_IN_PROGRESS':
       return {
