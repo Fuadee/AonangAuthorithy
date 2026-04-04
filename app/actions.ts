@@ -86,6 +86,7 @@ function revalidateRequestPaths(requestId: string): void {
 }
 
 const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>> = {
+  WAIT_LAYOUT_DRAWING: ['READY_TO_SEND_KRABI'],
   WAIT_ACTION_CONFIRMATION: ['WAIT_MANAGER_REVIEW'],
   WAIT_MANAGER_REVIEW: ['COMPLETED']
 };
@@ -241,6 +242,22 @@ export async function updateRequestStatusAction(formData: FormData) {
     if (!canMoveToBilling(request)) {
       throw new Error('เคสรับเอกสารหน้างาน ต้องยืนยันว่าเอกสารครบแล้วก่อนออกใบแจ้งหนี้');
     }
+  }
+
+  if (request.request_type === 'METER' && ['WAIT_LAYOUT_DRAWING', 'READY_TO_SEND_KRABI'].includes(nextStatus)) {
+    throw new Error('สถานะวาดผังรองรับเฉพาะงานขยายเขตเท่านั้น');
+  }
+
+  if (request.request_type === 'EXPANSION' && nextStatus === 'WAIT_BILLING') {
+    throw new Error('งานขยายเขตต้องไปขั้นวาดผังก่อน และค้างที่เตรียมส่งเอกสารให้กระบี่');
+  }
+
+  if (request.request_type === 'EXPANSION' && request.status === 'SURVEY_COMPLETED' && !['WAIT_LAYOUT_DRAWING', 'READY_TO_SEND_KRABI'].includes(nextStatus)) {
+    throw new Error('งานขยายเขตหลังสำรวจต้องไปขั้นรอวาดผังหรือเตรียมส่งเอกสารให้กระบี่');
+  }
+
+  if (request.request_type === 'EXPANSION' && request.status === 'WAIT_LAYOUT_DRAWING' && nextStatus !== 'READY_TO_SEND_KRABI') {
+    throw new Error('งานขยายเขตต้องกดวาดผังเสร็จเพื่อไปสถานะเตรียมส่งเอกสารให้กระบี่');
   }
 
   if (nextStatus === 'WAIT_MANAGER_REVIEW' && !canMoveToManagerReview(request)) {
@@ -528,7 +545,7 @@ export async function completeSurveyAction(formData: FormData) {
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status,request_type')
+    .select('id,status,request_type,collect_docs_on_site,survey_note')
     .eq('id', requestId)
     .single();
 
@@ -540,16 +557,63 @@ export async function completeSurveyAction(formData: FormData) {
     throw new Error('กดสำรวจเสร็จได้เฉพาะสถานะกำลังสำรวจหน้างาน');
   }
   const collectDocsOnSite = Boolean((request as { collect_docs_on_site?: boolean }).collect_docs_on_site);
+  const requestType = request.request_type as RequestType;
 
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: (request.request_type as RequestType) === 'METER' ? (collectDocsOnSite ? 'SURVEY_COMPLETED' : 'WAIT_BILLING') : 'SURVEY_COMPLETED',
+      status:
+        requestType === 'METER'
+          ? collectDocsOnSite
+            ? 'SURVEY_COMPLETED'
+            : 'WAIT_BILLING'
+          : 'WAIT_LAYOUT_DRAWING',
       survey_note: surveyNote,
       survey_completed_at: nowIso,
       updated_at: nowIso
     })
     .eq('id', requestId);
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function completeLayoutDrawingAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const drawingNote = optionalField(formData, 'survey_note');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,survey_note')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if ((request.request_type as RequestType) !== 'EXPANSION') {
+    throw new Error('action นี้รองรับเฉพาะงานขยายเขต');
+  }
+
+  if (!['WAIT_LAYOUT_DRAWING', 'SURVEY_COMPLETED'].includes(request.status)) {
+    throw new Error('กดวาดผังเสร็จได้เฉพาะสถานะรอวาดผัง');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: 'READY_TO_SEND_KRABI',
+      survey_note: drawingNote ?? request.survey_note ?? null,
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+
   if (error) {
     throw new Error(error.message);
   }

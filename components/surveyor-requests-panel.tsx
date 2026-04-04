@@ -20,7 +20,9 @@ type SurveyorFilter =
   | 'READY_FOR_RESURVEY'
   | 'IN_SURVEY'
   | 'TODAY'
-  | 'SURVEY_COMPLETED';
+  | 'SURVEY_COMPLETED'
+  | 'WAIT_LAYOUT_DRAWING'
+  | 'READY_TO_SEND_KRABI';
 
 const ALL_SURVEYORS = 'ALL';
 
@@ -34,7 +36,9 @@ const FILTER_OPTIONS: Array<{ value: SurveyorFilter; label: string }> = [
   { value: 'READY_FOR_RESURVEY', label: 'รอนัดตรวจซ้ำ' },
   { value: 'IN_SURVEY', label: 'กำลังสำรวจ' },
   { value: 'TODAY', label: 'วันนี้' },
-  { value: 'SURVEY_COMPLETED', label: 'สำรวจแล้ว' }
+  { value: 'SURVEY_COMPLETED', label: 'สำรวจแล้ว' },
+  { value: 'WAIT_LAYOUT_DRAWING', label: 'รอวาดผัง' },
+  { value: 'READY_TO_SEND_KRABI', label: 'เตรียมส่งเอกสารให้กระบี่' }
 ];
 
 function formatSurveyDate(value: string | null): string {

@@ -25,6 +25,8 @@ type WorkflowFilter =
   | 'WAIT_CUSTOMER_FIX_ONLY'
   | 'WAIT_FIX_REVIEW_ONLY'
   | 'READY_FOR_RESURVEY_ONLY'
+  | 'WAIT_LAYOUT_DRAWING_ONLY'
+  | 'READY_TO_SEND_KRABI_ONLY'
   | 'WAIT_BILLING_ONLY'
   | 'WAIT_ACTION_CONFIRMATION_ONLY'
   | 'WAIT_MANAGER_REVIEW_ONLY';
@@ -49,6 +51,8 @@ const WORKFLOW_FILTER_OPTIONS: Array<{ value: WorkflowFilter; label: string }> =
   { value: 'WAIT_CUSTOMER_FIX_ONLY', label: 'รอผู้ใช้ไฟแก้ไข' },
   { value: 'WAIT_FIX_REVIEW_ONLY', label: 'รอตรวจจากรูป/ข้อมูลที่ส่งมา' },
   { value: 'READY_FOR_RESURVEY_ONLY', label: 'รอนัดตรวจซ้ำ' },
+  { value: 'WAIT_LAYOUT_DRAWING_ONLY', label: 'รอวาดผัง (ขยายเขต)' },
+  { value: 'READY_TO_SEND_KRABI_ONLY', label: 'เตรียมส่งเอกสารให้กระบี่ (ขยายเขต)' },
   { value: 'WAIT_BILLING_ONLY', label: 'รอออกใบแจ้งหนี้' },
   { value: 'WAIT_ACTION_CONFIRMATION_ONLY', label: 'รอดำเนินการหลังแจ้งหนี้' },
   { value: 'WAIT_MANAGER_REVIEW_ONLY', label: 'รอผู้จัดการตรวจ' }
@@ -93,6 +97,12 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
     }
     if (workflowFilter === 'READY_FOR_RESURVEY_ONLY') {
       result = result.filter((request) => request.status === 'READY_FOR_RESURVEY');
+    }
+    if (workflowFilter === 'WAIT_LAYOUT_DRAWING_ONLY') {
+      result = result.filter((request) => request.status === 'WAIT_LAYOUT_DRAWING');
+    }
+    if (workflowFilter === 'READY_TO_SEND_KRABI_ONLY') {
+      result = result.filter((request) => request.status === 'READY_TO_SEND_KRABI');
     }
 
     if (workflowFilter === 'WAIT_ACTION_CONFIRMATION_ONLY') {
