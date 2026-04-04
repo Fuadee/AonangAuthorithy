@@ -62,7 +62,7 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   MANAGER_APPROVE: 'อนุมัติแล้ว',
   LAYOUT_DRAWING_DONE: 'วาดผังเสร็จ',
   MARK_DOCUMENT_READY: 'จัดเตรียมเอกสารเสร็จ',
-  DISPATCHED_TO_KRABI: 'ส่งเอกสารไปกระบี่',
+  DISPATCHED_TO_KRABI: 'ส่งเอกสารให้กระบี่',
   KRABI_ACCEPT_AND_START: 'ยืนยันรับเอกสาร',
   KRABI_RETURN_FOR_FIX: 'เอกสารไม่พร้อม ส่งกลับแก้ไข',
   KRABI_FIX_COMPLETED: 'แก้ไขเอกสารแล้ว / พร้อมส่งใหม่',
@@ -201,10 +201,10 @@ export function getAvailableRequestActions(
   }
 
   if (request.request_type === 'EXPANSION' && status === 'WAITING_TO_SEND_TO_KRABI') {
-    if (!request.is_document_ready) {
-      return [toAction('MARK_DOCUMENT_READY', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าจัดเตรียมเอกสารเสร็จแล้ว?' })];
-    }
-    return [];
+    return [
+      toAction('DISPATCHED_TO_KRABI', { variant: 'primary' }),
+      toAction('MARK_DOCUMENT_READY', { variant: 'secondary', requiresConfirmation: 'ยืนยันว่าจัดเตรียมเอกสารเสร็จแล้ว?' })
+    ];
   }
 
   if (request.request_type === 'EXPANSION' && ['SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK'].includes(status)) {

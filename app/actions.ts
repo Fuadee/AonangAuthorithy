@@ -680,10 +680,6 @@ export async function markDocumentReadyAction(formData: FormData) {
     throw new Error('จัดเตรียมเอกสารได้เฉพาะสถานะรอส่งเอกสารให้กระบี่');
   }
 
-  if (request.is_document_ready) {
-    throw new Error('เอกสารถูกจัดเตรียมเรียบร้อยแล้ว');
-  }
-
   const { error } = await supabase
     .from('service_requests')
     .update({
@@ -713,8 +709,8 @@ export async function markSentToKrabiAction(formData: FormData) {
   if ((request.request_type as RequestType) !== 'EXPANSION') {
     throw new Error('การส่งเอกสารกระบี่รองรับเฉพาะงานขยายเขต');
   }
-  if (request.status !== 'WAITING_TO_SEND_TO_KRABI' || !request.is_document_ready) {
-    throw new Error('ต้องจัดเตรียมเอกสารให้พร้อมก่อนจึงจะบันทึกว่าส่งเอกสารแล้วได้');
+  if (request.status !== 'WAITING_TO_SEND_TO_KRABI') {
+    throw new Error('บันทึกส่งเอกสารได้เฉพาะสถานะรอส่งเอกสารให้กระบี่');
   }
 
   const { error } = await supabase
