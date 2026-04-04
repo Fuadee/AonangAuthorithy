@@ -2,7 +2,8 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useMemo, useState } from 'react';
+import { MouseEvent, useMemo, useState } from 'react';
+import { SurveyScheduleActionDialog } from '@/components/survey-schedule-action-dialog';
 import { WorkflowActionModal } from '@/components/workflow-action-modal';
 import { QueueWorkflowAction, getWorkflowActionLabel, WorkflowActionKey } from '@/lib/requests/workflow-action-config';
 import { RequestStatus } from '@/lib/requests/types';
@@ -25,7 +26,10 @@ export function RequestCardActionPanel({ requestId, detailHref, currentStatus, a
 
   const hasActions = useMemo(() => actions.length > 0, [actions]);
 
-  const handleAction = (action: QueueWorkflowAction) => {
+  const handleAction = (event: MouseEvent<HTMLButtonElement>, action: QueueWorkflowAction) => {
+    event.preventDefault();
+    event.stopPropagation();
+
     if (action.fallbackToDetail) {
       router.push(detailHref);
       return;
@@ -48,7 +52,7 @@ export function RequestCardActionPanel({ requestId, detailHref, currentStatus, a
                 className={`${ACTION_BUTTON_CLASS[action.variant]} min-h-10 justify-center whitespace-normal break-words text-left`}
                 disabled={disabled}
                 type="button"
-                onClick={() => handleAction(action)}
+                onClick={(event) => handleAction(event, action)}
               >
                 {getWorkflowActionLabel(action.key)}
               </button>
@@ -67,6 +71,11 @@ export function RequestCardActionPanel({ requestId, detailHref, currentStatus, a
         </div>
       )}
 
+      <SurveyScheduleActionDialog
+        actionKey={activeAction === 'SCHEDULE_SURVEY' || activeAction === 'EDIT_SURVEY_DATE' ? activeAction : null}
+        onClose={() => setActiveAction(null)}
+        requestId={requestId}
+      />
       <WorkflowActionModal actionKey={activeAction} currentStatus={currentStatus} onClose={() => setActiveAction(null)} requestId={requestId} stayOnQueue />
     </div>
   );

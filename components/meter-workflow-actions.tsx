@@ -15,8 +15,8 @@ import {
   issueBillingAction,
   markSurveyFailedAction,
   queueForKrabiDispatchAction,
-  updateSurveyScheduleAction,
 } from '@/app/actions';
+import { SurveyScheduleActionDialog } from '@/components/survey-schedule-action-dialog';
 import { WorkflowActionModal } from '@/components/workflow-action-modal';
 import { getWorkflowActionLabel, getWorkflowActionsForRequest, QueueWorkflowAction, WorkflowActionKey } from '@/lib/requests/workflow-action-config';
 import { RequestStatus, RequestType } from '@/lib/requests/types';
@@ -291,27 +291,11 @@ export function MeterWorkflowActions({
         </Modal>
       ) : null}
 
-      {activeAction === 'SCHEDULE_SURVEY' || activeAction === 'EDIT_SURVEY_DATE' ? (
-        <Modal title={activeAction === 'SCHEDULE_SURVEY' ? 'กำหนดวันสำรวจ' : 'แก้ไขวันนัดสำรวจ'} onClose={closeModal}>
-          <form action={updateSurveyScheduleAction} className="space-y-3">
-            <input name="request_id" type="hidden" value={requestId} />
-            <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="survey_date_current">วันนัดสำรวจล่าสุด</label>
-              <input className="input" id="survey_date_current" name="survey_date_current" required type="date" />
-            </div>
-            {activeAction === 'EDIT_SURVEY_DATE' ? (
-              <div>
-                <label className="text-sm font-medium text-slate-700" htmlFor="survey_reschedule_reason">เหตุผลการเลื่อนนัด</label>
-                <textarea className="input min-h-24" id="survey_reschedule_reason" name="survey_reschedule_reason" required />
-              </div>
-            ) : null}
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">บันทึกวันนัด</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
+      <SurveyScheduleActionDialog
+        actionKey={activeAction === 'SCHEDULE_SURVEY' || activeAction === 'EDIT_SURVEY_DATE' ? activeAction : null}
+        onClose={closeModal}
+        requestId={requestId}
+      />
 
       {activeAction === 'SURVEY_FAIL' ? (
         <Modal title="บันทึกผลสำรวจไม่ผ่าน" onClose={closeModal}>
