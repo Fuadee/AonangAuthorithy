@@ -26,7 +26,7 @@ export default async function KrabiQueuePage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold">คิวกระบี่</h2>
-        <p className="mt-1 text-sm text-slate-500">แสดงงานที่ส่งไปกระบี่แล้ว งานที่กำลังดำเนินการ และงานประมาณการเสร็จแล้ว</p>
+        <p className="mt-1 text-sm text-slate-500">แสดงงานที่ส่งไปกระบี่แล้ว งานที่กำลังดำเนินการ งานประมาณการเสร็จ และงานออกใบแจ้งหนี้แล้ว</p>
       </div>
 
       <RequestTable requests={typedRequests} />
