@@ -44,7 +44,6 @@ export function RequestTable({ requests }: RequestTableProps) {
               <th className="px-4 py-3 font-medium">วันนัดสำรวจล่าสุด</th>
               <th className="px-4 py-3 font-medium">คิวปัจจุบัน</th>
               <th className="px-4 py-3 font-medium">สถานะ</th>
-              <th className="px-4 py-3 font-medium">สร้างเมื่อ</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
@@ -101,12 +100,11 @@ export function RequestTable({ requests }: RequestTableProps) {
                   </div>
                   {getCustomerDelaySummary(request) ? <p className="mt-1 text-xs text-slate-500">{getCustomerDelaySummary(request)}</p> : null}
                 </td>
-                <td className="px-4 py-3">{new Date(request.created_at).toLocaleString('th-TH')}</td>
               </tr>
             ))}
             {!requests.length && (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-500" colSpan={11}>
+                <td className="px-4 py-6 text-center text-slate-500" colSpan={10}>
                   ยังไม่มีคำร้อง
                 </td>
               </tr>
