@@ -12,10 +12,6 @@ type SurveyorRequestsPanelProps = {
 
 type SurveyorFilter =
   | 'ALL'
-  | 'PENDING_SURVEY_REVIEW'
-  | 'SURVEY_ACCEPTED'
-  | 'SURVEY_DOCS_INCOMPLETE'
-  | 'SURVEY_RESCHEDULE_REQUESTED'
   | 'WAIT_DOCUMENT_REVIEW'
   | 'WAIT_DOCUMENT_FROM_CUSTOMER'
   | 'READY_FOR_SURVEY'
@@ -30,11 +26,7 @@ const ALL_SURVEYORS = 'ALL';
 
 const FILTER_OPTIONS: Array<{ value: SurveyorFilter; label: string }> = [
   { value: 'ALL', label: 'ทั้งหมด' },
-  { value: 'PENDING_SURVEY_REVIEW', label: 'รอตรวจเอกสาร' },
-  { value: 'SURVEY_ACCEPTED', label: 'รับงานแล้ว' },
-  { value: 'SURVEY_DOCS_INCOMPLETE', label: 'เอกสารไม่ครบ' },
-  { value: 'SURVEY_RESCHEDULE_REQUESTED', label: 'ขอเลื่อนวันสำรวจ' },
-  { value: 'WAIT_DOCUMENT_REVIEW', label: 'รอตรวจเอกสารก่อนรับงาน' },
+  { value: 'WAIT_DOCUMENT_REVIEW', label: 'รอตรวจเอกสาร' },
   { value: 'WAIT_DOCUMENT_FROM_CUSTOMER', label: 'รอผู้ใช้ไฟนำเอกสารมาให้' },
   { value: 'READY_FOR_SURVEY', label: 'พร้อมรับงานสำรวจ' },
   { value: 'WAIT_CUSTOMER_FIX', label: 'รอผู้ใช้ไฟแก้ไข' },
@@ -108,9 +100,6 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
 
   const summary = useMemo(
     () => ({
-      pendingReview: surveyorFilteredRequests.filter((request) => request.status === 'PENDING_SURVEY_REVIEW').length,
-      accepted: surveyorFilteredRequests.filter((request) => request.status === 'SURVEY_ACCEPTED').length,
-      docsIncomplete: surveyorFilteredRequests.filter((request) => request.status === 'SURVEY_DOCS_INCOMPLETE').length,
       waitDocumentReview: surveyorFilteredRequests.filter((request) => request.status === 'WAIT_DOCUMENT_REVIEW').length,
       waitDocumentFromCustomer: surveyorFilteredRequests.filter((request) => request.status === 'WAIT_DOCUMENT_FROM_CUSTOMER').length,
       today: surveyorFilteredRequests.filter((request) => isToday(getCurrentSurveyDate(request))).length,
@@ -163,19 +152,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-7">
         <article className="card p-4">
           <p className="text-sm text-slate-500">งานรอตรวจเอกสาร</p>
-          <p className="mt-2 text-2xl font-semibold text-brand-700">{summary.pendingReview}</p>
-        </article>
-        <article className="card p-4">
-          <p className="text-sm text-slate-500">งานรับแล้ว</p>
-          <p className="mt-2 text-2xl font-semibold text-brand-700">{summary.accepted}</p>
-        </article>
-        <article className="card p-4">
-          <p className="text-sm text-slate-500">งานเอกสารไม่ครบ</p>
-          <p className="mt-2 text-2xl font-semibold text-amber-600">{summary.docsIncomplete}</p>
-        </article>
-        <article className="card p-4">
-          <p className="text-sm text-slate-500">รอตรวจเอกสารก่อนรับงาน</p>
-          <p className="mt-2 text-2xl font-semibold text-orange-600">{summary.waitDocumentReview}</p>
+          <p className="mt-2 text-2xl font-semibold text-brand-700">{summary.waitDocumentReview}</p>
         </article>
         <article className="card p-4">
           <p className="text-sm text-slate-500">รอผู้ใช้ไฟนำเอกสารมาให้</p>

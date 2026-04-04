@@ -115,7 +115,7 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
     [requests]
   );
   const pendingSurveyReviewCount = useMemo(
-    () => requests.filter((request) => request.status === 'PENDING_SURVEY_REVIEW').length,
+    () => requests.filter((request) => request.status === 'WAIT_DOCUMENT_REVIEW').length,
     [requests]
   );
   const surveyQueueCount = useMemo(

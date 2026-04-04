@@ -12,6 +12,7 @@ import {
   canStartSurvey,
   canMoveToManagerReview,
   DocumentReviewDecision,
+  normalizeSurveyWorkflowStatus,
   REQUEST_STATUSES,
   RequestStatus,
   REQUEST_TYPES,
@@ -151,12 +152,7 @@ export async function createRequestAction(formData: FormData) {
 
   const requestNo = await generateRequestNo();
 
-  const initialStatus: RequestStatus =
-    requestType === 'METER'
-      ? 'WAIT_DOCUMENT_REVIEW'
-      : assignedSurveyor && scheduledSurveyDate
-        ? 'PENDING_SURVEY_REVIEW'
-        : 'NEW';
+  const initialStatus: RequestStatus = 'WAIT_DOCUMENT_REVIEW';
 
   const { error: insertError } = await supabase.from('service_requests').insert({
     request_no: requestNo,
@@ -409,9 +405,7 @@ export async function updateDocumentReviewDecisionAction(formData: FormData) {
     throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
   }
 
-  assertMeterLoopAllowed(request.request_type as RequestType);
-
-  if (request.status !== 'WAIT_DOCUMENT_REVIEW') {
+  if (normalizeSurveyWorkflowStatus(request.status as RequestStatus) !== 'WAIT_DOCUMENT_REVIEW') {
     throw new Error('บันทึกผลตรวจเอกสารได้เฉพาะงานที่อยู่สถานะรอตรวจเอกสาร');
   }
 
@@ -508,15 +502,12 @@ export async function startSurveyAction(formData: FormData) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
-  if ((request.request_type as RequestType) !== 'METER') {
-    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์');
-  }
-
-  if (!['READY_FOR_SURVEY', 'READY_FOR_RESURVEY'].includes(request.status)) {
+  if (!['READY_FOR_SURVEY', 'READY_FOR_RESURVEY', 'SURVEY_ACCEPTED', 'SURVEY_RESCHEDULE_REQUESTED'].includes(request.status)) {
     throw new Error('รับงาน/ไปสำรวจได้เฉพาะสถานะพร้อมรับงานสำรวจ หรือรอตรวจซ้ำ');
   }
 
-  if (request.status === 'READY_FOR_SURVEY' && !canStartSurvey(request)) {
+  const normalizedStatus = normalizeSurveyWorkflowStatus(request.status as RequestStatus);
+  if (normalizedStatus === 'READY_FOR_SURVEY' && !canStartSurvey({ ...request, status: normalizedStatus })) {
     throw new Error('ต้องกำหนดวันนัดสำรวจล่าสุดก่อนเริ่มสำรวจ');
   }
 
@@ -545,10 +536,6 @@ export async function completeSurveyAction(formData: FormData) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
-  if ((request.request_type as RequestType) !== 'METER') {
-    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์');
-  }
-
   if (request.status !== 'IN_SURVEY') {
     throw new Error('กดสำรวจเสร็จได้เฉพาะสถานะกำลังสำรวจหน้างาน');
   }
@@ -557,7 +544,7 @@ export async function completeSurveyAction(formData: FormData) {
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: collectDocsOnSite ? 'SURVEY_COMPLETED' : 'WAIT_BILLING',
+      status: (request.request_type as RequestType) === 'METER' ? (collectDocsOnSite ? 'SURVEY_COMPLETED' : 'WAIT_BILLING') : 'SURVEY_COMPLETED',
       survey_note: surveyNote,
       survey_completed_at: nowIso,
       updated_at: nowIso

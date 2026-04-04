@@ -4,18 +4,19 @@ import { MeterWorkflowActions } from '@/components/meter-workflow-actions';
 import { LocationPreview } from '@/components/location-preview';
 import { SurveyorActionWorkflow } from '@/components/surveyor-action-workflow';
 import {
-  canStartSurvey,
   canMoveToBilling,
   canMoveToManagerReview,
   getFinalApprovalSource,
   getCurrentSurveyDate,
   getCustomerDelaySummary,
+  getDocumentReviewRules,
   getDocumentStatusSummary,
   getPostSurveyFixSummary,
   getRequestQueueGroup,
   getRequestQueueGroupLabel,
   getSurveyScheduleSummary,
   hasSurveyBeenRescheduled,
+  normalizeSurveyWorkflowStatus,
   getRequestStatusLabel,
   isInvoiceSigned,
   needsRescheduleAfterDocuments,
@@ -68,8 +69,10 @@ function formatCurrency(value: number | null): string {
 }
 
 function getNextStepSummary(status: RequestStatus, requestType: RequestType): { nextStep: string; owner: string } {
+  const normalizedStatus = normalizeSurveyWorkflowStatus(status);
+
   if (requestType === 'METER') {
-    switch (status) {
+    switch (normalizedStatus) {
       case 'WAIT_DOCUMENT_REVIEW':
         return {
           nextStep: 'ตรวจเอกสารก่อนรับงาน หรือยืนยันเอกสารครบหลังสำรวจ (กรณีรับเอกสารหน้างาน)',
@@ -130,31 +133,27 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
     }
   }
 
-  switch (status) {
-    case 'PENDING_SURVEY_REVIEW':
+  switch (normalizedStatus) {
+    case 'WAIT_DOCUMENT_REVIEW':
       return {
-        nextStep: 'นักสำรวจตรวจเอกสารและเลือกการดำเนินการ',
-        owner: 'นักสำรวจ'
-      };
-    case 'SURVEY_ACCEPTED':
-      return {
-        nextStep: 'ลงพื้นที่สำรวจตามวันนัดหมาย หรือขอเลื่อนวันสำรวจ',
-        owner: 'นักสำรวจ'
-      };
-    case 'SURVEY_DOCS_INCOMPLETE':
-      return {
-        nextStep: 'คนรับคำร้องติดตามเอกสารเพิ่มเติมจากลูกค้า',
+        nextStep: 'ตรวจเอกสารตาม checklist ของประเภทคำร้อง แล้วตัดสินใจผ่าน/ขอเอกสารเพิ่ม',
         owner: 'เจ้าหน้าที่รับคำร้อง'
       };
-    case 'SURVEY_RESCHEDULE_REQUESTED':
+    case 'WAIT_DOCUMENT_FROM_CUSTOMER':
       return {
-        nextStep: 'ยืนยันวันสำรวจใหม่และติดตามความพร้อมของลูกค้า',
-        owner: 'เจ้าหน้าที่รับคำร้อง'
+        nextStep: 'รอผู้ใช้ไฟนำเอกสารเพิ่มเติม แล้ววนกลับมาตรวจเอกสาร',
+        owner: 'เจ้าหน้าที่รับคำร้อง / ผู้ใช้ไฟ'
       };
+    case 'READY_FOR_SURVEY':
+      return {
+        nextStep: 'กำหนดวันสำรวจ แล้วส่งต่อให้นักสำรวจลงพื้นที่',
+        owner: 'เจ้าหน้าที่รับคำร้อง / นักสำรวจ'
+      };
+    case 'IN_SURVEY':
     case 'SURVEY_COMPLETED':
       return {
-        nextStep: 'สำรวจหน้างานเสร็จสิ้นแล้ว',
-        owner: 'ทีมรับคำร้องดำเนินการขั้นตอนถัดไป'
+        nextStep: 'สำรวจหน้างานและบันทึกผลสำรวจ',
+        owner: 'นักสำรวจ'
       };
     default:
       return {
@@ -394,11 +393,11 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   }
 
   const requestStatus = request.status as RequestStatus;
+  const normalizedRequestStatus = normalizeSurveyWorkflowStatus(requestStatus);
   const requestType = request.request_type as RequestType;
   const currentQueue = getRequestQueueGroup(requestStatus);
   const isSurveyorFlowStatus = currentQueue === 'SURVEY';
-  const isMeterLoopStatus =
-    requestType === 'METER' &&
+  const isUnifiedWorkflowStatus =
     [
       'SURVEY_COMPLETED',
       'WAIT_DOCUMENT_REVIEW',
@@ -411,7 +410,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
       'WAIT_BILLING',
       'WAIT_ACTION_CONFIRMATION',
       'WAIT_MANAGER_REVIEW'
-    ].includes(requestStatus);
+    ].includes(normalizedRequestStatus);
   const documentSummary = getDocumentStatusSummary(request);
   const postSurveyFixSummary = getPostSurveyFixSummary(request);
   const invoiceSigned = isInvoiceSigned(request);
@@ -419,6 +418,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const canGoBilling = canMoveToBilling(request);
   const readyForManager = canMoveToManagerReview(request);
   const nextStepSummary = getNextStepSummary(requestStatus, requestType);
+  const documentReviewRules = getDocumentReviewRules(requestType);
   const currentSurveyDate = getCurrentSurveyDate(request);
   const hasLocation = request.latitude !== null && request.longitude !== null;
   const googleMapsUrl = hasLocation
@@ -505,6 +505,10 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           <div>
             <dt className="text-sm text-slate-500">ผู้ดำเนินการต่อ</dt>
             <dd className="mt-1 font-medium">{nextStepSummary.owner}</dd>
+          </div>
+          <div>
+            <dt className="text-sm text-slate-500">โหมดตรวจเอกสาร</dt>
+            <dd className="mt-1 font-medium">{documentReviewRules.mode === 'DETAILED' ? 'ละเอียด' : 'พื้นฐาน'}</dd>
           </div>
           <div>
             <dt className="text-sm text-slate-500">วิธีที่อนุมัติให้ผ่านสุดท้าย</dt>
@@ -702,19 +706,20 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         <h3 className="text-lg font-semibold">{getActionTitle(requestStatus, requestType)}</h3>
         <p className="mt-1 text-sm text-slate-500">ใช้ปุ่มตามหน้าที่ เพื่อกันการเปลี่ยนสถานะข้ามขั้นตอน</p>
         <div className="mt-4">
-          {isMeterLoopStatus ? (
+          {isUnifiedWorkflowStatus ? (
             <MeterWorkflowActions
               requestId={request.id}
-              currentStatus={requestStatus}
+              requestType={requestType}
+              currentStatus={normalizedRequestStatus}
               isInvoiceSigned={invoiceSigned}
               isPaid={paid}
-              hasCurrentSurveyDate={canStartSurvey(request)}
+              hasCurrentSurveyDate={Boolean(currentSurveyDate)}
             />
           ) : null}
-          {!isMeterLoopStatus && isSurveyorFlowStatus ? (
+          {!isUnifiedWorkflowStatus && isSurveyorFlowStatus ? (
             <SurveyorActionWorkflow requestId={request.id} currentStatus={requestStatus} />
           ) : null}
-          {!isMeterLoopStatus && !isSurveyorFlowStatus ? (
+          {!isUnifiedWorkflowStatus && !isSurveyorFlowStatus ? (
             <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">สถานะนี้ยังไม่มี action เพิ่มเติม</p>
           ) : null}
         </div>
