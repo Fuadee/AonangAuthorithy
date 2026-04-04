@@ -3,6 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { buildGoogleMapsDirectionsUrl } from '@/lib/maps/google-maps';
 import { getRequestStatusLabel } from '@/lib/requests/types';
+import { getSurveyorName } from '@/components/survey-map/surveyor-filter';
 import { LeafletGlobal, LeafletMap, LeafletMarker } from '@/lib/maps/leaflet-loader';
 import type { SurveyQueueRequest } from '@/components/survey-map/types';
 
@@ -46,13 +47,14 @@ export function SurveyMapMarkers({ leaflet, map, requests, selectedRequestId, on
     requests
       .filter((request) => request.latitude !== null && request.longitude !== null)
       .forEach((request) => {
+        const surveyorName = getSurveyorName(request) ?? '-';
         const marker = leaflet
           .marker([request.latitude as number, request.longitude as number], {
             icon: request.id === selectedRequestId ? selectedIcon : defaultIcon
           })
           .addTo(map)
           .bindPopup(
-            `<div style="min-width:180px"><strong>${escapeHtml(request.request_no)}</strong><br/>${escapeHtml(request.customer_name)}<br/>${escapeHtml(getRequestStatusLabel(request.status))}<br/><a href="${buildGoogleMapsDirectionsUrl({ latitude: request.latitude as number, longitude: request.longitude as number })}" target="_blank" rel="noreferrer">เปิดใน Google Maps</a></div>`
+            `<div style="min-width:180px"><strong>${escapeHtml(request.request_no)}</strong><br/>${escapeHtml(request.customer_name)}<br/>ผู้สำรวจ: ${escapeHtml(surveyorName)}<br/>${escapeHtml(getRequestStatusLabel(request.status))}<br/><a href="${buildGoogleMapsDirectionsUrl({ latitude: request.latitude as number, longitude: request.longitude as number })}" target="_blank" rel="noreferrer">เปิดใน Google Maps</a></div>`
           );
 
         marker.on('click', () => onSelectRequest(request.id));

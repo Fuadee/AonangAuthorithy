@@ -62,5 +62,5 @@ export default async function SurveyMapPage({ searchParams }: SurveyMapPageProps
     created_at: request.created_at
   }));
 
-  return <SurveyMapQueuePage requests={mappedRequests} activeStatuses={statuses} />;
+  return <SurveyMapQueuePage requests={mappedRequests} activeStatuses={statuses} initialSurveyor={params?.surveyor} />;
 }

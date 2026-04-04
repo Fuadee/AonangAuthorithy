@@ -2,6 +2,7 @@
 
 import { buildGoogleMapsDirectionsUrl } from '@/lib/maps/google-maps';
 import { getRequestStatusLabel } from '@/lib/requests/types';
+import { getSurveyorName } from '@/components/survey-map/surveyor-filter';
 import type { SurveyQueueRequest } from '@/components/survey-map/types';
 
 type SurveyQueueCardProps = {
@@ -21,6 +22,7 @@ function formatDate(value: string | null): string {
 
 export function SurveyQueueCard({ request, selected, onSelect, onViewOnMap, onHide }: SurveyQueueCardProps) {
   const hasCoordinate = request.latitude !== null && request.longitude !== null;
+  const surveyorName = getSurveyorName(request) ?? '-';
 
   return (
     <article
@@ -40,10 +42,10 @@ export function SurveyQueueCard({ request, selected, onSelect, onViewOnMap, onHi
           <p className="text-sm font-semibold text-brand-700">{request.request_no}</p>
           <p className="text-sm text-slate-700">{request.customer_name}</p>
           <p className="text-xs text-slate-500">พื้นที่: {request.area_name}</p>
-          <p className="text-xs text-slate-500">ผู้สำรวจ: {request.assigned_surveyor ?? '-'}</p>
           <p className="text-xs text-slate-500">นัดสำรวจล่าสุด: {formatDate(request.latest_survey_date)}</p>
           <p className="text-xs text-slate-500">สถานะ: {getRequestStatusLabel(request.status)}</p>
         </div>
+        <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">ผู้สำรวจ: {surveyorName}</span>
       </div>
 
       <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
