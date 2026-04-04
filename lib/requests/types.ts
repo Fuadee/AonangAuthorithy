@@ -9,6 +9,10 @@ export const REQUEST_STATUSES = [
   'SURVEY_COMPLETED',
   'WAIT_LAYOUT_DRAWING',
   'READY_TO_SEND_KRABI',
+  'QUEUED_FOR_KRABI_DISPATCH',
+  'SENT_TO_KRABI',
+  'KRABI_IN_PROGRESS',
+  'KRABI_ESTIMATION_COMPLETED',
   'WAIT_DOCUMENT_REVIEW',
   'WAIT_DOCUMENT_FROM_CUSTOMER',
   'READY_FOR_SURVEY',
@@ -22,7 +26,7 @@ export const REQUEST_STATUSES = [
   'COMPLETED'
 ] as const;
 export const REQUEST_TYPES = ['METER', 'EXPANSION'] as const;
-export const REQUEST_QUEUE_GROUPS = ['SURVEY', 'BILLING', 'MANAGER', 'DONE', 'OTHER'] as const;
+export const REQUEST_QUEUE_GROUPS = ['SURVEY', 'DISPATCH', 'KRABI', 'BILLING', 'MANAGER', 'DONE', 'OTHER'] as const;
 export const DOCUMENT_STATUSES = ['COMPLETE', 'INCOMPLETE'] as const;
 export const SURVEY_RESULTS = ['PASS', 'FAIL'] as const;
 export const FIX_VERIFICATION_MODES = ['PHOTO_OR_RESURVEY', 'RESURVEY_ONLY'] as const;
@@ -53,6 +57,10 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   SURVEY_COMPLETED: 'สำรวจแล้ว',
   WAIT_LAYOUT_DRAWING: 'รอวาดผัง',
   READY_TO_SEND_KRABI: 'เตรียมส่งเอกสารให้กระบี่',
+  QUEUED_FOR_KRABI_DISPATCH: 'เข้าคิวส่งเอกสารไปกระบี่',
+  SENT_TO_KRABI: 'ส่งเอกสารไปกระบี่แล้ว',
+  KRABI_IN_PROGRESS: 'กระบี่กำลังดำเนินการ',
+  KRABI_ESTIMATION_COMPLETED: 'กระบี่ประมาณการเสร็จแล้ว',
   WAIT_DOCUMENT_REVIEW: 'รอตรวจเอกสาร',
   WAIT_DOCUMENT_FROM_CUSTOMER: 'รอผู้ใช้ไฟนำเอกสารมาให้',
   READY_FOR_SURVEY: 'พร้อมรับงานสำรวจ',
@@ -68,6 +76,8 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
 
 export const REQUEST_QUEUE_GROUP_LABELS: Record<RequestQueueGroup, string> = {
   SURVEY: 'คิวนักสำรวจ',
+  DISPATCH: 'คิวส่งเอกสาร',
+  KRABI: 'คิวกระบี่',
   BILLING: 'คิวการเงิน',
   MANAGER: 'คิวผู้จัดการ',
   DONE: 'เสร็จสิ้น',
@@ -82,7 +92,11 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   SURVEY_RESCHEDULE_REQUESTED: 'SURVEY',
   SURVEY_COMPLETED: 'SURVEY',
   WAIT_LAYOUT_DRAWING: 'SURVEY',
-  READY_TO_SEND_KRABI: 'SURVEY',
+  READY_TO_SEND_KRABI: 'DISPATCH',
+  QUEUED_FOR_KRABI_DISPATCH: 'DISPATCH',
+  SENT_TO_KRABI: 'KRABI',
+  KRABI_IN_PROGRESS: 'KRABI',
+  KRABI_ESTIMATION_COMPLETED: 'KRABI',
   WAIT_DOCUMENT_REVIEW: 'SURVEY',
   WAIT_DOCUMENT_FROM_CUSTOMER: 'SURVEY',
   READY_FOR_SURVEY: 'SURVEY',
@@ -143,6 +157,59 @@ export function normalizeSurveyWorkflowStatus(status: RequestStatus): RequestSta
     return 'READY_FOR_SURVEY';
   }
   return status;
+}
+
+export const KRABI_DISPATCH_WEEKDAYS = [3, 5] as const;
+const DAY_IN_MS = 24 * 60 * 60 * 1000;
+
+export function calculateNextPlannedDispatchDate(fromDate: Date = new Date()): string {
+  const base = new Date(Date.UTC(fromDate.getUTCFullYear(), fromDate.getUTCMonth(), fromDate.getUTCDate()));
+  for (let offset = 0; offset <= 7; offset += 1) {
+    const candidate = new Date(base.getTime() + offset * DAY_IN_MS);
+    if (KRABI_DISPATCH_WEEKDAYS.includes(candidate.getUTCDay() as (typeof KRABI_DISPATCH_WEEKDAYS)[number])) {
+      return candidate.toISOString().slice(0, 10);
+    }
+  }
+
+  return base.toISOString().slice(0, 10);
+}
+
+function getAgeInDays(since: string | null | undefined, now: Date = new Date()): number | null {
+  if (!since) {
+    return null;
+  }
+
+  const sinceDate = new Date(since);
+  if (Number.isNaN(sinceDate.valueOf())) {
+    return null;
+  }
+
+  return Math.floor((now.getTime() - sinceDate.getTime()) / DAY_IN_MS);
+}
+
+export function getKrabiDispatchWarning(
+  request: Pick<ServiceRequest, 'status'> &
+    Partial<Pick<ServiceRequest, 'ready_to_send_krabi_at' | 'queued_for_dispatch_at' | 'planned_dispatch_date'>>
+): string | null {
+  if (request.status === 'READY_TO_SEND_KRABI') {
+    const ageInDays = getAgeInDays(request.ready_to_send_krabi_at);
+    if (ageInDays !== null && ageInDays >= 2) {
+      return `ค้างขั้นเตรียมส่งกระบี่ ${ageInDays} วัน`;
+    }
+  }
+
+  if (request.status === 'QUEUED_FOR_KRABI_DISPATCH') {
+    if (request.planned_dispatch_date && request.planned_dispatch_date < new Date().toISOString().slice(0, 10)) {
+      return `เลยรอบส่ง ${request.planned_dispatch_date}`;
+    }
+
+    const ageInDays = getAgeInDays(request.queued_for_dispatch_at);
+    if (ageInDays !== null && ageInDays >= 3) {
+      return `ค้างคิวส่งกระบี่ ${ageInDays} วัน`;
+    }
+  }
+
+  return null;
 }
 
 export function getDocumentReviewMode(requestType: RequestType): DocumentReviewMode {
@@ -462,6 +529,14 @@ export type ServiceRequest = {
   invoice_signed_by: string | null;
   paid_at: string | null;
   paid_by: string | null;
+  ready_to_send_krabi_at: string | null;
+  queued_for_dispatch_at: string | null;
+  planned_dispatch_date: string | null;
+  dispatched_to_krabi_at: string | null;
+  dispatched_to_krabi_by: string | null;
+  krabi_received_at: string | null;
+  krabi_in_progress_at: string | null;
+  krabi_completed_at: string | null;
   created_at: string;
   updated_at: string;
 };

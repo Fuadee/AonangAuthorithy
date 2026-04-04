@@ -9,6 +9,7 @@ import {
   getFinalApprovalSource,
   getCurrentSurveyDate,
   getCustomerDelaySummary,
+  getKrabiDispatchWarning,
   getDocumentReviewRules,
   getDocumentStatusSummary,
   getPostSurveyFixSummary,
@@ -162,8 +163,28 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
       };
     case 'READY_TO_SEND_KRABI':
       return {
-        nextStep: 'เตรียมส่งเอกสารให้กระบี่ (ค้างที่ขั้นตอนนี้ก่อน)',
-        owner: 'เจ้าหน้าที่'
+        nextStep: 'รอฝ่ายส่งเอกสารจัดเข้าคิวรอบส่งวันพุธ/ศุกร์',
+        owner: 'ฝ่ายส่งเอกสาร'
+      };
+    case 'QUEUED_FOR_KRABI_DISPATCH':
+      return {
+        nextStep: 'รอออกรอบส่งตามวันที่วางแผน',
+        owner: 'ฝ่ายส่งเอกสาร'
+      };
+    case 'SENT_TO_KRABI':
+      return {
+        nextStep: 'รอกระบี่รับเอกสารและเริ่มดำเนินการ',
+        owner: 'ฝ่ายกระบี่'
+      };
+    case 'KRABI_IN_PROGRESS':
+      return {
+        nextStep: 'ติดตามสถานะประมาณการจากฝั่งกระบี่',
+        owner: 'ฝ่ายกระบี่'
+      };
+    case 'KRABI_ESTIMATION_COMPLETED':
+      return {
+        nextStep: 'กระบี่ดำเนินการเสร็จในส่วนประมาณการแล้ว',
+        owner: 'เสร็จขั้นกระบี่'
       };
     default:
       return {
@@ -205,6 +226,13 @@ function getTimeline(request: {
   photo_reviewed_at: string | null;
   photo_reviewed_by: string | null;
   fix_approved_via: 'PHOTO' | 'RESURVEY' | null;
+  ready_to_send_krabi_at: string | null;
+  queued_for_dispatch_at: string | null;
+  planned_dispatch_date: string | null;
+  dispatched_to_krabi_at: string | null;
+  dispatched_to_krabi_by: string | null;
+  krabi_in_progress_at: string | null;
+  krabi_completed_at: string | null;
 }): TimelineItem[] {
   const items: TimelineItem[] = [
     {
@@ -272,6 +300,48 @@ function getTimeline(request: {
       title: request.survey_result === 'FAIL' ? 'สำรวจไม่ผ่าน' : 'สำรวจหน้างานเสร็จ',
       description: request.customer_fix_note ? `รายการที่ต้องแก้: ${request.customer_fix_note}` : undefined,
       at: request.survey_completed_at
+    });
+  }
+
+  if (request.ready_to_send_krabi_at) {
+    items.push({
+      key: 'ready-to-send-krabi',
+      title: 'เตรียมส่งเอกสารให้กระบี่',
+      at: request.ready_to_send_krabi_at
+    });
+  }
+
+  if (request.queued_for_dispatch_at) {
+    items.push({
+      key: 'queued-dispatch',
+      title: 'เข้าคิวส่งเอกสารไปกระบี่',
+      description: request.planned_dispatch_date ? `รอบส่ง: ${formatSurveyDate(request.planned_dispatch_date)}` : undefined,
+      at: request.queued_for_dispatch_at
+    });
+  }
+
+  if (request.dispatched_to_krabi_at) {
+    items.push({
+      key: 'sent-to-krabi',
+      title: 'ส่งเอกสารไปกระบี่แล้ว',
+      description: request.dispatched_to_krabi_by ? `ผู้ส่ง: ${request.dispatched_to_krabi_by}` : undefined,
+      at: request.dispatched_to_krabi_at
+    });
+  }
+
+  if (request.krabi_in_progress_at) {
+    items.push({
+      key: 'krabi-in-progress',
+      title: 'กระบี่เริ่มดำเนินการ',
+      at: request.krabi_in_progress_at
+    });
+  }
+
+  if (request.krabi_completed_at) {
+    items.push({
+      key: 'krabi-completed',
+      title: 'กระบี่ประมาณการเสร็จแล้ว',
+      at: request.krabi_completed_at
     });
   }
 
@@ -377,6 +447,10 @@ function getActionTitle(status: RequestStatus, requestType: RequestType): string
     case 'SURVEY_COMPLETED':
     case 'WAIT_LAYOUT_DRAWING':
     case 'READY_TO_SEND_KRABI':
+    case 'QUEUED_FOR_KRABI_DISPATCH':
+    case 'SENT_TO_KRABI':
+    case 'KRABI_IN_PROGRESS':
+    case 'KRABI_ESTIMATION_COMPLETED':
     case 'WAIT_DOCUMENT_REVIEW':
       return 'สถานะงาน';
     default:
@@ -391,7 +465,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,latitude,longitude,location_note,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,ready_to_send_krabi_at,queued_for_dispatch_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,latitude,longitude,location_note,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -423,7 +497,11 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
       'WAIT_ACTION_CONFIRMATION',
       'WAIT_MANAGER_REVIEW',
       'WAIT_LAYOUT_DRAWING',
-      'READY_TO_SEND_KRABI'
+      'READY_TO_SEND_KRABI',
+      'QUEUED_FOR_KRABI_DISPATCH',
+      'SENT_TO_KRABI',
+      'KRABI_IN_PROGRESS',
+      'KRABI_ESTIMATION_COMPLETED'
     ].includes(normalizedRequestStatus);
   const documentSummary = getDocumentStatusSummary(request);
   const postSurveyFixSummary = getPostSurveyFixSummary(request);
@@ -473,8 +551,16 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     photo_review_status: request.photo_review_status,
     photo_reviewed_at: request.photo_reviewed_at,
     photo_reviewed_by: request.photo_reviewed_by,
-    fix_approved_via: request.fix_approved_via
+    fix_approved_via: request.fix_approved_via,
+    ready_to_send_krabi_at: request.ready_to_send_krabi_at,
+    queued_for_dispatch_at: request.queued_for_dispatch_at,
+    planned_dispatch_date: request.planned_dispatch_date,
+    dispatched_to_krabi_at: request.dispatched_to_krabi_at,
+    dispatched_to_krabi_by: request.dispatched_to_krabi_by,
+    krabi_in_progress_at: request.krabi_in_progress_at,
+    krabi_completed_at: request.krabi_completed_at
   });
+  const krabiDispatchWarning = getKrabiDispatchWarning(request);
 
   return (
     <div className="space-y-6">
@@ -530,6 +616,13 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           </div>
         </dl>
       </section>
+
+      {krabiDispatchWarning ? (
+        <section className="card border border-amber-300 bg-amber-50 p-4">
+          <p className="text-sm font-semibold text-amber-800">แจ้งเตือนคิวส่งเอกสาร</p>
+          <p className="mt-1 text-sm text-amber-700">{krabiDispatchWarning}</p>
+        </section>
+      ) : null}
 
       {requestType === 'METER' ? (
         <section className="card p-6">

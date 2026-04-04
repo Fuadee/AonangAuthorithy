@@ -14,6 +14,11 @@ type DashboardSummaryProps = {
   waitCustomerFixCount: number;
   waitFixReviewCount: number;
   readyForResurveyCount: number;
+  waitLayoutDrawingCount: number;
+  readyToSendKrabiCount: number;
+  queuedForKrabiDispatchCount: number;
+  krabiInProgressCount: number;
+  krabiCompletedCount: number;
   waitBillingCount: number;
   waitActionConfirmationCount: number;
   approvedViaPhotoCount: number;
@@ -35,6 +40,11 @@ export function DashboardSummary({
   waitCustomerFixCount,
   waitFixReviewCount,
   readyForResurveyCount,
+  waitLayoutDrawingCount,
+  readyToSendKrabiCount,
+  queuedForKrabiDispatchCount,
+  krabiInProgressCount,
+  krabiCompletedCount,
   waitBillingCount,
   waitActionConfirmationCount,
   approvedViaPhotoCount
@@ -100,6 +110,26 @@ export function DashboardSummary({
       <article className="card p-5">
         <p className="text-sm text-slate-500">รอนัดตรวจซ้ำ</p>
         <p className="mt-2 text-3xl font-semibold text-cyan-700">{readyForResurveyCount}</p>
+      </article>
+      <article className="card p-5">
+        <p className="text-sm text-slate-500">คิววาดผัง</p>
+        <p className="mt-2 text-3xl font-semibold text-sky-700">{waitLayoutDrawingCount}</p>
+      </article>
+      <article className="card p-5">
+        <p className="text-sm text-slate-500">คิวเตรียมส่งกระบี่</p>
+        <p className="mt-2 text-3xl font-semibold text-amber-700">{readyToSendKrabiCount}</p>
+      </article>
+      <article className="card p-5">
+        <p className="text-sm text-slate-500">คิวรอส่งกระบี่</p>
+        <p className="mt-2 text-3xl font-semibold text-orange-700">{queuedForKrabiDispatchCount}</p>
+      </article>
+      <article className="card p-5">
+        <p className="text-sm text-slate-500">คิวกระบี่กำลังดำเนินการ</p>
+        <p className="mt-2 text-3xl font-semibold text-violet-700">{krabiInProgressCount}</p>
+      </article>
+      <article className="card p-5">
+        <p className="text-sm text-slate-500">คิวกระบี่เสร็จแล้ว</p>
+        <p className="mt-2 text-3xl font-semibold text-emerald-700">{krabiCompletedCount}</p>
       </article>
       <article className="card p-5">
         <p className="text-sm text-slate-500">รอออกใบแจ้งหนี้</p>
