@@ -5,6 +5,9 @@ import {
   approveFixFromPhotoAction,
   approveManagerReviewAction,
   completeLayoutDrawingAction,
+  markKrabiEstimationCompletedAction,
+  markKrabiInProgressAction,
+  markSentToKrabiAction,
   confirmBillingSurveyorSignAction,
   confirmDocumentsReceivedFromCustomerAction,
   confirmPaymentReceivedAction,
@@ -16,6 +19,7 @@ import {
   rejectFixPhotoAndRequireResurveyAction,
   reportCustomerFixAction,
   startSurveyAction,
+  queueForKrabiDispatchAction,
   updateSurveyScheduleAction,
   updateDocumentReviewDecisionAction
 } from '@/app/actions';
@@ -49,7 +53,11 @@ type MeterAction =
   | 'SURVEYOR_SIGN'
   | 'CONFIRM_PAYMENT'
   | 'MANAGER_APPROVE'
-  | 'LAYOUT_DRAWING_DONE';
+  | 'LAYOUT_DRAWING_DONE'
+  | 'QUEUE_KRABI_DISPATCH'
+  | 'DISPATCHED_TO_KRABI'
+  | 'KRABI_IN_PROGRESS'
+  | 'KRABI_ESTIMATION_COMPLETED';
 
 const ACTION_LABELS: Record<MeterAction, string> = {
   DOC_COMPLETE: 'เอกสารครบ',
@@ -70,7 +78,11 @@ const ACTION_LABELS: Record<MeterAction, string> = {
   SURVEYOR_SIGN: 'เซ็นใบแจ้งหนี้แล้ว',
   CONFIRM_PAYMENT: 'ชำระเงินแล้ว',
   MANAGER_APPROVE: 'อนุมัติแล้ว',
-  LAYOUT_DRAWING_DONE: 'วาดผังเสร็จ'
+  LAYOUT_DRAWING_DONE: 'วาดผังเสร็จ',
+  QUEUE_KRABI_DISPATCH: 'เข้าคิวส่งกระบี่',
+  DISPATCHED_TO_KRABI: 'ส่งเอกสารแล้ว',
+  KRABI_IN_PROGRESS: 'กระบี่เริ่มดำเนินการ',
+  KRABI_ESTIMATION_COMPLETED: 'ประมาณการเสร็จ'
 };
 
 function Modal({ children, title, onClose }: { children: ReactNode; title: string; onClose: () => void }) {
@@ -116,7 +128,11 @@ export function MeterWorkflowActions({
       'WAIT_ACTION_CONFIRMATION',
       'WAIT_MANAGER_REVIEW',
       'WAIT_LAYOUT_DRAWING',
-      'READY_TO_SEND_KRABI'
+      'READY_TO_SEND_KRABI',
+      'QUEUED_FOR_KRABI_DISPATCH',
+      'SENT_TO_KRABI',
+      'KRABI_IN_PROGRESS',
+      'KRABI_ESTIMATION_COMPLETED'
     ].includes(currentStatus)
   ) {
     return <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">สถานะนี้ยังไม่มีงานใน workflow</p>;
@@ -247,9 +263,27 @@ export function MeterWorkflowActions({
       </div>
 
       {requestType === 'EXPANSION' && currentStatus === 'READY_TO_SEND_KRABI' ? (
-        <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
-          งานขยายเขตอยู่สถานะ “เตรียมส่งเอกสารให้กระบี่” (สิ้นสุด flow ปัจจุบัน)
-        </p>
+        <button className="btn-primary mt-2" type="button" onClick={() => setActiveAction('QUEUE_KRABI_DISPATCH')}>
+          {ACTION_LABELS.QUEUE_KRABI_DISPATCH}
+        </button>
+      ) : null}
+
+      {requestType === 'EXPANSION' && currentStatus === 'QUEUED_FOR_KRABI_DISPATCH' ? (
+        <button className="btn-primary mt-2" type="button" onClick={() => setActiveAction('DISPATCHED_TO_KRABI')}>
+          {ACTION_LABELS.DISPATCHED_TO_KRABI}
+        </button>
+      ) : null}
+
+      {requestType === 'EXPANSION' && currentStatus === 'SENT_TO_KRABI' ? (
+        <button className="btn-primary mt-2" type="button" onClick={() => setActiveAction('KRABI_IN_PROGRESS')}>
+          {ACTION_LABELS.KRABI_IN_PROGRESS}
+        </button>
+      ) : null}
+
+      {requestType === 'EXPANSION' && currentStatus === 'KRABI_IN_PROGRESS' ? (
+        <button className="btn-primary mt-2" type="button" onClick={() => setActiveAction('KRABI_ESTIMATION_COMPLETED')}>
+          {ACTION_LABELS.KRABI_ESTIMATION_COMPLETED}
+        </button>
       ) : null}
 
       {activeAction === 'DOC_COMPLETE' ? (
@@ -257,6 +291,59 @@ export function MeterWorkflowActions({
           <form action={updateDocumentReviewDecisionAction} className="space-y-3">
             <input name="request_id" type="hidden" value={requestId} />
             <input name="decision" type="hidden" value="COMPLETE" />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'QUEUE_KRABI_DISPATCH' ? (
+        <Modal title="ยืนยันเข้าคิวส่งเอกสารกระบี่" onClose={closeModal}>
+          <form action={queueForKrabiDispatchAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <p className="text-sm text-slate-600">ระบบจะกำหนดรอบส่งวันพุธ/ศุกร์ให้อัตโนมัติ</p>
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">เข้าคิวส่ง</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'DISPATCHED_TO_KRABI' ? (
+        <Modal title="บันทึกการส่งเอกสารไปกระบี่" onClose={closeModal}>
+          <form action={markSentToKrabiAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor="dispatcher_name">ผู้ส่งเอกสาร</label>
+              <input className="input" id="dispatcher_name" name="dispatcher_name" required />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยันส่งเอกสารแล้ว</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'KRABI_IN_PROGRESS' ? (
+        <Modal title="ยืนยันว่ากระบี่เริ่มดำเนินการ" onClose={closeModal}>
+          <form action={markKrabiInProgressAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'KRABI_ESTIMATION_COMPLETED' ? (
+        <Modal title="ยืนยันว่ากระบี่ประมาณการเสร็จแล้ว" onClose={closeModal}>
+          <form action={markKrabiEstimationCompletedAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
               <button className="btn-primary" type="submit">ยืนยัน</button>

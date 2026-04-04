@@ -27,6 +27,9 @@ type WorkflowFilter =
   | 'READY_FOR_RESURVEY_ONLY'
   | 'WAIT_LAYOUT_DRAWING_ONLY'
   | 'READY_TO_SEND_KRABI_ONLY'
+  | 'QUEUED_FOR_KRABI_DISPATCH_ONLY'
+  | 'KRABI_IN_PROGRESS_ONLY'
+  | 'KRABI_ESTIMATION_COMPLETED_ONLY'
   | 'WAIT_BILLING_ONLY'
   | 'WAIT_ACTION_CONFIRMATION_ONLY'
   | 'WAIT_MANAGER_REVIEW_ONLY';
@@ -53,6 +56,9 @@ const WORKFLOW_FILTER_OPTIONS: Array<{ value: WorkflowFilter; label: string }> =
   { value: 'READY_FOR_RESURVEY_ONLY', label: 'รอนัดตรวจซ้ำ' },
   { value: 'WAIT_LAYOUT_DRAWING_ONLY', label: 'รอวาดผัง (ขยายเขต)' },
   { value: 'READY_TO_SEND_KRABI_ONLY', label: 'เตรียมส่งเอกสารให้กระบี่ (ขยายเขต)' },
+  { value: 'QUEUED_FOR_KRABI_DISPATCH_ONLY', label: 'เข้าคิวส่งกระบี่' },
+  { value: 'KRABI_IN_PROGRESS_ONLY', label: 'กระบี่กำลังดำเนินการ' },
+  { value: 'KRABI_ESTIMATION_COMPLETED_ONLY', label: 'กระบี่ประมาณการเสร็จ' },
   { value: 'WAIT_BILLING_ONLY', label: 'รอออกใบแจ้งหนี้' },
   { value: 'WAIT_ACTION_CONFIRMATION_ONLY', label: 'รอดำเนินการหลังแจ้งหนี้' },
   { value: 'WAIT_MANAGER_REVIEW_ONLY', label: 'รอผู้จัดการตรวจ' }
@@ -103,6 +109,15 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
     }
     if (workflowFilter === 'READY_TO_SEND_KRABI_ONLY') {
       result = result.filter((request) => request.status === 'READY_TO_SEND_KRABI');
+    }
+    if (workflowFilter === 'QUEUED_FOR_KRABI_DISPATCH_ONLY') {
+      result = result.filter((request) => request.status === 'QUEUED_FOR_KRABI_DISPATCH');
+    }
+    if (workflowFilter === 'KRABI_IN_PROGRESS_ONLY') {
+      result = result.filter((request) => ['SENT_TO_KRABI', 'KRABI_IN_PROGRESS'].includes(request.status));
+    }
+    if (workflowFilter === 'KRABI_ESTIMATION_COMPLETED_ONLY') {
+      result = result.filter((request) => request.status === 'KRABI_ESTIMATION_COMPLETED');
     }
 
     if (workflowFilter === 'WAIT_ACTION_CONFIRMATION_ONLY') {
@@ -168,6 +183,20 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
   const waitCustomerFixCount = useMemo(() => requests.filter((request) => request.status === 'WAIT_CUSTOMER_FIX').length, [requests]);
   const waitFixReviewCount = useMemo(() => requests.filter((request) => request.status === 'WAIT_FIX_REVIEW').length, [requests]);
   const readyForResurveyCount = useMemo(() => requests.filter((request) => request.status === 'READY_FOR_RESURVEY').length, [requests]);
+  const waitLayoutDrawingCount = useMemo(() => requests.filter((request) => request.status === 'WAIT_LAYOUT_DRAWING').length, [requests]);
+  const readyToSendKrabiCount = useMemo(() => requests.filter((request) => request.status === 'READY_TO_SEND_KRABI').length, [requests]);
+  const queuedForKrabiDispatchCount = useMemo(
+    () => requests.filter((request) => request.status === 'QUEUED_FOR_KRABI_DISPATCH').length,
+    [requests]
+  );
+  const krabiInProgressCount = useMemo(
+    () => requests.filter((request) => ['SENT_TO_KRABI', 'KRABI_IN_PROGRESS'].includes(request.status)).length,
+    [requests]
+  );
+  const krabiCompletedCount = useMemo(
+    () => requests.filter((request) => request.status === 'KRABI_ESTIMATION_COMPLETED').length,
+    [requests]
+  );
   const approvedViaPhotoCount = useMemo(() => requests.filter((request) => request.fix_approved_via === 'PHOTO').length, [requests]);
   const surveyMapStatusParam = useMemo(() => {
     if (workflowFilter === 'IN_SURVEY_ONLY') {
@@ -208,6 +237,11 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
         waitCustomerFixCount={waitCustomerFixCount}
         waitFixReviewCount={waitFixReviewCount}
         readyForResurveyCount={readyForResurveyCount}
+        waitLayoutDrawingCount={waitLayoutDrawingCount}
+        readyToSendKrabiCount={readyToSendKrabiCount}
+        queuedForKrabiDispatchCount={queuedForKrabiDispatchCount}
+        krabiInProgressCount={krabiInProgressCount}
+        krabiCompletedCount={krabiCompletedCount}
         waitBillingCount={waitBillingCount}
         waitActionConfirmationCount={waitActionConfirmationCount}
         approvedViaPhotoCount={approvedViaPhotoCount}

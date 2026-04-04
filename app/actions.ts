@@ -10,6 +10,7 @@ import {
   canMarkSurveyPassed,
   canMoveToBilling,
   canStartSurvey,
+  calculateNextPlannedDispatchDate,
   canMoveToManagerReview,
   DocumentReviewDecision,
   normalizeSurveyWorkflowStatus,
@@ -87,6 +88,10 @@ function revalidateRequestPaths(requestId: string): void {
 
 const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>> = {
   WAIT_LAYOUT_DRAWING: ['READY_TO_SEND_KRABI'],
+  READY_TO_SEND_KRABI: ['QUEUED_FOR_KRABI_DISPATCH'],
+  QUEUED_FOR_KRABI_DISPATCH: ['SENT_TO_KRABI'],
+  SENT_TO_KRABI: ['KRABI_IN_PROGRESS'],
+  KRABI_IN_PROGRESS: ['KRABI_ESTIMATION_COMPLETED'],
   WAIT_ACTION_CONFIRMATION: ['WAIT_MANAGER_REVIEW'],
   WAIT_MANAGER_REVIEW: ['COMPLETED']
 };
@@ -244,8 +249,18 @@ export async function updateRequestStatusAction(formData: FormData) {
     }
   }
 
-  if (request.request_type === 'METER' && ['WAIT_LAYOUT_DRAWING', 'READY_TO_SEND_KRABI'].includes(nextStatus)) {
-    throw new Error('สถานะวาดผังรองรับเฉพาะงานขยายเขตเท่านั้น');
+  if (
+    request.request_type === 'METER' &&
+    [
+      'WAIT_LAYOUT_DRAWING',
+      'READY_TO_SEND_KRABI',
+      'QUEUED_FOR_KRABI_DISPATCH',
+      'SENT_TO_KRABI',
+      'KRABI_IN_PROGRESS',
+      'KRABI_ESTIMATION_COMPLETED'
+    ].includes(nextStatus)
+  ) {
+    throw new Error('สถานะวาดผัง/ส่งเอกสารกระบี่รองรับเฉพาะงานขยายเขตเท่านั้น');
   }
 
   if (request.request_type === 'EXPANSION' && nextStatus === 'WAIT_BILLING') {
@@ -610,6 +625,14 @@ export async function completeLayoutDrawingAction(formData: FormData) {
     .update({
       status: 'READY_TO_SEND_KRABI',
       survey_note: drawingNote ?? request.survey_note ?? null,
+      ready_to_send_krabi_at: nowIso,
+      planned_dispatch_date: calculateNextPlannedDispatchDate(new Date()),
+      queued_for_dispatch_at: null,
+      dispatched_to_krabi_at: null,
+      dispatched_to_krabi_by: null,
+      krabi_received_at: null,
+      krabi_in_progress_at: null,
+      krabi_completed_at: null,
       updated_at: nowIso
     })
     .eq('id', requestId);
@@ -618,6 +641,129 @@ export async function completeLayoutDrawingAction(formData: FormData) {
     throw new Error(error.message);
   }
 
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function queueForKrabiDispatchAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if ((request.request_type as RequestType) !== 'EXPANSION') {
+    throw new Error('คิวส่งเอกสารกระบี่รองรับเฉพาะงานขยายเขต');
+  }
+  if (request.status !== 'READY_TO_SEND_KRABI') {
+    throw new Error('เข้าคิวส่งกระบี่ได้เฉพาะสถานะเตรียมส่งเอกสารให้กระบี่');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: 'QUEUED_FOR_KRABI_DISPATCH',
+      queued_for_dispatch_at: nowIso,
+      planned_dispatch_date: calculateNextPlannedDispatchDate(new Date()),
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function markSentToKrabiAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const dispatcherName = requiredField(formData, 'dispatcher_name');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+  if ((request.request_type as RequestType) !== 'EXPANSION') {
+    throw new Error('การส่งเอกสารกระบี่รองรับเฉพาะงานขยายเขต');
+  }
+  if (request.status !== 'QUEUED_FOR_KRABI_DISPATCH') {
+    throw new Error('ต้องเข้าคิวส่งกระบี่ก่อนจึงจะบันทึกว่าส่งเอกสารแล้วได้');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: 'SENT_TO_KRABI',
+      dispatched_to_krabi_at: nowIso,
+      dispatched_to_krabi_by: dispatcherName,
+      krabi_received_at: nowIso,
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function markKrabiInProgressAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+  if ((request.request_type as RequestType) !== 'EXPANSION') {
+    throw new Error('สถานะกระบี่รองรับเฉพาะงานขยายเขต');
+  }
+  if (request.status !== 'SENT_TO_KRABI') {
+    throw new Error('ต้องส่งเอกสารไปกระบี่ก่อน');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({ status: 'KRABI_IN_PROGRESS', krabi_in_progress_at: nowIso, updated_at: nowIso })
+    .eq('id', requestId);
+  if (error) {
+    throw new Error(error.message);
+  }
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function markKrabiEstimationCompletedAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+  if ((request.request_type as RequestType) !== 'EXPANSION') {
+    throw new Error('สถานะกระบี่รองรับเฉพาะงานขยายเขต');
+  }
+  if (request.status !== 'KRABI_IN_PROGRESS') {
+    throw new Error('ต้องเริ่มดำเนินการที่กระบี่ก่อนจึงจะปิดงานประมาณการได้');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({ status: 'KRABI_ESTIMATION_COMPLETED', krabi_completed_at: nowIso, updated_at: nowIso })
+    .eq('id', requestId);
+  if (error) {
+    throw new Error(error.message);
+  }
   revalidateRequestPaths(requestId);
   redirect(`/requests/${requestId}`);
 }

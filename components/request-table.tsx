@@ -2,6 +2,7 @@ import Link from 'next/link';
 import {
   getCurrentSurveyDate,
   getCustomerDelaySummary,
+  getKrabiDispatchWarning,
   getRequestQueueGroup,
   getRequestQueueGroupLabel,
   getRequestStatusLabel,
@@ -90,6 +91,9 @@ export function RequestTable({ requests }: RequestTableProps) {
                     ) : null}
                     {request.fix_approved_via ? (
                       <span className="rounded-full bg-emerald-100 px-2 py-0.5 text-xs font-medium text-emerald-700">{getFinalApprovalSource(request)}</span>
+                    ) : null}
+                    {getKrabiDispatchWarning(request) ? (
+                      <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">{getKrabiDispatchWarning(request)}</span>
                     ) : null}
                     {hasPinnedLocation(request) ? (
                       <span className="rounded-full bg-sky-100 px-2 py-0.5 text-xs font-medium text-sky-700">มีพิกัด</span>
