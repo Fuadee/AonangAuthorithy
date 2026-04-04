@@ -6,6 +6,7 @@ import {
   approveManagerReviewAction,
   confirmDocumentsReceivedFromCustomerAction,
   confirmPaymentReceivedAction,
+  completeSurveyAction,
   confirmBillingSurveyorSignAction,
   issueBillingAction,
   markSurveyFailedAction,
@@ -17,10 +18,11 @@ import {
   updateSurveyScheduleAction,
   updateDocumentReviewDecisionAction
 } from '@/app/actions';
-import { RequestStatus } from '@/lib/requests/types';
+import { RequestStatus, RequestType } from '@/lib/requests/types';
 
 type MeterWorkflowActionsProps = {
   requestId: string;
+  requestType: RequestType;
   currentStatus: RequestStatus;
   isInvoiceSigned: boolean;
   isPaid: boolean;
@@ -35,6 +37,7 @@ type MeterAction =
   | 'START_SURVEY'
   | 'SCHEDULE_SURVEY'
   | 'EDIT_SURVEY_DATE'
+  | 'COMPLETE_SURVEY'
   | 'SURVEY_PASS'
   | 'SURVEY_FAIL'
   | 'CUSTOMER_FIXED'
@@ -54,6 +57,7 @@ const ACTION_LABELS: Record<MeterAction, string> = {
   START_SURVEY: 'รับงาน / ไปสำรวจ',
   SCHEDULE_SURVEY: 'กำหนดวันสำรวจ',
   EDIT_SURVEY_DATE: 'แก้ไขวันนัด',
+  COMPLETE_SURVEY: 'สำรวจเสร็จ',
   SURVEY_PASS: 'สำรวจผ่าน',
   SURVEY_FAIL: 'สำรวจไม่ผ่าน / ให้ผู้ใช้ไฟแก้ไข',
   CUSTOMER_FIXED: 'ผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว',
@@ -85,6 +89,7 @@ function Modal({ children, title, onClose }: { children: ReactNode; title: strin
 
 export function MeterWorkflowActions({
   requestId,
+  requestType,
   currentStatus,
   isInvoiceSigned,
   isPaid,
@@ -155,12 +160,20 @@ export function MeterWorkflowActions({
 
         {currentStatus === 'IN_SURVEY' ? (
           <>
-            <button className="btn-primary" type="button" onClick={() => setActiveAction('SURVEY_PASS')}>
-              {ACTION_LABELS.SURVEY_PASS}
-            </button>
-            <button className="btn-secondary" type="button" onClick={() => setActiveAction('SURVEY_FAIL')}>
-              {ACTION_LABELS.SURVEY_FAIL}
-            </button>
+            {requestType === 'METER' ? (
+              <>
+                <button className="btn-primary" type="button" onClick={() => setActiveAction('SURVEY_PASS')}>
+                  {ACTION_LABELS.SURVEY_PASS}
+                </button>
+                <button className="btn-secondary" type="button" onClick={() => setActiveAction('SURVEY_FAIL')}>
+                  {ACTION_LABELS.SURVEY_FAIL}
+                </button>
+              </>
+            ) : (
+              <button className="btn-primary" type="button" onClick={() => setActiveAction('COMPLETE_SURVEY')}>
+                {ACTION_LABELS.COMPLETE_SURVEY}
+              </button>
+            )}
           </>
         ) : null}
 
@@ -312,6 +325,22 @@ export function MeterWorkflowActions({
             <div>
               <label className="text-sm font-medium text-slate-700" htmlFor="survey_note">หมายเหตุ (ถ้ามี)</label>
               <textarea className="input min-h-24" id="survey_note" name="survey_note" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'COMPLETE_SURVEY' ? (
+        <Modal title="ยืนยันสำรวจเสร็จ" onClose={closeModal}>
+          <form action={completeSurveyAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor="survey_note_complete">หมายเหตุ (ถ้ามี)</label>
+              <textarea className="input min-h-24" id="survey_note_complete" name="survey_note" />
             </div>
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>

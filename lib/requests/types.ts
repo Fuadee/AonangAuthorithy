@@ -35,6 +35,7 @@ export type SurveyResult = (typeof SURVEY_RESULTS)[number];
 export type FixVerificationMode = (typeof FIX_VERIFICATION_MODES)[number];
 export type PhotoReviewStatus = (typeof PHOTO_REVIEW_STATUSES)[number];
 export type FixApprovalSource = (typeof FIX_APPROVAL_SOURCES)[number];
+export type DocumentReviewMode = 'BASIC' | 'DETAILED';
 
 export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   METER: 'ขอมิเตอร์',
@@ -43,12 +44,12 @@ export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
 
 export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   NEW: 'คำร้องใหม่',
-  PENDING_SURVEY_REVIEW: 'รอตรวจเอกสารโดยนักสำรวจ',
-  SURVEY_ACCEPTED: 'นักสำรวจรับงานแล้ว',
-  SURVEY_DOCS_INCOMPLETE: 'เอกสารไม่ครบ',
-  SURVEY_RESCHEDULE_REQUESTED: 'ขอเลื่อนวันสำรวจ',
+  PENDING_SURVEY_REVIEW: 'รอตรวจเอกสารโดยนักสำรวจ (สถานะเดิม)',
+  SURVEY_ACCEPTED: 'นักสำรวจรับงานแล้ว (สถานะเดิม)',
+  SURVEY_DOCS_INCOMPLETE: 'เอกสารไม่ครบ (สถานะเดิม)',
+  SURVEY_RESCHEDULE_REQUESTED: 'ขอเลื่อนวันสำรวจ (สถานะเดิม)',
   SURVEY_COMPLETED: 'สำรวจแล้ว',
-  WAIT_DOCUMENT_REVIEW: 'รอตรวจเอกสารก่อนรับงาน',
+  WAIT_DOCUMENT_REVIEW: 'รอตรวจเอกสาร',
   WAIT_DOCUMENT_FROM_CUSTOMER: 'รอผู้ใช้ไฟนำเอกสารมาให้',
   READY_FOR_SURVEY: 'พร้อมรับงานสำรวจ',
   IN_SURVEY: 'กำลังสำรวจหน้างาน',
@@ -123,6 +124,40 @@ export function getSurveyMapStatusesFromQuery(rawStatus: string | null | undefin
 
 export function getRequestStatusLabel(status: RequestStatus): string {
   return REQUEST_STATUS_LABELS[status];
+}
+
+export function normalizeSurveyWorkflowStatus(status: RequestStatus): RequestStatus {
+  if (status === 'PENDING_SURVEY_REVIEW') {
+    return 'WAIT_DOCUMENT_REVIEW';
+  }
+  if (status === 'SURVEY_DOCS_INCOMPLETE') {
+    return 'WAIT_DOCUMENT_FROM_CUSTOMER';
+  }
+  if (status === 'SURVEY_ACCEPTED' || status === 'SURVEY_RESCHEDULE_REQUESTED') {
+    return 'READY_FOR_SURVEY';
+  }
+  return status;
+}
+
+export function getDocumentReviewMode(requestType: RequestType): DocumentReviewMode {
+  return requestType === 'EXPANSION' ? 'DETAILED' : 'BASIC';
+}
+
+export function getRequiredDocuments(requestType: RequestType): string[] {
+  if (requestType === 'EXPANSION') {
+    return ['เอกสารคำขอขยายเขต', 'เอกสารยืนยันสิทธิ์ผู้ยื่น', 'ตำแหน่งหน้างาน'];
+  }
+  return ['เอกสารคำขอขอมิเตอร์', 'เอกสารยืนยันสิทธิ์ผู้ยื่น'];
+}
+
+export function getDocumentReviewRules(requestType: RequestType): {
+  mode: DocumentReviewMode;
+  requiredDocuments: string[];
+} {
+  return {
+    mode: getDocumentReviewMode(requestType),
+    requiredDocuments: getRequiredDocuments(requestType)
+  };
 }
 
 export function isInvoiceSigned(request: Pick<ServiceRequest, 'invoice_signed_at'>): boolean {
