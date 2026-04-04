@@ -27,16 +27,18 @@ import {
   updateSurveyScheduleAction,
   updateDocumentReviewDecisionAction
 } from '@/app/actions';
-import { getWorkflowActionLabel, WorkflowActionKey } from '@/lib/requests/workflow-action-config';
+import { getWorkflowActionLabel, getWorkflowActionsForRequest, QueueWorkflowAction, WorkflowActionKey } from '@/lib/requests/workflow-action-config';
 import { RequestStatus, RequestType } from '@/lib/requests/types';
 
 type MeterWorkflowActionsProps = {
   requestId: string;
   requestType: RequestType;
   currentStatus: RequestStatus;
+  fixVerificationMode: 'PHOTO_OR_RESURVEY' | 'RESURVEY_ONLY' | null;
+  scheduledSurveyDate: string | null;
+  surveyDateCurrent: string | null;
   isInvoiceSigned: boolean;
   isPaid: boolean;
-  hasCurrentSurveyDate: boolean;
 };
 
 type MeterAction = WorkflowActionKey;
@@ -62,13 +64,28 @@ export function MeterWorkflowActions({
   requestId,
   requestType,
   currentStatus,
+  fixVerificationMode,
+  scheduledSurveyDate,
+  surveyDateCurrent,
   isInvoiceSigned,
-  isPaid,
-  hasCurrentSurveyDate
+  isPaid
 }: MeterWorkflowActionsProps) {
   const [activeAction, setActiveAction] = useState<MeterAction | null>(null);
+  const actionClassByVariant: Record<QueueWorkflowAction['variant'], string> = {
+    primary: 'btn-primary',
+    secondary: 'btn-secondary'
+  };
 
   const closeModal = () => setActiveAction(null);
+  const resolvedActions = getWorkflowActionsForRequest({
+    status: currentStatus,
+    request_type: requestType,
+    fix_verification_mode: fixVerificationMode,
+    scheduled_survey_date: scheduledSurveyDate,
+    survey_date_current: surveyDateCurrent,
+    invoice_signed_at: isInvoiceSigned ? 'signed' : null,
+    paid_at: isPaid ? 'paid' : null
+  });
 
   if (
     ![
@@ -101,96 +118,11 @@ export function MeterWorkflowActions({
   return (
     <>
       <div className="flex flex-wrap gap-2">
-        {currentStatus === 'WAIT_DOCUMENT_REVIEW' ? (
-          <>
-            <button className="btn-primary" type="button" onClick={() => setActiveAction('DOC_COMPLETE')}>
-              {getWorkflowActionLabel('DOC_COMPLETE')}
-            </button>
-            <button className="btn-secondary" type="button" onClick={() => setActiveAction('DOC_INCOMPLETE_COLLECT_ON_SITE')}>
-              {getWorkflowActionLabel('DOC_INCOMPLETE_COLLECT_ON_SITE')}
-            </button>
-            <button className="btn-secondary" type="button" onClick={() => setActiveAction('DOC_INCOMPLETE_WAIT_CUSTOMER')}>
-              {getWorkflowActionLabel('DOC_INCOMPLETE_WAIT_CUSTOMER')}
-            </button>
-          </>
-        ) : null}
-
-        {currentStatus === 'WAIT_DOCUMENT_FROM_CUSTOMER' ? (
-          <button className="btn-primary" type="button" onClick={() => setActiveAction('CONFIRM_DOCS_RECEIVED')}>
-            {getWorkflowActionLabel('CONFIRM_DOCS_RECEIVED')}
+        {resolvedActions.map((action) => (
+          <button className={actionClassByVariant[action.variant]} key={action.key} type="button" onClick={() => setActiveAction(action.key)}>
+            {getWorkflowActionLabel(action.key)}
           </button>
-        ) : null}
-
-        {currentStatus === 'READY_FOR_SURVEY' ? (
-          <>
-            {!hasCurrentSurveyDate ? (
-              <button className="btn-primary" type="button" onClick={() => setActiveAction('SCHEDULE_SURVEY')}>
-                {getWorkflowActionLabel('SCHEDULE_SURVEY')}
-              </button>
-            ) : (
-              <>
-                <button className="btn-primary" type="button" onClick={() => setActiveAction('START_SURVEY')}>
-                  {getWorkflowActionLabel('START_SURVEY')}
-                </button>
-                <button className="btn-secondary" type="button" onClick={() => setActiveAction('EDIT_SURVEY_DATE')}>
-                  {getWorkflowActionLabel('EDIT_SURVEY_DATE')}
-                </button>
-              </>
-            )}
-          </>
-        ) : null}
-
-        {currentStatus === 'IN_SURVEY' ? (
-          <>
-            {requestType === 'METER' ? (
-              <>
-                <button className="btn-primary" type="button" onClick={() => setActiveAction('SURVEY_PASS')}>
-                  {getWorkflowActionLabel('SURVEY_PASS')}
-                </button>
-                <button className="btn-secondary" type="button" onClick={() => setActiveAction('SURVEY_FAIL')}>
-                  {getWorkflowActionLabel('SURVEY_FAIL')}
-                </button>
-              </>
-            ) : (
-              <button className="btn-primary" type="button" onClick={() => setActiveAction('COMPLETE_SURVEY')}>
-                {getWorkflowActionLabel('COMPLETE_SURVEY')}
-              </button>
-            )}
-          </>
-        ) : null}
-
-        {currentStatus === 'WAIT_CUSTOMER_FIX' ? (
-          <>
-            <button className="btn-primary" type="button" onClick={() => setActiveAction('REPORT_CUSTOMER_FIX')}>
-              {getWorkflowActionLabel('REPORT_CUSTOMER_FIX')}
-            </button>
-            <button className="btn-secondary" type="button" onClick={() => setActiveAction('SCHEDULE_RESURVEY')}>
-              {getWorkflowActionLabel('SCHEDULE_RESURVEY')}
-            </button>
-          </>
-        ) : null}
-
-        {currentStatus === 'WAIT_FIX_REVIEW' ? (
-          <>
-            <button className="btn-primary" type="button" onClick={() => setActiveAction('PHOTO_APPROVE')}>
-              {getWorkflowActionLabel('PHOTO_APPROVE')}
-            </button>
-            <button className="btn-secondary" type="button" onClick={() => setActiveAction('PHOTO_REJECT_TO_RESURVEY')}>
-              {getWorkflowActionLabel('PHOTO_REJECT_TO_RESURVEY')}
-            </button>
-          </>
-        ) : null}
-
-        {currentStatus === 'READY_FOR_RESURVEY' ? (
-          <>
-            <button className="btn-primary" type="button" onClick={() => setActiveAction('START_SURVEY')}>
-              {getWorkflowActionLabel('START_SURVEY')}
-            </button>
-            <button className="btn-secondary" type="button" onClick={() => setActiveAction('EDIT_SURVEY_DATE')}>
-              {getWorkflowActionLabel('EDIT_SURVEY_DATE')}
-            </button>
-          </>
-        ) : null}
+        ))}
 
         {currentStatus === 'WAIT_BILLING' ? (
           <button className="btn-primary" type="button" onClick={() => setActiveAction('ISSUE_BILL')}>
@@ -207,12 +139,6 @@ export function MeterWorkflowActions({
               {isPaid ? 'ชำระเงินแล้ว' : getWorkflowActionLabel('CONFIRM_PAYMENT')}
             </button>
           </>
-        ) : null}
-
-        {currentStatus === 'WAIT_MANAGER_REVIEW' ? (
-          <button className="btn-primary" type="button" onClick={() => setActiveAction('MANAGER_APPROVE')}>
-            {getWorkflowActionLabel('MANAGER_APPROVE')}
-          </button>
         ) : null}
 
         {requestType === 'EXPANSION' && ['SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING'].includes(currentStatus) ? (

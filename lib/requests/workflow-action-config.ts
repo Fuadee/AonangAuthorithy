@@ -96,7 +96,7 @@ export type QueueWorkflowAction = {
   fallbackToDetail?: boolean;
 };
 
-export function getQueueWorkflowActions(
+export function getWorkflowActionsForRequest(
   request: Pick<
     ServiceRequest,
     'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at'
@@ -125,22 +125,32 @@ export function getQueueWorkflowActions(
   }
 
   if (status === 'READY_FOR_SURVEY') {
+    if (!request.survey_date_current && !request.scheduled_survey_date) {
+      return [{ key: 'SCHEDULE_SURVEY', variant: 'primary', fallbackToDetail: true }];
+    }
+
     if (!canStartSurvey({ status, scheduled_survey_date: request.scheduled_survey_date, survey_date_current: request.survey_date_current })) {
       return [];
     }
 
-    return [{ key: 'START_SURVEY', variant: 'primary', requiresConfirmation: 'ยืนยันเริ่มสำรวจหน้างาน?' }];
+    return [
+      { key: 'START_SURVEY', variant: 'primary', requiresConfirmation: 'ยืนยันเริ่มสำรวจหน้างาน?' },
+      { key: 'EDIT_SURVEY_DATE', variant: 'secondary', fallbackToDetail: true }
+    ];
   }
 
   if (status === 'READY_FOR_RESURVEY') {
-    return [{ key: 'START_SURVEY', variant: 'primary', requiresConfirmation: 'ยืนยันเริ่มตรวจซ้ำหน้างาน?' }];
+    return [
+      { key: 'START_SURVEY', variant: 'primary', requiresConfirmation: 'ยืนยันเริ่มตรวจซ้ำหน้างาน?' },
+      { key: 'EDIT_SURVEY_DATE', variant: 'secondary', fallbackToDetail: true }
+    ];
   }
 
   if (status === 'IN_SURVEY') {
     if (request.request_type === 'METER' && canMarkSurveyPassed({ status, request_type: request.request_type })) {
       return [
         { key: 'SURVEY_PASS', variant: 'primary', requiresConfirmation: 'ยืนยันผลสำรวจผ่าน?' },
-        { key: 'COMPLETE_SURVEY', variant: 'secondary', fallbackToDetail: true }
+        { key: 'SURVEY_FAIL', variant: 'secondary', fallbackToDetail: true }
       ];
     }
 
@@ -174,4 +184,13 @@ export function getQueueWorkflowActions(
   }
 
   return [];
+}
+
+export function getQueueWorkflowActions(
+  request: Pick<
+    ServiceRequest,
+    'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at'
+  >
+): QueueWorkflowAction[] {
+  return getWorkflowActionsForRequest(request);
 }
