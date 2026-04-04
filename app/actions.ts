@@ -86,6 +86,17 @@ function revalidateRequestPaths(requestId: string): void {
   revalidatePath(`/requests/${requestId}`);
 }
 
+function shouldStayOnQueue(formData: FormData): boolean {
+  return formData.get('stay_on_queue')?.toString() === '1';
+}
+
+function finalizeWorkflowAction(requestId: string, formData: FormData): void {
+  revalidateRequestPaths(requestId);
+  if (!shouldStayOnQueue(formData)) {
+    redirect(`/requests/${requestId}`);
+  }
+}
+
 const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>> = {
   WAIT_LAYOUT_DRAWING: ['READY_TO_SEND_KRABI'],
   READY_TO_SEND_KRABI: ['QUEUED_FOR_KRABI_DISPATCH'],
@@ -296,8 +307,7 @@ export async function updateRequestStatusAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 type SurveyorAction = 'ACCEPT' | 'DOCS_INCOMPLETE' | 'REQUEST_RESCHEDULE' | 'COMPLETE';
@@ -406,8 +416,7 @@ export async function updateSurveyorAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 const DOCUMENT_REVIEW_DECISIONS: DocumentReviewDecision[] = [
@@ -481,8 +490,7 @@ export async function updateDocumentReviewDecisionAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function confirmDocumentsReceivedFromCustomerAction(formData: FormData) {
@@ -523,8 +531,7 @@ export async function confirmDocumentsReceivedFromCustomerAction(formData: FormD
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function startSurveyAction(formData: FormData) {
@@ -556,8 +563,7 @@ export async function startSurveyAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function completeSurveyAction(formData: FormData) {
@@ -600,8 +606,7 @@ export async function completeSurveyAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function completeLayoutDrawingAction(formData: FormData) {
@@ -649,8 +654,7 @@ export async function completeLayoutDrawingAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function queueForKrabiDispatchAction(formData: FormData) {
@@ -683,8 +687,7 @@ export async function queueForKrabiDispatchAction(formData: FormData) {
   if (error) {
     throw new Error(error.message);
   }
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function markSentToKrabiAction(formData: FormData) {
@@ -718,8 +721,7 @@ export async function markSentToKrabiAction(formData: FormData) {
   if (error) {
     throw new Error(error.message);
   }
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function markKrabiInProgressAction(formData: FormData) {
@@ -745,8 +747,7 @@ export async function markKrabiInProgressAction(formData: FormData) {
   if (error) {
     throw new Error(error.message);
   }
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function markKrabiNeedsDocumentFixAction(formData: FormData) {
@@ -773,8 +774,7 @@ export async function markKrabiNeedsDocumentFixAction(formData: FormData) {
   if (error) {
     throw new Error(error.message);
   }
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function markKrabiDocumentFixCompletedAction(formData: FormData) {
@@ -809,8 +809,7 @@ export async function markKrabiDocumentFixCompletedAction(formData: FormData) {
   if (error) {
     throw new Error(error.message);
   }
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function markKrabiEstimationCompletedAction(formData: FormData) {
@@ -836,8 +835,7 @@ export async function markKrabiEstimationCompletedAction(formData: FormData) {
   if (error) {
     throw new Error(error.message);
   }
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function markExpansionBillIssuedAction(formData: FormData) {
@@ -863,8 +861,7 @@ export async function markExpansionBillIssuedAction(formData: FormData) {
   if (error) {
     throw new Error(error.message);
   }
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function markCoordinatedWithConstructionAction(formData: FormData) {
@@ -890,8 +887,7 @@ export async function markCoordinatedWithConstructionAction(formData: FormData) 
   if (error) {
     throw new Error(error.message);
   }
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 type SurveyVerificationMode = 'PHOTO_OR_RESURVEY' | 'RESURVEY_ONLY';
@@ -935,8 +931,7 @@ export async function markSurveyPassedAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function markSurveyFailedAction(formData: FormData) {
@@ -983,8 +978,7 @@ export async function markSurveyFailedAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function reportCustomerFixAction(formData: FormData) {
@@ -1027,8 +1021,7 @@ export async function reportCustomerFixAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function moveToResurveyAction(formData: FormData) {
@@ -1054,8 +1047,7 @@ export async function moveToResurveyAction(formData: FormData) {
   if (error) {
     throw new Error(error.message);
   }
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function approveFixFromPhotoAction(formData: FormData) {
@@ -1098,8 +1090,7 @@ export async function approveFixFromPhotoAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function rejectFixPhotoAndRequireResurveyAction(formData: FormData) {
@@ -1137,8 +1128,7 @@ export async function rejectFixPhotoAndRequireResurveyAction(formData: FormData)
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function updateSurveyScheduleAction(formData: FormData) {
@@ -1191,8 +1181,7 @@ export async function updateSurveyScheduleAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function confirmOnSiteDocumentsCompleteAction(formData: FormData) {
@@ -1231,8 +1220,7 @@ export async function confirmOnSiteDocumentsCompleteAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function issueBillingAction(formData: FormData) {
@@ -1280,8 +1268,7 @@ export async function issueBillingAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function confirmBillingSurveyorSignAction(formData: FormData) {
@@ -1472,6 +1459,5 @@ export async function approveManagerReviewAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }

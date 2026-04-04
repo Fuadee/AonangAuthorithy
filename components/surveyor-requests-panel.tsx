@@ -1,9 +1,9 @@
 'use client';
 
-import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
-import { getCurrentSurveyDate, getRequestStatusLabel, RequestStatus, REQUEST_TYPE_LABELS, ServiceRequest } from '@/lib/requests/types';
+import { QueueRequestCard } from '@/components/queue/queue-request-card';
+import { getCurrentSurveyDate, RequestStatus, ServiceRequest } from '@/lib/requests/types';
 
 type SurveyorRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -40,14 +40,6 @@ const FILTER_OPTIONS: Array<{ value: SurveyorFilter; label: string }> = [
   { value: 'WAIT_LAYOUT_DRAWING', label: 'รอวาดผัง' },
   { value: 'READY_TO_SEND_KRABI', label: 'เตรียมส่งเอกสารให้กระบี่' }
 ];
-
-function formatSurveyDate(value: string | null): string {
-  if (!value) {
-    return '-';
-  }
-
-  return new Date(`${value}T00:00:00`).toLocaleDateString('th-TH', { dateStyle: 'medium' });
-}
 
 function isToday(value: string | null): boolean {
   if (!value) {
@@ -231,48 +223,32 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
         </div>
       </section>
 
-      <section className="card overflow-hidden">
-        <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
-            <thead className="bg-slate-100 text-left text-slate-600">
-              <tr>
-                <th className="px-4 py-3 font-medium">เลขคำร้อง</th>
-                <th className="px-4 py-3 font-medium">ชื่อลูกค้า</th>
-                <th className="px-4 py-3 font-medium">ประเภทคำร้อง</th>
-                <th className="px-4 py-3 font-medium">พื้นที่</th>
-                <th className="px-4 py-3 font-medium">นักสำรวจ</th>
-                <th className="px-4 py-3 font-medium">วันนัดล่าสุด</th>
-                <th className="px-4 py-3 font-medium">สถานะ</th>
-                <th className="px-4 py-3 font-medium">จัดการ</th>
-              </tr>
-            </thead>
-            <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
-              {filteredRequests.map((request) => (
-                <tr key={request.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-brand-700">{request.request_no}</td>
-                  <td className="px-4 py-3">{request.customer_name}</td>
-                  <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
-                  <td className="px-4 py-3">{request.area_name}</td>
-                  <td className="px-4 py-3">{request.assigned_surveyor ?? '-'}</td>
-                  <td className="px-4 py-3">{formatSurveyDate(getCurrentSurveyDate(request))}</td>
-                  <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
-                  <td className="px-4 py-3">
-                    <Link className="btn-secondary" href={`/requests/${request.id}`}>
-                      เปิดดู
-                    </Link>
-                  </td>
-                </tr>
-              ))}
-              {!filteredRequests.length && (
-                <tr>
-                  <td className="px-4 py-6 text-center text-slate-500" colSpan={8}>
-                    ไม่พบรายการตามตัวกรองนี้
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
-        </div>
+      <section className="space-y-3">
+        {filteredRequests.map((request) => (
+          <QueueRequestCard
+            key={request.id}
+            areaName={request.area_name}
+            assigneeName={request.assignee_name}
+            currentStatus={request.status}
+            customerName={request.customer_name}
+            detailHref={`/requests/${request.id}`}
+            requestId={request.id}
+            requestNo={request.request_no}
+            requestType={request.request_type}
+            surveyorName={request.assigned_surveyor}
+            updatedAt={request.updated_at}
+            workflowContext={{
+              fixVerificationMode: request.fix_verification_mode,
+              invoiceSignedAt: request.invoice_signed_at,
+              paidAt: request.paid_at,
+              scheduledSurveyDate: request.scheduled_survey_date,
+              surveyDateCurrent: request.survey_date_current
+            }}
+          />
+        ))}
+        {!filteredRequests.length ? (
+          <section className="card p-6 text-center text-sm text-slate-500">ไม่พบรายการตามตัวกรองนี้</section>
+        ) : null}
       </section>
     </div>
   );
