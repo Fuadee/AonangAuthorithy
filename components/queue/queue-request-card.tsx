@@ -50,13 +50,21 @@ export function QueueRequestCard({
     invoice_signed_at: workflowContext.invoiceSignedAt,
     paid_at: workflowContext.paidAt
   });
+  const hasSurveyor = Boolean(surveyorName);
+  const shouldShowSurveyor = hasSurveyor && surveyorName !== assigneeName;
+  const compactMetaItems = [
+    `พื้นที่ ${areaName}`,
+    `ผู้รับผิดชอบ: ${assigneeName}`,
+    shouldShowSurveyor ? `นักสำรวจ: ${surveyorName}` : null,
+    `อัปเดต ${formatDateTime(updatedAt)}`
+  ].filter(Boolean);
 
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-      <header className="flex flex-wrap items-start justify-between gap-3">
+    <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-3.5">
+      <header className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
         <div>
           <p className="text-sm font-semibold text-brand-700">{requestNo}</p>
-          <p className="mt-1 text-lg font-semibold text-slate-900">{customerName}</p>
+          <p className="mt-0.5 text-base font-semibold text-slate-900 sm:text-lg">{customerName}</p>
         </div>
         <div className="flex flex-wrap items-center gap-2">
           <RequestTypeBadge requestType={requestType} />
@@ -64,31 +72,15 @@ export function QueueRequestCard({
         </div>
       </header>
 
-      <dl className="mt-3 grid gap-x-4 gap-y-2 text-sm text-slate-600 sm:grid-cols-2">
-        <div>
-          <dt className="font-medium text-slate-500">พื้นที่</dt>
-          <dd>{areaName}</dd>
-        </div>
-        <div>
-          <dt className="font-medium text-slate-500">ผู้รับผิดชอบ</dt>
-          <dd>{assigneeName}</dd>
-        </div>
-        <div>
-          <dt className="font-medium text-slate-500">นักสำรวจ</dt>
-          <dd>{surveyorName ?? '-'}</dd>
-        </div>
-        <div>
-          <dt className="font-medium text-slate-500">อัปเดตล่าสุด</dt>
-          <dd>{formatDateTime(updatedAt)}</dd>
-        </div>
-      </dl>
+      <p className="mt-2 text-sm text-slate-600">{compactMetaItems.join(' • ')}</p>
 
-      <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
-        <p className="text-xs font-medium uppercase tracking-wide text-slate-500">สิ่งที่ต้องทำตอนนี้</p>
-        <p className="mt-1 text-sm text-slate-700">{getWorkflowInstruction(currentStatus)}</p>
+      <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5">
+        <p className="text-sm text-slate-700">
+          <span className="font-medium text-slate-800">สิ่งที่ต้องทำ:</span> {getWorkflowInstruction(currentStatus)}
+        </p>
       </div>
 
-      <div className="mt-4">
+      <div className="mt-2.5">
         <RequestCardActionPanel actions={actions} detailHref={detailHref} requestId={requestId} />
       </div>
     </article>

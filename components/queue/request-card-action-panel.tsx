@@ -105,9 +105,9 @@ export function RequestCardActionPanel({ requestId, detailHref, actions }: Reque
   };
 
   return (
-    <div className="space-y-2">
+    <div className="space-y-1.5">
       {hasActions ? (
-        <div className="flex flex-col gap-2 sm:flex-row sm:flex-wrap">
+        <div className="flex flex-wrap gap-2">
           {actions.map((action) => {
             const disabled = isPending || pendingAction !== null;
             const isCurrentPending = pendingAction === action.key;
@@ -116,7 +116,7 @@ export function RequestCardActionPanel({ requestId, detailHref, actions }: Reque
               <button
                 key={action.key}
                 aria-label={`ดำเนินการ ${WORKFLOW_ACTION_LABELS[action.key]}`}
-                className={`${ACTION_BUTTON_CLASS[action.variant]} justify-center text-left sm:max-w-full`}
+                className={`${ACTION_BUTTON_CLASS[action.variant]} min-h-10 justify-center whitespace-normal break-words text-left`}
                 disabled={disabled}
                 type="button"
                 onClick={() => handleAction(action)}
@@ -125,16 +125,18 @@ export function RequestCardActionPanel({ requestId, detailHref, actions }: Reque
               </button>
             );
           })}
+          <Link className="btn-secondary min-h-10 whitespace-nowrap px-3 py-2 text-sm" href={detailHref}>
+            ดูรายละเอียด
+          </Link>
         </div>
       ) : (
-        <p className="text-sm text-slate-500">สถานะนี้ต้องดำเนินการผ่านหน้า detail</p>
+        <div className="flex flex-wrap items-center gap-2">
+          <p className="text-sm text-slate-500">สถานะนี้ต้องดำเนินการผ่านหน้า detail</p>
+          <Link className="btn-secondary min-h-10 whitespace-nowrap px-3 py-2 text-sm" href={detailHref}>
+            ดูรายละเอียด
+          </Link>
+        </div>
       )}
-
-      <div>
-        <Link className="btn-secondary" href={detailHref}>
-          ดูรายละเอียด
-        </Link>
-      </div>
 
       {error ? <p className="text-sm text-rose-600">{error}</p> : null}
     </div>
