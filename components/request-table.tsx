@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { getQueueWorkflowActions } from '@/lib/requests/workflow-action-config';
 import {
@@ -53,7 +52,6 @@ export function RequestTable({
   actionColumnMode = 'status',
   actionColumnLabel
 }: RequestTableProps) {
-  const router = useRouter();
   const resolvedActionColumnLabel = actionColumnLabel ?? (actionColumnMode === 'workflow' ? 'จัดการ' : 'สถานะ');
 
   return (
@@ -80,16 +78,11 @@ export function RequestTable({
           </thead>
           <tbody className="bg-white text-[#0F172A]">
             {requests.map((request) => (
-              <tr
-                key={request.id}
-                className="cursor-pointer border-b border-[#E2E8F0] hover:bg-slate-50"
-                onClick={() => router.push(`/requests/${request.id}`)}
-              >
+              <tr key={request.id} className="border-b border-[#E2E8F0] hover:bg-slate-50">
                 <td className="max-w-0 px-4 py-3 align-middle" title={request.request_no}>
                   <Link
                     href={`/requests/${request.id}`}
                     className="block truncate whitespace-nowrap font-semibold text-[#1E3A8A] hover:underline"
-                    onClick={(event) => event.stopPropagation()}
                   >
                     {request.request_no}
                   </Link>
