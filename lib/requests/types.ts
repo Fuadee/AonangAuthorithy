@@ -102,49 +102,49 @@ export const REQUEST_QUEUE_GROUP_META: Record<
     label: REQUEST_QUEUE_GROUP_LABELS.SURVEY,
     href: '/surveyor',
     order: 1,
-    toneClass: 'text-blue-600',
+    toneClass: 'text-[#3B82F6]',
     showOnDashboard: true
   },
   BILLING: {
     label: REQUEST_QUEUE_GROUP_LABELS.BILLING,
     href: '/billing',
     order: 2,
-    toneClass: 'text-purple-600',
+    toneClass: 'text-[#F59E0B]',
     showOnDashboard: true
   },
   MANAGER: {
     label: REQUEST_QUEUE_GROUP_LABELS.MANAGER,
     href: '/manager',
     order: 3,
-    toneClass: 'text-black',
+    toneClass: 'text-[#6366F1]',
     showOnDashboard: true
   },
   DISPATCH: {
     label: REQUEST_QUEUE_GROUP_LABELS.DISPATCH,
     href: '/document',
     order: 4,
-    toneClass: 'text-orange-600',
+    toneClass: 'text-[#64748B]',
     showOnDashboard: true
   },
   KRABI: {
     label: REQUEST_QUEUE_GROUP_LABELS.KRABI,
     href: '/krabi',
     order: 5,
-    toneClass: 'text-indigo-600',
+    toneClass: 'text-[#6366F1]',
     showOnDashboard: true
   },
   DONE: {
     label: REQUEST_QUEUE_GROUP_LABELS.DONE,
     href: '/dashboard?queue=DONE',
     order: 6,
-    toneClass: 'text-green-600',
+    toneClass: 'text-[#10B981]',
     showOnDashboard: true
   },
   OTHER: {
     label: REQUEST_QUEUE_GROUP_LABELS.OTHER,
     href: '/dashboard',
     order: 7,
-    toneClass: 'text-slate-700',
+    toneClass: 'text-[#64748B]',
     showOnDashboard: false
   }
 };

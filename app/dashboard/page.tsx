@@ -31,12 +31,12 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
     <div className="space-y-6">
       <div className="flex items-center justify-between">
         <div>
-          <h2 className="text-2xl font-semibold">Dashboard คำร้องผู้ใช้ไฟฟ้า</h2>
-          <p className="mt-1 text-sm text-slate-500">ดูภาพรวมและรายการคำร้องทั้งหมด</p>
+          <h2 className="text-2xl font-semibold text-[#0F172A]">Dashboard คำร้องผู้ใช้ไฟฟ้า</h2>
+          <p className="mt-1 text-sm text-[#64748B]">ดูภาพรวมและจัดการคิวคำร้องแบบรวดเร็ว</p>
         </div>
         <div className="flex items-center gap-2">
           <Link className="btn-secondary" href="/survey/map?status=IN_SURVEY">
-            ดูคิวนี้บนแผนที่
+            ดูคิวบนแผนที่
           </Link>
           <Link className="btn-primary" href="/requests/new">
             สร้างคำร้องใหม่
