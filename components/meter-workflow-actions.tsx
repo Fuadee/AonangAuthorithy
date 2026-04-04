@@ -27,75 +27,21 @@ import {
   updateSurveyScheduleAction,
   updateDocumentReviewDecisionAction
 } from '@/app/actions';
+import { getWorkflowActionLabel, getWorkflowActionsForRequest, QueueWorkflowAction, WorkflowActionKey } from '@/lib/requests/workflow-action-config';
 import { RequestStatus, RequestType } from '@/lib/requests/types';
 
 type MeterWorkflowActionsProps = {
   requestId: string;
   requestType: RequestType;
   currentStatus: RequestStatus;
+  fixVerificationMode: 'PHOTO_OR_RESURVEY' | 'RESURVEY_ONLY' | null;
+  scheduledSurveyDate: string | null;
+  surveyDateCurrent: string | null;
   isInvoiceSigned: boolean;
   isPaid: boolean;
-  hasCurrentSurveyDate: boolean;
 };
 
-type MeterAction =
-  | 'DOC_COMPLETE'
-  | 'DOC_INCOMPLETE_COLLECT_ON_SITE'
-  | 'DOC_INCOMPLETE_WAIT_CUSTOMER'
-  | 'CONFIRM_DOCS_RECEIVED'
-  | 'START_SURVEY'
-  | 'SCHEDULE_SURVEY'
-  | 'EDIT_SURVEY_DATE'
-  | 'COMPLETE_SURVEY'
-  | 'SURVEY_PASS'
-  | 'SURVEY_FAIL'
-  | 'CUSTOMER_FIXED'
-  | 'SCHEDULE_RESURVEY'
-  | 'PHOTO_APPROVE'
-  | 'PHOTO_REJECT'
-  | 'ISSUE_BILL'
-  | 'SURVEYOR_SIGN'
-  | 'CONFIRM_PAYMENT'
-  | 'MANAGER_APPROVE'
-  | 'LAYOUT_DRAWING_DONE'
-  | 'QUEUE_KRABI_DISPATCH'
-  | 'DISPATCHED_TO_KRABI'
-  | 'KRABI_ACCEPT_AND_START'
-  | 'KRABI_RETURN_FOR_FIX'
-  | 'KRABI_FIX_COMPLETED'
-  | 'KRABI_ESTIMATION_COMPLETED'
-  | 'KRABI_BILL_ISSUED'
-  | 'COORDINATED_WITH_CONSTRUCTION';
-
-const ACTION_LABELS: Record<MeterAction, string> = {
-  DOC_COMPLETE: 'เอกสารครบ',
-  DOC_INCOMPLETE_COLLECT_ON_SITE: 'เอกสารไม่ครบ (รับเอกสารหน้างาน)',
-  DOC_INCOMPLETE_WAIT_CUSTOMER: 'เอกสารไม่ครบ (รอลูกค้านำมา)',
-  CONFIRM_DOCS_RECEIVED: 'ได้รับเอกสารแล้ว',
-  START_SURVEY: 'รับงาน / ไปสำรวจ',
-  SCHEDULE_SURVEY: 'กำหนดวันสำรวจ',
-  EDIT_SURVEY_DATE: 'แก้ไขวันนัด',
-  COMPLETE_SURVEY: 'สำรวจเสร็จ',
-  SURVEY_PASS: 'สำรวจผ่าน',
-  SURVEY_FAIL: 'สำรวจไม่ผ่าน / ให้ผู้ใช้ไฟแก้ไข',
-  CUSTOMER_FIXED: 'ผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว',
-  SCHEDULE_RESURVEY: 'นัดตรวจซ้ำ',
-  PHOTO_APPROVE: 'อนุมัติผ่านจากรูป',
-  PHOTO_REJECT: 'รูปยังไม่พอ ต้องตรวจซ้ำ',
-  ISSUE_BILL: 'ออกใบแจ้งหนี้',
-  SURVEYOR_SIGN: 'เซ็นใบแจ้งหนี้แล้ว',
-  CONFIRM_PAYMENT: 'ชำระเงินแล้ว',
-  MANAGER_APPROVE: 'อนุมัติแล้ว',
-  LAYOUT_DRAWING_DONE: 'วาดผังเสร็จ',
-  QUEUE_KRABI_DISPATCH: 'เข้าคิวส่งกระบี่',
-  DISPATCHED_TO_KRABI: 'ส่งเอกสารแล้ว',
-  KRABI_ACCEPT_AND_START: 'เอกสารครบ รับดำเนินการ',
-  KRABI_RETURN_FOR_FIX: 'เอกสารไม่พร้อม ส่งกลับแก้ไข',
-  KRABI_FIX_COMPLETED: 'แก้ไขเอกสารแล้ว / พร้อมส่งใหม่',
-  KRABI_ESTIMATION_COMPLETED: 'ประมาณการเสร็จ',
-  KRABI_BILL_ISSUED: 'ออกใบแจ้งหนี้แล้ว',
-  COORDINATED_WITH_CONSTRUCTION: 'ประสานงานแผนกก่อสร้างแล้ว'
-};
+type MeterAction = WorkflowActionKey;
 
 function Modal({ children, title, onClose }: { children: ReactNode; title: string; onClose: () => void }) {
   const onBackdropClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -118,13 +64,28 @@ export function MeterWorkflowActions({
   requestId,
   requestType,
   currentStatus,
+  fixVerificationMode,
+  scheduledSurveyDate,
+  surveyDateCurrent,
   isInvoiceSigned,
-  isPaid,
-  hasCurrentSurveyDate
+  isPaid
 }: MeterWorkflowActionsProps) {
   const [activeAction, setActiveAction] = useState<MeterAction | null>(null);
+  const actionClassByVariant: Record<QueueWorkflowAction['variant'], string> = {
+    primary: 'btn-primary',
+    secondary: 'btn-secondary'
+  };
 
   const closeModal = () => setActiveAction(null);
+  const resolvedActions = getWorkflowActionsForRequest({
+    status: currentStatus,
+    request_type: requestType,
+    fix_verification_mode: fixVerificationMode,
+    scheduled_survey_date: scheduledSurveyDate,
+    survey_date_current: surveyDateCurrent,
+    invoice_signed_at: isInvoiceSigned ? 'signed' : null,
+    paid_at: isPaid ? 'paid' : null
+  });
 
   if (
     ![
@@ -157,171 +118,80 @@ export function MeterWorkflowActions({
   return (
     <>
       <div className="flex flex-wrap gap-2">
-        {currentStatus === 'WAIT_DOCUMENT_REVIEW' ? (
-          <>
-            <button className="btn-primary" type="button" onClick={() => setActiveAction('DOC_COMPLETE')}>
-              {ACTION_LABELS.DOC_COMPLETE}
-            </button>
-            <button className="btn-secondary" type="button" onClick={() => setActiveAction('DOC_INCOMPLETE_COLLECT_ON_SITE')}>
-              {ACTION_LABELS.DOC_INCOMPLETE_COLLECT_ON_SITE}
-            </button>
-            <button className="btn-secondary" type="button" onClick={() => setActiveAction('DOC_INCOMPLETE_WAIT_CUSTOMER')}>
-              {ACTION_LABELS.DOC_INCOMPLETE_WAIT_CUSTOMER}
-            </button>
-          </>
-        ) : null}
-
-        {currentStatus === 'WAIT_DOCUMENT_FROM_CUSTOMER' ? (
-          <button className="btn-primary" type="button" onClick={() => setActiveAction('CONFIRM_DOCS_RECEIVED')}>
-            {ACTION_LABELS.CONFIRM_DOCS_RECEIVED}
+        {resolvedActions.map((action) => (
+          <button className={actionClassByVariant[action.variant]} key={action.key} type="button" onClick={() => setActiveAction(action.key)}>
+            {getWorkflowActionLabel(action.key)}
           </button>
-        ) : null}
-
-        {currentStatus === 'READY_FOR_SURVEY' ? (
-          <>
-            {!hasCurrentSurveyDate ? (
-              <button className="btn-primary" type="button" onClick={() => setActiveAction('SCHEDULE_SURVEY')}>
-                {ACTION_LABELS.SCHEDULE_SURVEY}
-              </button>
-            ) : (
-              <>
-                <button className="btn-primary" type="button" onClick={() => setActiveAction('START_SURVEY')}>
-                  {ACTION_LABELS.START_SURVEY}
-                </button>
-                <button className="btn-secondary" type="button" onClick={() => setActiveAction('EDIT_SURVEY_DATE')}>
-                  {ACTION_LABELS.EDIT_SURVEY_DATE}
-                </button>
-              </>
-            )}
-          </>
-        ) : null}
-
-        {currentStatus === 'IN_SURVEY' ? (
-          <>
-            {requestType === 'METER' ? (
-              <>
-                <button className="btn-primary" type="button" onClick={() => setActiveAction('SURVEY_PASS')}>
-                  {ACTION_LABELS.SURVEY_PASS}
-                </button>
-                <button className="btn-secondary" type="button" onClick={() => setActiveAction('SURVEY_FAIL')}>
-                  {ACTION_LABELS.SURVEY_FAIL}
-                </button>
-              </>
-            ) : (
-              <button className="btn-primary" type="button" onClick={() => setActiveAction('COMPLETE_SURVEY')}>
-                {ACTION_LABELS.COMPLETE_SURVEY}
-              </button>
-            )}
-          </>
-        ) : null}
-
-        {currentStatus === 'WAIT_CUSTOMER_FIX' ? (
-          <>
-            <button className="btn-primary" type="button" onClick={() => setActiveAction('CUSTOMER_FIXED')}>
-              {ACTION_LABELS.CUSTOMER_FIXED}
-            </button>
-            <button className="btn-secondary" type="button" onClick={() => setActiveAction('SCHEDULE_RESURVEY')}>
-              {ACTION_LABELS.SCHEDULE_RESURVEY}
-            </button>
-          </>
-        ) : null}
-
-        {currentStatus === 'WAIT_FIX_REVIEW' ? (
-          <>
-            <button className="btn-primary" type="button" onClick={() => setActiveAction('PHOTO_APPROVE')}>
-              {ACTION_LABELS.PHOTO_APPROVE}
-            </button>
-            <button className="btn-secondary" type="button" onClick={() => setActiveAction('PHOTO_REJECT')}>
-              {ACTION_LABELS.PHOTO_REJECT}
-            </button>
-          </>
-        ) : null}
-
-        {currentStatus === 'READY_FOR_RESURVEY' ? (
-          <>
-            <button className="btn-primary" type="button" onClick={() => setActiveAction('START_SURVEY')}>
-              ออกตรวจซ้ำ
-            </button>
-            <button className="btn-secondary" type="button" onClick={() => setActiveAction('EDIT_SURVEY_DATE')}>
-              {ACTION_LABELS.EDIT_SURVEY_DATE}
-            </button>
-          </>
-        ) : null}
+        ))}
 
         {currentStatus === 'WAIT_BILLING' ? (
           <button className="btn-primary" type="button" onClick={() => setActiveAction('ISSUE_BILL')}>
-            {ACTION_LABELS.ISSUE_BILL}
+            {getWorkflowActionLabel('ISSUE_BILL')}
           </button>
         ) : null}
 
         {currentStatus === 'WAIT_ACTION_CONFIRMATION' ? (
           <>
             <button className="btn-primary disabled:cursor-not-allowed disabled:opacity-50" disabled={isInvoiceSigned} type="button" onClick={() => setActiveAction('SURVEYOR_SIGN')}>
-              {isInvoiceSigned ? 'เซ็นใบแจ้งหนี้แล้ว' : ACTION_LABELS.SURVEYOR_SIGN}
+              {isInvoiceSigned ? 'เซ็นใบแจ้งหนี้แล้ว' : getWorkflowActionLabel('SURVEYOR_SIGN')}
             </button>
             <button className="btn-primary disabled:cursor-not-allowed disabled:opacity-50" disabled={isPaid} type="button" onClick={() => setActiveAction('CONFIRM_PAYMENT')}>
-              {isPaid ? 'ชำระเงินแล้ว' : ACTION_LABELS.CONFIRM_PAYMENT}
+              {isPaid ? 'ชำระเงินแล้ว' : getWorkflowActionLabel('CONFIRM_PAYMENT')}
             </button>
           </>
         ) : null}
 
-        {currentStatus === 'WAIT_MANAGER_REVIEW' ? (
-          <button className="btn-primary" type="button" onClick={() => setActiveAction('MANAGER_APPROVE')}>
-            {ACTION_LABELS.MANAGER_APPROVE}
-          </button>
-        ) : null}
-
         {requestType === 'EXPANSION' && ['SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING'].includes(currentStatus) ? (
           <button className="btn-primary" type="button" onClick={() => setActiveAction('LAYOUT_DRAWING_DONE')}>
-            {ACTION_LABELS.LAYOUT_DRAWING_DONE}
+            {getWorkflowActionLabel('LAYOUT_DRAWING_DONE')}
           </button>
         ) : null}
       </div>
 
       {requestType === 'EXPANSION' && currentStatus === 'READY_TO_SEND_KRABI' ? (
         <button className="btn-primary mt-2" type="button" onClick={() => setActiveAction('QUEUE_KRABI_DISPATCH')}>
-          {ACTION_LABELS.QUEUE_KRABI_DISPATCH}
+          {getWorkflowActionLabel('QUEUE_KRABI_DISPATCH')}
         </button>
       ) : null}
 
       {requestType === 'EXPANSION' && currentStatus === 'QUEUED_FOR_KRABI_DISPATCH' ? (
         <button className="btn-primary mt-2" type="button" onClick={() => setActiveAction('DISPATCHED_TO_KRABI')}>
-          {ACTION_LABELS.DISPATCHED_TO_KRABI}
+          {getWorkflowActionLabel('DISPATCHED_TO_KRABI')}
         </button>
       ) : null}
 
       {requestType === 'EXPANSION' && ['SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK'].includes(currentStatus) ? (
         <div className="mt-2 flex flex-wrap gap-2">
           <button className="btn-primary" type="button" onClick={() => setActiveAction('KRABI_ACCEPT_AND_START')}>
-            {ACTION_LABELS.KRABI_ACCEPT_AND_START}
+            {getWorkflowActionLabel('KRABI_ACCEPT_AND_START')}
           </button>
           <button className="btn-secondary" type="button" onClick={() => setActiveAction('KRABI_RETURN_FOR_FIX')}>
-            {ACTION_LABELS.KRABI_RETURN_FOR_FIX}
+            {getWorkflowActionLabel('KRABI_RETURN_FOR_FIX')}
           </button>
         </div>
       ) : null}
 
       {requestType === 'EXPANSION' && currentStatus === 'KRABI_NEEDS_DOCUMENT_FIX' ? (
         <button className="btn-primary mt-2" type="button" onClick={() => setActiveAction('KRABI_FIX_COMPLETED')}>
-          {ACTION_LABELS.KRABI_FIX_COMPLETED}
+          {getWorkflowActionLabel('KRABI_FIX_COMPLETED')}
         </button>
       ) : null}
 
       {requestType === 'EXPANSION' && currentStatus === 'KRABI_IN_PROGRESS' ? (
         <button className="btn-primary mt-2" type="button" onClick={() => setActiveAction('KRABI_ESTIMATION_COMPLETED')}>
-          {ACTION_LABELS.KRABI_ESTIMATION_COMPLETED}
+          {getWorkflowActionLabel('KRABI_ESTIMATION_COMPLETED')}
         </button>
       ) : null}
 
       {requestType === 'EXPANSION' && currentStatus === 'KRABI_ESTIMATION_COMPLETED' ? (
         <button className="btn-primary mt-2" type="button" onClick={() => setActiveAction('KRABI_BILL_ISSUED')}>
-          {ACTION_LABELS.KRABI_BILL_ISSUED}
+          {getWorkflowActionLabel('KRABI_BILL_ISSUED')}
         </button>
       ) : null}
 
       {requestType === 'EXPANSION' && currentStatus === 'BILL_ISSUED' ? (
         <button className="btn-primary mt-2" type="button" onClick={() => setActiveAction('COORDINATED_WITH_CONSTRUCTION')}>
-          {ACTION_LABELS.COORDINATED_WITH_CONSTRUCTION}
+          {getWorkflowActionLabel('COORDINATED_WITH_CONSTRUCTION')}
         </button>
       ) : null}
 
@@ -579,7 +449,7 @@ export function MeterWorkflowActions({
         </Modal>
       ) : null}
 
-      {activeAction === 'CUSTOMER_FIXED' ? (
+      {activeAction === 'REPORT_CUSTOMER_FIX' ? (
         <Modal title="ผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว" onClose={closeModal}>
           <form action={reportCustomerFixAction} className="space-y-3">
             <input name="request_id" type="hidden" value={requestId} />
@@ -620,7 +490,7 @@ export function MeterWorkflowActions({
         </Modal>
       ) : null}
 
-      {activeAction === 'PHOTO_REJECT' ? (
+      {activeAction === 'PHOTO_REJECT_TO_RESURVEY' ? (
         <Modal title="รูปยังไม่พอ ต้องตรวจซ้ำ" onClose={closeModal}>
           <form action={rejectFixPhotoAndRequireResurveyAction} className="space-y-3">
             <input name="request_id" type="hidden" value={requestId} />

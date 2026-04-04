@@ -846,9 +846,11 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
               requestId={request.id}
               requestType={requestType}
               currentStatus={normalizedRequestStatus}
+              fixVerificationMode={request.fix_verification_mode}
+              scheduledSurveyDate={request.scheduled_survey_date}
+              surveyDateCurrent={request.survey_date_current}
               isInvoiceSigned={invoiceSigned}
               isPaid={paid}
-              hasCurrentSurveyDate={Boolean(currentSurveyDate)}
             />
           ) : null}
           {!isUnifiedWorkflowStatus && isSurveyorFlowStatus ? (
