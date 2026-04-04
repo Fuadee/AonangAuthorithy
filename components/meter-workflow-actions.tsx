@@ -24,6 +24,7 @@ type MeterWorkflowActionsProps = {
   fixVerificationMode: 'PHOTO_OR_RESURVEY' | 'RESURVEY_ONLY' | null;
   scheduledSurveyDate: string | null;
   surveyDateCurrent: string | null;
+  billingAmount: number | null;
   isInvoiceSigned: boolean;
   isPaid: boolean;
 };
@@ -54,6 +55,7 @@ export function MeterWorkflowActions({
   fixVerificationMode,
   scheduledSurveyDate,
   surveyDateCurrent,
+  billingAmount,
   isInvoiceSigned,
   isPaid
 }: MeterWorkflowActionsProps) {
@@ -103,6 +105,7 @@ export function MeterWorkflowActions({
 
       <div className="flex flex-wrap gap-2">
         <BillingWorkflowActionRenderer
+          billingAmount={billingAmount}
           currentStatus={currentStatus}
           isInvoiceSigned={isInvoiceSigned}
           isPaid={isPaid}
