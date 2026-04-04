@@ -32,6 +32,17 @@ function requiredField(formData: FormData, key: string): string {
   return value;
 }
 
+function requiredOneOfFields(formData: FormData, keys: string[]): string {
+  for (const key of keys) {
+    const value = formData.get(key)?.toString().trim();
+    if (value) {
+      return value;
+    }
+  }
+
+  throw new Error(`Missing required field: ${keys[0]}`);
+}
+
 function getEffectiveSurveyDate(request: { survey_date_current?: string | null; scheduled_survey_date?: string | null }): string | null {
   return request.scheduled_survey_date ?? null;
 }
@@ -768,7 +779,7 @@ export async function markKrabiInProgressAction(formData: FormData) {
 
 export async function markKrabiNeedsDocumentFixAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
-  const reason = requiredField(formData, 'reject_reason');
+  const reason = requiredOneOfFields(formData, ['reject_reason', 'return_reason', 'revision_note']);
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
