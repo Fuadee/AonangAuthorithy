@@ -26,6 +26,8 @@ const FILTER_OPTIONS: Array<{ value: RequestTypeFilter; label: string }> = [
   { value: 'EXPANSION', label: 'ขอขยายเขต' }
 ];
 
+const FILTER_BUTTON_BASE = 'rounded-full px-4 py-2 text-sm font-medium transition';
+
 export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequestsPanelProps) {
   const [activeFilter, setActiveFilter] = useState<RequestTypeFilter>('ALL');
   const defaultQueueFilter: QueueFilter =
@@ -67,19 +69,17 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
     <>
       <DashboardSummary queueItems={queueItems} />
 
-      <section className="card space-y-3 p-4">
+      <section className="card space-y-4 p-5">
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-medium text-slate-600">กรองประเภทคำร้อง:</p>
+          <p className="pr-2 text-sm font-medium text-[#64748B]">ประเภทคำร้อง</p>
           {FILTER_OPTIONS.map((option) => {
             const isActive = activeFilter === option.value;
 
             return (
               <button
                 key={option.value}
-                className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                  isActive
-                    ? 'border-brand-600 bg-brand-50 text-brand-700'
-                    : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                className={`${FILTER_BUTTON_BASE} ${
+                  isActive ? 'bg-[#1E3A8A] text-white hover:bg-[#1D4ED8]' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
                 type="button"
                 onClick={() => setActiveFilter(option.value)}
@@ -91,12 +91,10 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
         </div>
 
         <div className="flex flex-wrap items-center gap-2">
-          <p className="text-sm font-medium text-slate-600">คิวหลัก:</p>
+          <p className="pr-2 text-sm font-medium text-[#64748B]">คิวหลัก</p>
           <button
-            className={`rounded-full border px-3 py-1.5 text-sm transition ${
-              queueFilter === 'ALL'
-                ? 'border-brand-600 bg-brand-50 text-brand-700'
-                : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+            className={`${FILTER_BUTTON_BASE} ${
+              queueFilter === 'ALL' ? 'bg-[#1E3A8A] text-white hover:bg-[#1D4ED8]' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
             }`}
             type="button"
             onClick={() => setQueueFilter('ALL')}
@@ -109,10 +107,8 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
             return (
               <button
                 key={item.queue}
-                className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                  isActive
-                    ? 'border-brand-600 bg-brand-50 text-brand-700'
-                    : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                className={`${FILTER_BUTTON_BASE} ${
+                  isActive ? 'bg-[#1E3A8A] text-white hover:bg-[#1D4ED8]' : 'bg-slate-100 text-slate-700 hover:bg-slate-200'
                 }`}
                 type="button"
                 onClick={() => setQueueFilter(item.queue)}

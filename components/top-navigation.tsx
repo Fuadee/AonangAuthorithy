@@ -31,7 +31,7 @@ export function TopNavigation() {
   const pathname = usePathname();
 
   return (
-    <nav className="flex items-center gap-3 text-sm">
+    <nav className="flex items-center gap-2 text-sm">
       {NAV_ITEMS.map((item) => {
         const isActive = isActivePath(pathname, item.href);
         const isPrimary = item.variant === 'primary';
@@ -39,8 +39,8 @@ export function TopNavigation() {
         const className = isPrimary
           ? 'btn-primary'
           : isActive
-            ? 'inline-flex items-center justify-center rounded-lg border border-brand-600 bg-brand-50 px-4 py-2 text-sm font-medium text-brand-700 transition'
-            : 'btn-secondary';
+            ? 'inline-flex items-center justify-center rounded-lg bg-[#1E3A8A] px-4 py-2 text-sm font-semibold text-white transition'
+            : 'inline-flex items-center justify-center rounded-lg px-4 py-2 text-sm font-medium text-[#64748B] transition hover:bg-slate-100 hover:text-[#0F172A]';
 
         return (
           <Link key={item.href} className={className} href={item.href}>
