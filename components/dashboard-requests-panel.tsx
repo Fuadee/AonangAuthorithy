@@ -105,6 +105,7 @@ function FilterGroup<T extends string>({ label, options, activeValue, onChange }
 
 export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequestsPanelProps) {
   const [activeFilter, setActiveFilter] = useState<RequestTypeFilter>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const defaultQueueFilter: QueueFilter =
     defaultQueue && getDashboardQueueGroups().includes(defaultQueue as RequestQueueGroup)
       ? (defaultQueue as RequestQueueGroup)
@@ -112,7 +113,18 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
   const [queueFilter, setQueueFilter] = useState<QueueFilter>(defaultQueueFilter);
 
   const filteredRequests = useMemo(() => {
-    let result = requests;
+    const normalizedQuery = searchQuery.trim().toLowerCase();
+
+    const isSearchMatch = (request: ServiceRequest): boolean => {
+      if (!normalizedQuery) {
+        return true;
+      }
+
+      const searchableFields = [request.request_no, request.customer_name, request.assignee_name];
+      return searchableFields.some((field) => field?.toLowerCase().includes(normalizedQuery));
+    };
+
+    let result = requests.filter(isSearchMatch);
 
     if (activeFilter !== 'ALL') {
       result = result.filter((request) => request.request_type === activeFilter);
@@ -123,7 +135,7 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
     }
 
     return result;
-  }, [activeFilter, queueFilter, requests]);
+  }, [activeFilter, queueFilter, requests, searchQuery]);
 
   const queueItems = useMemo(
     () =>
@@ -159,12 +171,35 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
       <section className="space-y-4">
         <div className="rounded-xl border border-slate-200 bg-white p-4">
           <div className="space-y-3">
+            <div className="relative">
+              <input
+                type="text"
+                value={searchQuery}
+                onChange={(event) => setSearchQuery(event.target.value)}
+                placeholder="ค้นหาเลขคำร้อง / ชื่อลูกค้า / ผู้รับผิดชอบ"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#1E3A8A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20"
+              />
+              {searchQuery && (
+                <button
+                  type="button"
+                  onClick={() => setSearchQuery('')}
+                  className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                  aria-label="ล้างคำค้นหา"
+                  title="ล้างคำค้นหา"
+                >
+                  ×
+                </button>
+              )}
+            </div>
             <FilterGroup label="ประเภท:" options={FILTER_OPTIONS} activeValue={activeFilter} onChange={setActiveFilter} />
             <FilterGroup label="สถานะ:" options={queueFilterOptions} activeValue={queueFilter} onChange={setQueueFilter} />
           </div>
         </div>
 
-        <RequestTable requests={filteredRequests} />
+        <RequestTable
+          requests={filteredRequests}
+          emptyMessage={searchQuery.trim() ? 'ไม่พบรายการที่ตรงกับคำค้นหา' : 'ยังไม่มีคำร้อง'}
+        />
       </section>
     </>
   );

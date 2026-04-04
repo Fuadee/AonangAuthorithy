@@ -12,6 +12,7 @@ import {
 
 type RequestTableProps = {
   requests: ServiceRequest[];
+  emptyMessage?: string;
 };
 
 function formatSurveyDate(value: string | null): string {
@@ -41,7 +42,7 @@ function getStatusBadgeClass(request: ServiceRequest): string {
   return 'bg-slate-100 text-slate-600';
 }
 
-export function RequestTable({ requests }: RequestTableProps) {
+export function RequestTable({ requests, emptyMessage = 'ยังไม่มีคำร้อง' }: RequestTableProps) {
   const router = useRouter();
 
   return (
@@ -104,7 +105,7 @@ export function RequestTable({ requests }: RequestTableProps) {
             {!requests.length && (
               <tr>
                 <td className="px-4 py-8 text-center text-sm text-[#64748B]" colSpan={6}>
-                  ยังไม่มีคำร้อง
+                  {emptyMessage}
                 </td>
               </tr>
             )}
