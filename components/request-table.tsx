@@ -41,23 +41,23 @@ export function RequestTable({
       <div className="overflow-x-auto">
         <table className="w-full table-fixed border-separate border-spacing-0 text-sm">
           <colgroup>
-            <col className={hasSeparateStatusColumn ? 'w-[15%]' : 'w-[16%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[20%]' : 'w-[22%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[13%]' : 'w-[15%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[27%]' : 'w-[30%]'} />
             <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[14%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[15%]' : 'w-[16%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[14%]' : 'w-[14%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[14%]' : 'w-[16%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[12%]'} />
             {hasSeparateStatusColumn ? <col className="w-[14%]" /> : null}
-            <col className={hasSeparateStatusColumn ? 'w-[10%]' : 'w-[18%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[160px] min-w-[160px]' : 'w-[160px] min-w-[160px]'} />
           </colgroup>
           <thead className="bg-slate-50 text-left">
             <tr>
               <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">Request No.</th>
-              <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">ลูกค้า</th>
+              <th className="px-4 py-3 text-sm font-medium text-[#64748B]">ลูกค้า</th>
               <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">ประเภท</th>
               <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">ผู้รับผิดชอบ</th>
               <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">วันนัดสำรวจ</th>
               {hasSeparateStatusColumn ? <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">สถานะ</th> : null}
-              <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">{resolvedActionColumnLabel}</th>
+              <th className="whitespace-nowrap px-4 py-3 text-center text-sm font-medium text-[#64748B]">{resolvedActionColumnLabel}</th>
             </tr>
           </thead>
           <tbody className="bg-white text-[#0F172A]">
@@ -72,7 +72,7 @@ export function RequestTable({
                   </Link>
                 </td>
                 <td className="max-w-0 px-4 py-3 align-middle" title={request.customer_name}>
-                  <p className="truncate whitespace-nowrap text-[#0F172A]">{request.customer_name}</p>
+                  <p className="max-w-[200px] truncate whitespace-nowrap text-[#0F172A]">{request.customer_name}</p>
                 </td>
                 <td className="max-w-0 px-4 py-3 align-middle" title={REQUEST_TYPE_LABELS[request.request_type]}>
                   <p className="truncate whitespace-nowrap text-[#64748B]">{REQUEST_TYPE_LABELS[request.request_type]}</p>
@@ -91,16 +91,18 @@ export function RequestTable({
                     </div>
                   </td>
                 ) : null}
-                <td className="px-4 py-3 align-middle">
+                <td className="px-4 py-3 align-middle text-center">
                   {actionColumnMode === 'workflow' ? (
-                    <WorkflowActionButtons
-                      actions={getQueueWorkflowActions(request)}
-                      compact
-                      currentStatus={request.status}
-                      maxVisibleActions={1}
-                      requestId={request.id}
-                      stayOnQueue
-                    />
+                    <div className="flex min-h-10 items-center justify-center">
+                      <WorkflowActionButtons
+                        actions={getQueueWorkflowActions(request)}
+                        compact
+                        currentStatus={request.status}
+                        maxVisibleActions={1}
+                        requestId={request.id}
+                        stayOnQueue
+                      />
+                    </div>
                   ) : (
                     <RequestStatusBadge status={request.status} />
                   )}
