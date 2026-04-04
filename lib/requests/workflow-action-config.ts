@@ -38,6 +38,8 @@ export type WorkflowActionKey =
   | 'COORDINATED_WITH_CONSTRUCTION';
 
 export type WorkflowActionVariant = 'primary' | 'secondary';
+export type WorkflowActionIntent = 'progress' | 'warning' | 'neutral';
+export type WorkflowActionHandlerType = 'modal' | 'schedule_dialog' | 'survey_fail_dialog';
 
 export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   DOC_COMPLETE: 'เอกสารครบ',
@@ -88,35 +90,61 @@ export function getWorkflowInstruction(status: RequestStatus): string {
   return STATUS_INSTRUCTION[status] ?? 'กรุณาดำเนินการตาม workflow';
 }
 
-export type QueueWorkflowAction = {
+export type AvailableRequestAction = {
   key: WorkflowActionKey;
+  label: string;
   variant: WorkflowActionVariant;
+  intent: WorkflowActionIntent;
+  handlerType: WorkflowActionHandlerType;
   requiresConfirmation?: string;
 };
 
-export function getWorkflowActionsForRequest(
+export type QueueWorkflowAction = AvailableRequestAction;
+
+function toAction(
+  key: WorkflowActionKey,
+  options: {
+    variant: WorkflowActionVariant;
+    intent?: WorkflowActionIntent;
+    handlerType?: WorkflowActionHandlerType;
+    requiresConfirmation?: string;
+  }
+): AvailableRequestAction {
+  return {
+    key,
+    label: getWorkflowActionLabel(key),
+    variant: options.variant,
+    intent: options.intent ?? (options.variant === 'primary' ? 'progress' : 'neutral'),
+    handlerType:
+      options.handlerType ??
+      (key === 'SURVEY_FAIL' ? 'survey_fail_dialog' : key === 'SCHEDULE_SURVEY' || key === 'EDIT_SURVEY_DATE' ? 'schedule_dialog' : 'modal'),
+    requiresConfirmation: options.requiresConfirmation
+  };
+}
+
+export function getAvailableRequestActions(
   request: Pick<
     ServiceRequest,
     'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at'
   >
-): QueueWorkflowAction[] {
+): AvailableRequestAction[] {
   const status = request.status;
 
   if (status === 'WAIT_DOCUMENT_REVIEW') {
     return [
-      { key: 'DOC_COMPLETE', variant: 'primary', requiresConfirmation: 'ยืนยันว่าเอกสารครบถ้วนแล้วใช่หรือไม่?' },
-      { key: 'DOC_INCOMPLETE_COLLECT_ON_SITE', variant: 'secondary' },
-      { key: 'DOC_INCOMPLETE_WAIT_CUSTOMER', variant: 'secondary' }
+      toAction('DOC_COMPLETE', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าเอกสารครบถ้วนแล้วใช่หรือไม่?' }),
+      toAction('DOC_INCOMPLETE_COLLECT_ON_SITE', { variant: 'secondary' }),
+      toAction('DOC_INCOMPLETE_WAIT_CUSTOMER', { variant: 'secondary' })
     ];
   }
 
   if (status === 'WAIT_DOCUMENT_FROM_CUSTOMER') {
-    return [{ key: 'CONFIRM_DOCS_RECEIVED', variant: 'primary', requiresConfirmation: 'ยืนยันว่าได้รับเอกสารจากลูกค้าแล้ว?' }];
+    return [toAction('CONFIRM_DOCS_RECEIVED', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าได้รับเอกสารจากลูกค้าแล้ว?' })];
   }
 
   if (status === 'READY_FOR_SURVEY') {
     if (!request.survey_date_current && !request.scheduled_survey_date) {
-      return [{ key: 'SCHEDULE_SURVEY', variant: 'primary' }];
+      return [toAction('SCHEDULE_SURVEY', { variant: 'primary' })];
     }
 
     if (!canStartSurvey({ status, scheduled_survey_date: request.scheduled_survey_date, survey_date_current: request.survey_date_current })) {
@@ -124,45 +152,44 @@ export function getWorkflowActionsForRequest(
     }
 
     return [
-      { key: 'START_SURVEY', variant: 'primary', requiresConfirmation: 'ยืนยันเริ่มสำรวจหน้างาน?' },
-      { key: 'EDIT_SURVEY_DATE', variant: 'secondary' }
+      toAction('START_SURVEY', { variant: 'primary', requiresConfirmation: 'ยืนยันเริ่มสำรวจหน้างาน?' }),
+      toAction('EDIT_SURVEY_DATE', { variant: 'secondary' })
     ];
   }
 
   if (status === 'READY_FOR_RESURVEY') {
     return [
-      { key: 'START_SURVEY', variant: 'primary', requiresConfirmation: 'ยืนยันเริ่มตรวจซ้ำหน้างาน?' },
-      { key: 'EDIT_SURVEY_DATE', variant: 'secondary' }
+      toAction('START_SURVEY', { variant: 'primary', requiresConfirmation: 'ยืนยันเริ่มตรวจซ้ำหน้างาน?' }),
+      toAction('EDIT_SURVEY_DATE', { variant: 'secondary' })
     ];
   }
 
   if (status === 'IN_SURVEY') {
     if (request.request_type === 'METER' && canMarkSurveyPassed({ status, request_type: request.request_type })) {
       return [
-        { key: 'SURVEY_PASS', variant: 'primary', requiresConfirmation: 'ยืนยันผลสำรวจผ่าน?' },
-        { key: 'SURVEY_FAIL', variant: 'secondary' }
+        toAction('SURVEY_PASS', { variant: 'primary', requiresConfirmation: 'ยืนยันผลสำรวจผ่าน?' }),
+        toAction('SURVEY_FAIL', { variant: 'secondary', intent: 'warning', handlerType: 'survey_fail_dialog' })
       ];
     }
 
-    return [{ key: 'COMPLETE_SURVEY', variant: 'primary', requiresConfirmation: 'ยืนยันว่าการสำรวจเสร็จสิ้นแล้ว?' }];
+    return [toAction('COMPLETE_SURVEY', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าการสำรวจเสร็จสิ้นแล้ว?' })];
   }
 
   if (status === 'WAIT_CUSTOMER_FIX' && request.request_type === 'METER') {
     return [
-      { key: 'REPORT_CUSTOMER_FIX', variant: 'primary', requiresConfirmation: 'ยืนยันว่าลูกค้าแจ้งแก้ไขแล้ว?' },
-      { key: 'SCHEDULE_RESURVEY', variant: 'secondary', requiresConfirmation: 'นัดตรวจซ้ำทันทีใช่หรือไม่?' }
+      toAction('REPORT_CUSTOMER_FIX', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าลูกค้าแจ้งแก้ไขแล้ว?' }),
+      toAction('SCHEDULE_RESURVEY', { variant: 'secondary', requiresConfirmation: 'นัดตรวจซ้ำทันทีใช่หรือไม่?' })
     ];
   }
 
   if (status === 'WAIT_FIX_REVIEW' && request.request_type === 'METER') {
-    return [
-      { key: 'PHOTO_APPROVE', variant: 'primary' },
-      { key: 'PHOTO_REJECT_TO_RESURVEY', variant: 'secondary' }
-    ].filter((action) => action.key !== 'PHOTO_APPROVE' || canApproveFixFromPhoto({ status, fix_verification_mode: request.fix_verification_mode }));
+    return [toAction('PHOTO_APPROVE', { variant: 'primary' }), toAction('PHOTO_REJECT_TO_RESURVEY', { variant: 'secondary' })].filter(
+      (action) => action.key !== 'PHOTO_APPROVE' || canApproveFixFromPhoto({ status, fix_verification_mode: request.fix_verification_mode })
+    );
   }
 
   if (status === 'WAIT_MANAGER_REVIEW' && request.request_type === 'METER' && canMoveToManagerReview(request)) {
-    return [{ key: 'MANAGER_APPROVE', variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติปิดงาน?' }];
+    return [toAction('MANAGER_APPROVE', { variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติปิดงาน?' })];
   }
 
   return [];
@@ -174,5 +201,14 @@ export function getQueueWorkflowActions(
     'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at'
   >
 ): QueueWorkflowAction[] {
-  return getWorkflowActionsForRequest(request);
+  return getAvailableRequestActions(request);
+}
+
+export function getWorkflowActionsForRequest(
+  request: Pick<
+    ServiceRequest,
+    'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at'
+  >
+): AvailableRequestAction[] {
+  return getAvailableRequestActions(request);
 }
