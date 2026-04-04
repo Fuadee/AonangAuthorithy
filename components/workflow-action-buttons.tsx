@@ -1,7 +1,10 @@
 'use client';
 
 import Link from 'next/link';
-import { MouseEvent, useEffect, useMemo, useRef, useState } from 'react';
+import { MouseEvent, useEffect, useMemo, useState, useTransition } from 'react';
+import { createPortal } from 'react-dom';
+import { useRouter } from 'next/navigation';
+import { updateDocumentReviewDecisionAction } from '@/app/actions';
 import { SurveyFailActionDialog } from '@/components/survey-fail-action-dialog';
 import { SurveyScheduleActionDialog } from '@/components/survey-schedule-action-dialog';
 import { WorkflowActionModal } from '@/components/workflow-action-modal';
@@ -26,18 +29,121 @@ const ACTION_BUTTON_CLASS: Record<'primary' | 'secondary', string> = {
 const DOC_INCOMPLETE_GROUP_ACTIONS: WorkflowActionKey[] = ['DOC_INCOMPLETE_COLLECT_ON_SITE', 'DOC_INCOMPLETE_WAIT_CUSTOMER'];
 type IncompleteDocumentOption = Extract<WorkflowActionKey, 'DOC_INCOMPLETE_COLLECT_ON_SITE' | 'DOC_INCOMPLETE_WAIT_CUSTOMER'>;
 
-const INCOMPLETE_DOCUMENT_OPTIONS: Array<{ key: IncompleteDocumentOption; title: string; description: string }> = [
+const INCOMPLETE_DOCUMENT_OPTIONS: Array<{ key: IncompleteDocumentOption; title: string; description: string; note: string }> = [
   {
     key: 'DOC_INCOMPLETE_COLLECT_ON_SITE',
     title: 'รับเอกสารหน้างาน',
-    description: 'รับเอกสารที่ขาดเพิ่มเติมหน้างาน และส่งต่อเพื่อตรวจเอกสารต่อได้ทันที'
+    description: 'ลูกค้านำเอกสารมาเพิ่มในวันที่ลงพื้นที่ และสามารถเดินงานต่อได้ทันที',
+    note: 'เอกสารไม่ครบ: รับเอกสารหน้างาน'
   },
   {
     key: 'DOC_INCOMPLETE_WAIT_CUSTOMER',
     title: 'รอลูกค้านำมา',
-    description: 'ให้ลูกค้านำเอกสารมาเพิ่มเติมภายหลัง ก่อนดำเนินการขั้นตอนถัดไป'
+    description: 'ยังไม่รับเอกสารในรอบนี้ รอลูกค้านำเอกสารมาเพิ่มเติมภายหลัง',
+    note: 'เอกสารไม่ครบ: รอลูกค้านำเอกสารมาเพิ่มเติม'
   }
 ];
+
+type IncompleteDocumentModalProps = {
+  open: boolean;
+  options: Array<{ key: IncompleteDocumentOption; title: string; description: string; note: string }>;
+  selectedOption: IncompleteDocumentOption | null;
+  onSelect: (option: IncompleteDocumentOption) => void;
+  onClose: () => void;
+  onConfirm: () => void;
+  isPending: boolean;
+  error: string | null;
+};
+
+function IncompleteDocumentModal({
+  open,
+  options,
+  selectedOption,
+  onSelect,
+  onClose,
+  onConfirm,
+  isPending,
+  error
+}: IncompleteDocumentModalProps) {
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+
+    const onEsc = (event: KeyboardEvent) => {
+      if (event.key === 'Escape') {
+        onClose();
+      }
+    };
+
+    document.addEventListener('keydown', onEsc);
+    return () => document.removeEventListener('keydown', onEsc);
+  }, [open, onClose]);
+
+  if (!mounted || !open) {
+    return null;
+  }
+
+  return createPortal(
+    <div
+      aria-modal="true"
+      className="fixed inset-0 z-[60] flex items-center justify-center bg-slate-900/55 p-4"
+      role="dialog"
+      onClick={onClose}
+    >
+      <div
+        className="w-full max-w-[460px] rounded-2xl border border-slate-200 bg-white p-6 shadow-2xl"
+        onClick={(event) => {
+          event.stopPropagation();
+        }}
+      >
+        <h4 className="text-xl font-semibold text-slate-900">เลือกวิธีดำเนินการ</h4>
+        <p className="mt-2 text-sm leading-relaxed text-slate-600">กรณีเอกสารยังไม่ครบ ให้เลือกวิธีดำเนินการต่อสำหรับคำร้องนี้</p>
+
+        <div className="mt-5 space-y-2.5">
+          {options.map((option) => {
+            const isSelected = selectedOption === option.key;
+
+            return (
+              <button
+                key={option.key}
+                className={`w-full rounded-xl border px-4 py-3 text-left transition ${
+                  isSelected
+                    ? 'border-blue-500 bg-blue-50/80 shadow-sm ring-1 ring-blue-200'
+                    : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
+                }`}
+                disabled={isPending}
+                type="button"
+                onClick={() => onSelect(option.key)}
+              >
+                <p className="text-sm font-semibold text-slate-900">{option.title}</p>
+                <p className="mt-1.5 text-sm text-slate-600">{option.description}</p>
+              </button>
+            );
+          })}
+        </div>
+
+        {error ? <p className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
+
+        <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
+          <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>
+            ยกเลิก
+          </button>
+          <button className="btn-primary" disabled={!selectedOption || isPending} type="button" onClick={onConfirm}>
+            {isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}
+          </button>
+        </div>
+      </div>
+    </div>,
+    document.body
+  );
+}
 
 export function WorkflowActionButtons({
   actions,
@@ -48,10 +154,12 @@ export function WorkflowActionButtons({
   compact = false,
   maxVisibleActions
 }: WorkflowActionButtonsProps) {
+  const router = useRouter();
   const [activeAction, setActiveAction] = useState<WorkflowActionKey | null>(null);
-  const [isIncompleteDocumentChooserOpen, setIsIncompleteDocumentChooserOpen] = useState(false);
+  const [isIncompleteDocumentModalOpen, setIsIncompleteDocumentModalOpen] = useState(false);
   const [selectedIncompleteDocumentOption, setSelectedIncompleteDocumentOption] = useState<IncompleteDocumentOption | null>(null);
-  const incompleteDocumentChooserRef = useRef<HTMLDivElement | null>(null);
+  const [incompleteDocumentError, setIncompleteDocumentError] = useState<string | null>(null);
+  const [isSubmittingIncompleteDecision, startIncompleteDecisionTransition] = useTransition();
 
   const shouldGroupDocumentReviewActions = currentStatus === 'WAIT_DOCUMENT_REVIEW';
   const groupedDocCompleteAction = useMemo(() => actions.find((action) => action.key === 'DOC_COMPLETE') ?? null, [actions]);
@@ -71,40 +179,66 @@ export function WorkflowActionButtons({
     return actions.filter((action) => !groupedActionKeySet.has(action.key));
   }, [actions, groupedActionKeySet, shouldGroupDocumentReviewActions]);
 
+  const incompleteDocumentOptions = useMemo(
+    () =>
+      INCOMPLETE_DOCUMENT_OPTIONS.filter((option) => groupedDocIncompleteActions.some((action) => action.key === option.key)),
+    [groupedDocIncompleteActions]
+  );
+
   const visibleActions = maxVisibleActions ? actionsForRegularRendering.slice(0, maxVisibleActions) : actionsForRegularRendering;
   const overflowActions = maxVisibleActions ? actionsForRegularRendering.slice(maxVisibleActions) : [];
 
   useEffect(() => {
-    if (!isIncompleteDocumentChooserOpen) {
-      return;
-    }
-
-    const handleOutsideClick = (event: globalThis.MouseEvent) => {
-      if (!incompleteDocumentChooserRef.current?.contains(event.target as Node)) {
-        setIsIncompleteDocumentChooserOpen(false);
-      }
-    };
-
-    document.addEventListener('mousedown', handleOutsideClick);
-    return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [isIncompleteDocumentChooserOpen]);
-
-  useEffect(() => {
     if (activeAction !== null) {
-      setIsIncompleteDocumentChooserOpen(false);
+      setIsIncompleteDocumentModalOpen(false);
     }
   }, [activeAction]);
 
   useEffect(() => {
-    if (!isIncompleteDocumentChooserOpen) {
+    if (!isIncompleteDocumentModalOpen) {
       setSelectedIncompleteDocumentOption(null);
+      setIncompleteDocumentError(null);
     }
-  }, [isIncompleteDocumentChooserOpen]);
+  }, [isIncompleteDocumentModalOpen]);
 
   const handleAction = (event: MouseEvent<HTMLButtonElement>, actionKey: WorkflowActionKey) => {
     event.preventDefault();
     event.stopPropagation();
     setActiveAction(actionKey);
+  };
+
+  const handleConfirmIncompleteDocument = () => {
+    if (!selectedIncompleteDocumentOption) {
+      return;
+    }
+
+    const selectedOption = incompleteDocumentOptions.find((option) => option.key === selectedIncompleteDocumentOption);
+    if (!selectedOption) {
+      setIncompleteDocumentError('ไม่พบตัวเลือกที่เลือก กรุณาลองใหม่อีกครั้ง');
+      return;
+    }
+
+    const decision = selectedOption.key === 'DOC_INCOMPLETE_COLLECT_ON_SITE' ? 'INCOMPLETE_COLLECT_ON_SITE' : 'INCOMPLETE_WAIT_CUSTOMER';
+    const formData = new FormData();
+    formData.set('request_id', requestId);
+    formData.set('decision', decision);
+    formData.set('incomplete_docs_note', selectedOption.note);
+    if (stayOnQueue) {
+      formData.set('stay_on_queue', '1');
+    }
+
+    setIncompleteDocumentError(null);
+
+    startIncompleteDecisionTransition(async () => {
+      try {
+        await updateDocumentReviewDecisionAction(formData);
+        setIsIncompleteDocumentModalOpen(false);
+        router.refresh();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดที่ไม่คาดคิด';
+        setIncompleteDocumentError(message || 'ไม่สามารถบันทึกผลตรวจเอกสารได้ กรุณาลองใหม่อีกครั้ง');
+      }
+    });
   };
 
   return (
@@ -114,7 +248,7 @@ export function WorkflowActionButtons({
           <button
             aria-label={`ดำเนินการ ${groupedDocCompleteAction.label}`}
             className={`${ACTION_BUTTON_CLASS[groupedDocCompleteAction.variant]} ${compact ? 'min-h-9 px-2.5 py-1.5 text-sm' : 'min-h-10'} justify-center whitespace-nowrap text-left`}
-            disabled={activeAction !== null}
+            disabled={activeAction !== null || isSubmittingIncompleteDecision}
             type="button"
             onClick={(event) => handleAction(event, groupedDocCompleteAction.key)}
           >
@@ -122,70 +256,23 @@ export function WorkflowActionButtons({
           </button>
         ) : null}
         {shouldGroupDocumentReviewActions && groupedDocIncompleteActions.length ? (
-          <div className="relative" ref={incompleteDocumentChooserRef}>
-            <button
-              aria-expanded={isIncompleteDocumentChooserOpen}
-              aria-haspopup="dialog"
-              className={`${ACTION_BUTTON_CLASS.secondary} ${compact ? 'min-h-9 px-2.5 py-1.5 text-sm' : 'min-h-10'} inline-flex items-center justify-center gap-1 whitespace-nowrap`}
-              disabled={activeAction !== null}
-              type="button"
-              onClick={(event) => {
-                event.preventDefault();
-                event.stopPropagation();
-                setIsIncompleteDocumentChooserOpen(true);
-              }}
-            >
-              เอกสารไม่ครบ
-            </button>
-            {isIncompleteDocumentChooserOpen ? (
-              <div className="absolute left-0 top-full z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
-                <p className="text-sm font-semibold text-slate-900">เลือกวิธีดำเนินการเอกสารไม่ครบ</p>
-                <div className="mt-3 space-y-2">
-                  {INCOMPLETE_DOCUMENT_OPTIONS.filter((option) => groupedDocIncompleteActions.some((action) => action.key === option.key)).map((option) => {
-                    const isSelected = selectedIncompleteDocumentOption === option.key;
-
-                    return (
-                      <button
-                        key={option.key}
-                        className={`w-full rounded-lg border px-3 py-2 text-left transition ${
-                          isSelected ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
-                        }`}
-                        type="button"
-                        onClick={() => setSelectedIncompleteDocumentOption(option.key)}
-                      >
-                        <p className="text-sm font-medium text-slate-900">{option.title}</p>
-                        <p className="mt-1 text-xs text-slate-600">{option.description}</p>
-                      </button>
-                    );
-                  })}
-                </div>
-                <div className="mt-3 flex justify-end gap-2 border-t border-slate-100 pt-3">
-                  <button className="btn-secondary" type="button" onClick={() => setIsIncompleteDocumentChooserOpen(false)}>
-                    ยกเลิก
-                  </button>
-                  <button
-                    className="btn-primary"
-                    disabled={!selectedIncompleteDocumentOption}
-                    type="button"
-                    onClick={(event) => {
-                      if (!selectedIncompleteDocumentOption) {
-                        return;
-                      }
-
-                      setIsIncompleteDocumentChooserOpen(false);
-                      handleAction(event, selectedIncompleteDocumentOption);
-                    }}
-                  >
-                    ยืนยัน
-                  </button>
-                </div>
-              </div>
-            ) : null}
-          </div>
+          <button
+            aria-haspopup="dialog"
+            className={`${ACTION_BUTTON_CLASS.secondary} ${compact ? 'min-h-9 px-2.5 py-1.5 text-sm' : 'min-h-10'} inline-flex items-center justify-center gap-1 whitespace-nowrap`}
+            disabled={activeAction !== null || isSubmittingIncompleteDecision}
+            type="button"
+            onClick={(event) => {
+              event.preventDefault();
+              event.stopPropagation();
+              setIsIncompleteDocumentModalOpen(true);
+            }}
+          >
+            เอกสารไม่ครบ
+          </button>
         ) : null}
 
         {visibleActions.map((action) => {
-          const disabled = activeAction !== null;
+          const disabled = activeAction !== null || isSubmittingIncompleteDecision;
 
           return (
             <button
@@ -210,7 +297,7 @@ export function WorkflowActionButtons({
                   key={action.key}
                   aria-label={`ดำเนินการ ${action.label}`}
                   className="w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                  disabled={activeAction !== null}
+                  disabled={activeAction !== null || isSubmittingIncompleteDecision}
                   type="button"
                   onClick={(event) => handleAction(event, action.key)}
                 >
@@ -248,6 +335,17 @@ export function WorkflowActionButtons({
         onClose={() => setActiveAction(null)}
         requestId={requestId}
         stayOnQueue={stayOnQueue}
+      />
+
+      <IncompleteDocumentModal
+        error={incompleteDocumentError}
+        isPending={isSubmittingIncompleteDecision}
+        open={isIncompleteDocumentModalOpen}
+        options={incompleteDocumentOptions}
+        selectedOption={selectedIncompleteDocumentOption}
+        onClose={() => setIsIncompleteDocumentModalOpen(false)}
+        onConfirm={handleConfirmIncompleteDocument}
+        onSelect={setSelectedIncompleteDocumentOption}
       />
     </div>
   );
