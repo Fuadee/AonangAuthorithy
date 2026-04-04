@@ -24,6 +24,20 @@ const ACTION_BUTTON_CLASS: Record<'primary' | 'secondary', string> = {
 };
 
 const DOC_INCOMPLETE_GROUP_ACTIONS: WorkflowActionKey[] = ['DOC_INCOMPLETE_COLLECT_ON_SITE', 'DOC_INCOMPLETE_WAIT_CUSTOMER'];
+type IncompleteDocumentOption = Extract<WorkflowActionKey, 'DOC_INCOMPLETE_COLLECT_ON_SITE' | 'DOC_INCOMPLETE_WAIT_CUSTOMER'>;
+
+const INCOMPLETE_DOCUMENT_OPTIONS: Array<{ key: IncompleteDocumentOption; title: string; description: string }> = [
+  {
+    key: 'DOC_INCOMPLETE_COLLECT_ON_SITE',
+    title: 'รับเอกสารหน้างาน',
+    description: 'รับเอกสารที่ขาดเพิ่มเติมหน้างาน และส่งต่อเพื่อตรวจเอกสารต่อได้ทันที'
+  },
+  {
+    key: 'DOC_INCOMPLETE_WAIT_CUSTOMER',
+    title: 'รอลูกค้านำมา',
+    description: 'ให้ลูกค้านำเอกสารมาเพิ่มเติมภายหลัง ก่อนดำเนินการขั้นตอนถัดไป'
+  }
+];
 
 export function WorkflowActionButtons({
   actions,
@@ -35,8 +49,9 @@ export function WorkflowActionButtons({
   maxVisibleActions
 }: WorkflowActionButtonsProps) {
   const [activeAction, setActiveAction] = useState<WorkflowActionKey | null>(null);
-  const [isDocIncompleteMenuOpen, setIsDocIncompleteMenuOpen] = useState(false);
-  const docIncompleteMenuRef = useRef<HTMLDivElement | null>(null);
+  const [isIncompleteDocumentChooserOpen, setIsIncompleteDocumentChooserOpen] = useState(false);
+  const [selectedIncompleteDocumentOption, setSelectedIncompleteDocumentOption] = useState<IncompleteDocumentOption | null>(null);
+  const incompleteDocumentChooserRef = useRef<HTMLDivElement | null>(null);
 
   const shouldGroupDocumentReviewActions = currentStatus === 'WAIT_DOCUMENT_REVIEW';
   const groupedDocCompleteAction = useMemo(() => actions.find((action) => action.key === 'DOC_COMPLETE') ?? null, [actions]);
@@ -60,25 +75,31 @@ export function WorkflowActionButtons({
   const overflowActions = maxVisibleActions ? actionsForRegularRendering.slice(maxVisibleActions) : [];
 
   useEffect(() => {
-    if (!isDocIncompleteMenuOpen) {
+    if (!isIncompleteDocumentChooserOpen) {
       return;
     }
 
     const handleOutsideClick = (event: globalThis.MouseEvent) => {
-      if (!docIncompleteMenuRef.current?.contains(event.target as Node)) {
-        setIsDocIncompleteMenuOpen(false);
+      if (!incompleteDocumentChooserRef.current?.contains(event.target as Node)) {
+        setIsIncompleteDocumentChooserOpen(false);
       }
     };
 
     document.addEventListener('mousedown', handleOutsideClick);
     return () => document.removeEventListener('mousedown', handleOutsideClick);
-  }, [isDocIncompleteMenuOpen]);
+  }, [isIncompleteDocumentChooserOpen]);
 
   useEffect(() => {
     if (activeAction !== null) {
-      setIsDocIncompleteMenuOpen(false);
+      setIsIncompleteDocumentChooserOpen(false);
     }
   }, [activeAction]);
+
+  useEffect(() => {
+    if (!isIncompleteDocumentChooserOpen) {
+      setSelectedIncompleteDocumentOption(null);
+    }
+  }, [isIncompleteDocumentChooserOpen]);
 
   const handleAction = (event: MouseEvent<HTMLButtonElement>, actionKey: WorkflowActionKey) => {
     event.preventDefault();
@@ -101,39 +122,63 @@ export function WorkflowActionButtons({
           </button>
         ) : null}
         {shouldGroupDocumentReviewActions && groupedDocIncompleteActions.length ? (
-          <div className="relative" ref={docIncompleteMenuRef}>
+          <div className="relative" ref={incompleteDocumentChooserRef}>
             <button
-              aria-expanded={isDocIncompleteMenuOpen}
-              aria-haspopup="menu"
+              aria-expanded={isIncompleteDocumentChooserOpen}
+              aria-haspopup="dialog"
               className={`${ACTION_BUTTON_CLASS.secondary} ${compact ? 'min-h-9 px-2.5 py-1.5 text-sm' : 'min-h-10'} inline-flex items-center justify-center gap-1 whitespace-nowrap`}
               disabled={activeAction !== null}
               type="button"
               onClick={(event) => {
                 event.preventDefault();
                 event.stopPropagation();
-                setIsDocIncompleteMenuOpen((prev) => !prev);
+                setIsIncompleteDocumentChooserOpen(true);
               }}
             >
               เอกสารไม่ครบ
-              <span className={`text-xs text-slate-600 transition-transform ${isDocIncompleteMenuOpen ? 'rotate-180' : ''}`}>▾</span>
             </button>
-            {isDocIncompleteMenuOpen ? (
-              <div className="absolute left-0 z-10 mt-1 min-w-44 rounded-lg border border-slate-200 bg-white py-1 shadow-sm">
-                {groupedDocIncompleteActions.map((action) => (
+            {isIncompleteDocumentChooserOpen ? (
+              <div className="absolute left-0 top-full z-20 mt-2 w-80 rounded-xl border border-slate-200 bg-white p-3 shadow-lg">
+                <p className="text-sm font-semibold text-slate-900">เลือกวิธีดำเนินการเอกสารไม่ครบ</p>
+                <div className="mt-3 space-y-2">
+                  {INCOMPLETE_DOCUMENT_OPTIONS.filter((option) => groupedDocIncompleteActions.some((action) => action.key === option.key)).map((option) => {
+                    const isSelected = selectedIncompleteDocumentOption === option.key;
+
+                    return (
+                      <button
+                        key={option.key}
+                        className={`w-full rounded-lg border px-3 py-2 text-left transition ${
+                          isSelected ? 'border-blue-500 bg-blue-50' : 'border-slate-200 hover:border-slate-300 hover:bg-slate-50'
+                        }`}
+                        type="button"
+                        onClick={() => setSelectedIncompleteDocumentOption(option.key)}
+                      >
+                        <p className="text-sm font-medium text-slate-900">{option.title}</p>
+                        <p className="mt-1 text-xs text-slate-600">{option.description}</p>
+                      </button>
+                    );
+                  })}
+                </div>
+                <div className="mt-3 flex justify-end gap-2 border-t border-slate-100 pt-3">
+                  <button className="btn-secondary" type="button" onClick={() => setIsIncompleteDocumentChooserOpen(false)}>
+                    ยกเลิก
+                  </button>
                   <button
-                    key={action.key}
-                    aria-label={`ดำเนินการ ${action.label}`}
-                    className="block w-full px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
-                    disabled={activeAction !== null}
+                    className="btn-primary"
+                    disabled={!selectedIncompleteDocumentOption}
                     type="button"
                     onClick={(event) => {
-                      setIsDocIncompleteMenuOpen(false);
-                      handleAction(event, action.key);
+                      if (!selectedIncompleteDocumentOption) {
+                        return;
+                      }
+
+                      setIsIncompleteDocumentChooserOpen(false);
+                      handleAction(event, selectedIncompleteDocumentOption);
                     }}
                   >
-                    {action.key === 'DOC_INCOMPLETE_COLLECT_ON_SITE' ? 'รับเอกสารหน้างาน' : 'รอลูกค้านำมา'}
+                    ยืนยัน
                   </button>
-                ))}
+                </div>
               </div>
             ) : null}
           </div>
