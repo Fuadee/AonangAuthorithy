@@ -117,7 +117,7 @@ export function getWorkflowActionsForRequest(
 
   if (status === 'READY_FOR_SURVEY') {
     if (!request.survey_date_current && !request.scheduled_survey_date) {
-      return [{ key: 'SCHEDULE_SURVEY', variant: 'primary', fallbackToDetail: true }];
+      return [{ key: 'SCHEDULE_SURVEY', variant: 'primary' }];
     }
 
     if (!canStartSurvey({ status, scheduled_survey_date: request.scheduled_survey_date, survey_date_current: request.survey_date_current })) {
@@ -126,14 +126,14 @@ export function getWorkflowActionsForRequest(
 
     return [
       { key: 'START_SURVEY', variant: 'primary', requiresConfirmation: 'ยืนยันเริ่มสำรวจหน้างาน?' },
-      { key: 'EDIT_SURVEY_DATE', variant: 'secondary', fallbackToDetail: true }
+      { key: 'EDIT_SURVEY_DATE', variant: 'secondary' }
     ];
   }
 
   if (status === 'READY_FOR_RESURVEY') {
     return [
       { key: 'START_SURVEY', variant: 'primary', requiresConfirmation: 'ยืนยันเริ่มตรวจซ้ำหน้างาน?' },
-      { key: 'EDIT_SURVEY_DATE', variant: 'secondary', fallbackToDetail: true }
+      { key: 'EDIT_SURVEY_DATE', variant: 'secondary' }
     ];
   }
 
