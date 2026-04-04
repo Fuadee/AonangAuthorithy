@@ -1,9 +1,10 @@
 'use client';
 
+import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
-import { QueueRequestCard } from '@/components/queue/queue-request-card';
-import { RequestStatus, ServiceRequest } from '@/lib/requests/types';
+import { startSurveyAction, updateDocumentReviewDecisionAction, updateSurveyorAction } from '@/app/actions';
+import { getRequestStatusLabel, RequestStatus, REQUEST_TYPE_LABELS, ServiceRequest } from '@/lib/requests/types';
 
 type SurveyorRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -129,6 +130,102 @@ function FilterContainer({
   return <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">{children}</section>;
 }
 
+type ActionModalProps = {
+  requestId: string;
+  requestNo: string;
+  currentStatus: RequestStatus;
+  onClose: () => void;
+};
+
+function ActionModal({ requestId, requestNo, currentStatus, onClose }: ActionModalProps) {
+  const [selectedAction, setSelectedAction] = useState<'DOC_COMPLETE' | 'DOCS_INCOMPLETE' | 'ACCEPT_JOB' | 'RESCHEDULE'>('DOC_COMPLETE');
+
+  return (
+    <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4" onClick={(event) => event.target === event.currentTarget && onClose()}>
+      <div className="w-full max-w-lg rounded-xl bg-white p-6 shadow-xl">
+        <h4 className="text-lg font-semibold text-slate-900">ดำเนินการคำร้อง {requestNo}</h4>
+        <p className="mt-1 text-sm text-slate-500">สถานะปัจจุบัน: {getRequestStatusLabel(currentStatus)}</p>
+
+        <div className="mt-4 grid grid-cols-2 gap-2">
+          <button className={`rounded-lg border px-3 py-2 text-sm ${selectedAction === 'DOC_COMPLETE' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 text-slate-700'}`} type="button" onClick={() => setSelectedAction('DOC_COMPLETE')}>
+            เอกสารครบ
+          </button>
+          <button className={`rounded-lg border px-3 py-2 text-sm ${selectedAction === 'DOCS_INCOMPLETE' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 text-slate-700'}`} type="button" onClick={() => setSelectedAction('DOCS_INCOMPLETE')}>
+            เอกสารไม่ครบ
+          </button>
+          <button className={`rounded-lg border px-3 py-2 text-sm ${selectedAction === 'ACCEPT_JOB' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 text-slate-700'}`} type="button" onClick={() => setSelectedAction('ACCEPT_JOB')}>
+            รับงาน
+          </button>
+          <button className={`rounded-lg border px-3 py-2 text-sm ${selectedAction === 'RESCHEDULE' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 text-slate-700'}`} type="button" onClick={() => setSelectedAction('RESCHEDULE')}>
+            เลื่อนนัด
+          </button>
+        </div>
+
+        {selectedAction === 'DOC_COMPLETE' ? (
+          <form action={updateDocumentReviewDecisionAction} className="mt-4 space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <input name="decision" type="hidden" value="COMPLETE" />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยันเอกสารครบ</button>
+            </div>
+          </form>
+        ) : null}
+
+        {selectedAction === 'DOCS_INCOMPLETE' ? (
+          <form action={updateSurveyorAction} className="mt-4 space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <input name="action" type="hidden" value="DOCS_INCOMPLETE" />
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor={`survey_note_${requestId}`}>
+                หมายเหตุเอกสารขาด
+              </label>
+              <textarea className="input mt-1 min-h-24" id={`survey_note_${requestId}`} name="survey_note" required />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">บันทึกเอกสารไม่ครบ</button>
+            </div>
+          </form>
+        ) : null}
+
+        {selectedAction === 'ACCEPT_JOB' ? (
+          <form action={startSurveyAction} className="mt-4 space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยันรับงาน</button>
+            </div>
+          </form>
+        ) : null}
+
+        {selectedAction === 'RESCHEDULE' ? (
+          <form action={updateSurveyorAction} className="mt-4 space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <input name="action" type="hidden" value="REQUEST_RESCHEDULE" />
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor={`survey_reschedule_${requestId}`}>
+                วันสำรวจใหม่
+              </label>
+              <input className="input mt-1" id={`survey_reschedule_${requestId}`} name="survey_reschedule_date" required type="date" />
+            </div>
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor={`survey_reschedule_note_${requestId}`}>
+                เหตุผล/หมายเหตุ (ถ้ามี)
+              </label>
+              <textarea className="input mt-1 min-h-20" id={`survey_reschedule_note_${requestId}`} name="survey_note" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยันเลื่อนนัด</button>
+            </div>
+          </form>
+        ) : null}
+      </div>
+    </div>
+  );
+}
+
 export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorRequestsPanelProps) {
   const router = useRouter();
   const pathname = usePathname();
@@ -136,6 +233,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
 
   const [activeFilter, setActiveFilter] = useState<SurveyorFilter>('ALL');
   const [isExpanded, setIsExpanded] = useState(false);
+  const [activeActionRequest, setActiveActionRequest] = useState<{ id: string; requestNo: string; status: RequestStatus } | null>(null);
 
   const surveyorOptions = useMemo(() => {
     const unique = new Set<string>();
@@ -243,33 +341,65 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
         </div>
       </FilterContainer>
 
-      <section className="space-y-3">
-        {filteredRequests.map((request) => (
-          <QueueRequestCard
-            key={request.id}
-            areaName={request.area_name}
-            assigneeName={request.assignee_name}
-            currentStatus={request.status}
-            customerName={request.customer_name}
-            detailHref={`/requests/${request.id}`}
-            requestId={request.id}
-            requestNo={request.request_no}
-            requestType={request.request_type}
-            surveyorName={request.assigned_surveyor}
-            updatedAt={request.updated_at}
-            workflowContext={{
-              fixVerificationMode: request.fix_verification_mode,
-              invoiceSignedAt: request.invoice_signed_at,
-              paidAt: request.paid_at,
-              scheduledSurveyDate: request.scheduled_survey_date,
-              surveyDateCurrent: request.survey_date_current
-            }}
-          />
-        ))}
-        {!filteredRequests.length ? (
-          <section className="card p-6 text-center text-sm text-slate-500">ไม่พบรายการตามตัวกรองนี้</section>
-        ) : null}
+      <section className="card overflow-hidden">
+        <div className="overflow-x-auto">
+          <table className="min-w-full divide-y divide-slate-200 text-sm">
+            <thead className="bg-slate-100 text-left text-slate-600">
+              <tr>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">เลขคำร้อง</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">ลูกค้า</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">ประเภท</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">พื้นที่</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">สถานะ</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">อัปเดตล่าสุด</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">จัดการ</th>
+              </tr>
+            </thead>
+            <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
+              {filteredRequests.map((request) => (
+                <tr key={request.id} className="hover:bg-slate-50">
+                  <td className="px-4 py-3 font-medium text-brand-700">{request.request_no}</td>
+                  <td className="px-4 py-3">{request.customer_name}</td>
+                  <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
+                  <td className="px-4 py-3">{request.area_name}</td>
+                  <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
+                  <td className="px-4 py-3">{new Date(request.updated_at).toLocaleString('th-TH')}</td>
+                  <td className="px-4 py-3">
+                    <div className="flex flex-wrap gap-2">
+                      <Link className="btn-secondary" href={`/requests/${request.id}`}>
+                        เปิดดู
+                      </Link>
+                      <button
+                        className="btn-primary"
+                        type="button"
+                        onClick={() => setActiveActionRequest({ id: request.id, requestNo: request.request_no, status: request.status })}
+                      >
+                        ดำเนินการ
+                      </button>
+                    </div>
+                  </td>
+                </tr>
+              ))}
+              {!filteredRequests.length && (
+                <tr>
+                  <td className="px-4 py-6 text-center text-slate-500" colSpan={7}>
+                    ไม่พบรายการตามตัวกรองนี้
+                  </td>
+                </tr>
+              )}
+            </tbody>
+          </table>
+        </div>
       </section>
+
+      {activeActionRequest ? (
+        <ActionModal
+          currentStatus={activeActionRequest.status}
+          requestId={activeActionRequest.id}
+          requestNo={activeActionRequest.requestNo}
+          onClose={() => setActiveActionRequest(null)}
+        />
+      ) : null}
     </div>
   );
 }
