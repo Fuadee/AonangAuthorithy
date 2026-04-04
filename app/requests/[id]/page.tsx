@@ -182,12 +182,12 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
       };
     case 'BILL_ISSUED':
       return {
-        nextStep: 'ยืนยันว่าประสานงานแผนกก่อสร้างแล้ว เพื่อจบ flow ฝั่งกระบี่',
+        nextStep: 'ยืนยันว่า ผกส.รับเรื่องแล้ว เพื่อจบ flow ฝั่งกระบี่',
         owner: 'เจ้าหน้าที่'
       };
     case 'COORDINATED_WITH_CONSTRUCTION':
       return {
-        nextStep: 'จบขั้นตอนฝั่งกระบี่แล้ว และส่งต่อแผนกก่อสร้างเรียบร้อย',
+        nextStep: 'จบขั้นตอนฝั่งกระบี่แล้ว และ ผกส.รับเรื่องเรียบร้อย',
         owner: 'เสร็จสิ้น'
       };
     default:

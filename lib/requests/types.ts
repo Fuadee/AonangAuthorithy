@@ -66,7 +66,7 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   KRABI_IN_PROGRESS: 'กระบี่กำลังประมาณการ',
   KRABI_ESTIMATION_COMPLETED: 'กระบี่ประมาณการเสร็จแล้ว',
   BILL_ISSUED: 'ออกใบแจ้งหนี้แล้ว',
-  COORDINATED_WITH_CONSTRUCTION: 'แล้วเสร็จ / ประสานงานแผนกก่อสร้าง',
+  COORDINATED_WITH_CONSTRUCTION: 'แล้วเสร็จ / ผกส.รับเรื่อง',
   WAIT_DOCUMENT_REVIEW: 'รอตรวจเอกสาร',
   WAIT_DOCUMENT_FROM_CUSTOMER: 'รอผู้ใช้ไฟนำเอกสารมาให้',
   READY_FOR_SURVEY: 'พร้อมรับงานสำรวจ',

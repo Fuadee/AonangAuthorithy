@@ -517,7 +517,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
 
   if (actionKey === 'COORDINATED_WITH_CONSTRUCTION') {
     return (
-      <ModalShell title="ยืนยันว่าประสานงานแผนกก่อสร้างแล้ว" onClose={onClose}>
+      <ModalShell title="ยืนยันว่า ผกส.รับเรื่องแล้ว" onClose={onClose}>
         <form className="space-y-3" onSubmit={onSubmitWorkflowAction('COORDINATED_WITH_CONSTRUCTION')}>
           <input name="request_id" type="hidden" value={requestId} />
           <QueueStayInput stayOnQueue={stayOnQueue} />
