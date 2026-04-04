@@ -76,7 +76,7 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
 
 export const REQUEST_QUEUE_GROUP_LABELS: Record<RequestQueueGroup, string> = {
   SURVEY: 'คิวนักสำรวจ',
-  DISPATCH: 'คิวส่งเอกสาร',
+  DISPATCH: 'คิวเอกสาร',
   KRABI: 'คิวกระบี่',
   BILLING: 'คิวการเงิน',
   MANAGER: 'คิวผู้จัดการ',

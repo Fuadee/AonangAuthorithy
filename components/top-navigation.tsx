@@ -14,6 +14,8 @@ const NAV_ITEMS: NavigationItem[] = [
   { href: '/surveyor', label: 'คิวนักสำรวจ' },
   { href: '/billing', label: 'คิวการเงิน' },
   { href: '/manager', label: 'คิวผู้จัดการ' },
+  { href: '/document', label: 'คิวเอกสาร' },
+  { href: '/krabi', label: 'คิวกระบี่' },
   { href: '/requests/new', label: 'สร้างคำร้องใหม่', variant: 'primary' }
 ];
 
