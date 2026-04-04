@@ -1,56 +1,132 @@
 'use client';
 
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { QueueRequestCard } from '@/components/queue/queue-request-card';
-import { getCurrentSurveyDate, RequestStatus, ServiceRequest } from '@/lib/requests/types';
+import { RequestStatus, ServiceRequest } from '@/lib/requests/types';
 
 type SurveyorRequestsPanelProps = {
   requests: ServiceRequest[];
   defaultSurveyor?: string | null;
 };
 
-type SurveyorFilter =
-  | 'ALL'
-  | 'WAIT_DOCUMENT_REVIEW'
-  | 'WAIT_DOCUMENT_FROM_CUSTOMER'
-  | 'READY_FOR_SURVEY'
-  | 'WAIT_CUSTOMER_FIX'
-  | 'WAIT_FIX_REVIEW'
-  | 'READY_FOR_RESURVEY'
-  | 'IN_SURVEY'
-  | 'TODAY'
-  | 'SURVEY_COMPLETED'
-  | 'WAIT_LAYOUT_DRAWING'
-  | 'READY_TO_SEND_KRABI';
+type MainSurveyorFilter = 'ALL' | 'WAITING_REVIEW' | 'READY' | 'IN_PROGRESS' | 'DONE';
+type DetailSurveyorFilter = Extract<RequestStatus, 'WAIT_DOCUMENT_FROM_CUSTOMER' | 'WAIT_CUSTOMER_FIX' | 'WAIT_FIX_REVIEW' | 'READY_FOR_RESURVEY'>;
+type SurveyorFilter = MainSurveyorFilter | DetailSurveyorFilter;
+
+type StatusOption<T extends string> = {
+  value: T;
+  label: string;
+};
 
 const ALL_SURVEYORS = 'ALL';
 
-const FILTER_OPTIONS: Array<{ value: SurveyorFilter; label: string }> = [
+const MAIN_FILTER_OPTIONS: StatusOption<MainSurveyorFilter>[] = [
   { value: 'ALL', label: 'ทั้งหมด' },
-  { value: 'WAIT_DOCUMENT_REVIEW', label: 'รอตรวจเอกสาร' },
-  { value: 'WAIT_DOCUMENT_FROM_CUSTOMER', label: 'รอผู้ใช้ไฟนำเอกสารมาให้' },
-  { value: 'READY_FOR_SURVEY', label: 'พร้อมรับงานสำรวจ' },
-  { value: 'WAIT_CUSTOMER_FIX', label: 'รอผู้ใช้ไฟแก้ไข' },
-  { value: 'WAIT_FIX_REVIEW', label: 'รอตรวจจากรูป' },
-  { value: 'READY_FOR_RESURVEY', label: 'รอนัดตรวจซ้ำ' },
-  { value: 'IN_SURVEY', label: 'กำลังสำรวจ' },
-  { value: 'TODAY', label: 'วันนี้' },
-  { value: 'SURVEY_COMPLETED', label: 'สำรวจแล้ว' },
-  { value: 'WAIT_LAYOUT_DRAWING', label: 'รอวาดผัง' },
-  { value: 'READY_TO_SEND_KRABI', label: 'เตรียมส่งเอกสารให้กระบี่' }
+  { value: 'WAITING_REVIEW', label: 'รอตรวจ' },
+  { value: 'READY', label: 'พร้อมสำรวจ' },
+  { value: 'IN_PROGRESS', label: 'กำลังทำ' },
+  { value: 'DONE', label: 'เสร็จ' }
 ];
 
-function isToday(value: string | null): boolean {
-  if (!value) {
-    return false;
-  }
+const DETAIL_FILTER_OPTIONS: StatusOption<DetailSurveyorFilter>[] = [
+  { value: 'WAIT_DOCUMENT_FROM_CUSTOMER', label: 'รอเอกสารเพิ่ม' },
+  { value: 'WAIT_CUSTOMER_FIX', label: 'รอผู้ใช้ไฟแก้ไข' },
+  { value: 'WAIT_FIX_REVIEW', label: 'รอตรวจจากรูป' },
+  { value: 'READY_FOR_RESURVEY', label: 'รอนัดตรวจซ้ำ' }
+];
 
-  const today = new Date();
-  const yyyy = today.getFullYear();
-  const mm = `${today.getMonth() + 1}`.padStart(2, '0');
-  const dd = `${today.getDate()}`.padStart(2, '0');
-  return value === `${yyyy}-${mm}-${dd}`;
+const MAIN_FILTER_STATUS_MAP: Record<Exclude<MainSurveyorFilter, 'ALL'>, RequestStatus[]> = {
+  WAITING_REVIEW: ['WAIT_DOCUMENT_REVIEW', 'PENDING_SURVEY_REVIEW'],
+  READY: ['READY_FOR_SURVEY', 'SURVEY_ACCEPTED', 'SURVEY_RESCHEDULE_REQUESTED'],
+  IN_PROGRESS: ['IN_SURVEY'],
+  DONE: ['SURVEY_COMPLETED']
+};
+
+function SurveyorSelect({
+  activeSurveyor,
+  options,
+  onChange
+}: {
+  activeSurveyor: string;
+  options: string[];
+  onChange: (value: string) => void;
+}) {
+  return (
+    <div className="space-y-1">
+      <p className="text-sm text-slate-500">นักสำรวจ</p>
+      <select
+        aria-label="กรองตามนักสำรวจ"
+        className="w-full rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700 sm:min-w-64"
+        value={activeSurveyor}
+        onChange={(event) => onChange(event.target.value)}
+      >
+        <option value={ALL_SURVEYORS}>ทั้งหมด</option>
+        {options.map((name) => (
+          <option key={name} value={name}>
+            {name}
+          </option>
+        ))}
+      </select>
+    </div>
+  );
+}
+
+function WorkloadSummary({ activeSurveyor, workloadBySurveyor }: { activeSurveyor: string; workloadBySurveyor: Array<{ name: string; total: number }> }) {
+  const focusedWorkload =
+    activeSurveyor === ALL_SURVEYORS
+      ? workloadBySurveyor.reduce((sum, item) => sum + item.total, 0)
+      : (workloadBySurveyor.find((item) => item.name === activeSurveyor)?.total ?? 0);
+
+  return (
+    <div className="text-right">
+      <p className="text-sm text-slate-500">ภาระงานต่อคน</p>
+      <p className="text-base font-semibold text-slate-800">
+        {activeSurveyor === ALL_SURVEYORS ? `รวม ${focusedWorkload} งาน` : `${activeSurveyor} • ${focusedWorkload} งาน`}
+      </p>
+    </div>
+  );
+}
+
+function StatusChips<T extends string>({
+  options,
+  active,
+  onChange
+}: {
+  options: StatusOption<T>[];
+  active: string;
+  onChange: (value: T) => void;
+}) {
+  return (
+    <div className="flex flex-wrap gap-2">
+      {options.map((option) => {
+        const isActive = active === option.value;
+
+        return (
+          <button
+            key={option.value}
+            className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-sm transition ${
+              isActive
+                ? 'border-brand-600 bg-brand-50 text-brand-700'
+                : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+            }`}
+            type="button"
+            onClick={() => onChange(option.value)}
+          >
+            {option.label}
+          </button>
+        );
+      })}
+    </div>
+  );
+}
+
+function FilterContainer({
+  children
+}: {
+  children: ReactNode;
+}) {
+  return <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">{children}</section>;
 }
 
 export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorRequestsPanelProps) {
@@ -59,6 +135,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
   const searchParams = useSearchParams();
 
   const [activeFilter, setActiveFilter] = useState<SurveyorFilter>('ALL');
+  const [isExpanded, setIsExpanded] = useState(false);
 
   const surveyorOptions = useMemo(() => {
     const unique = new Set<string>();
@@ -94,16 +171,6 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
     return requests.filter((request) => request.assigned_surveyor === activeSurveyor);
   }, [activeSurveyor, requests]);
 
-  const summary = useMemo(
-    () => ({
-      waitDocumentReview: surveyorFilteredRequests.filter((request) => request.status === 'WAIT_DOCUMENT_REVIEW').length,
-      waitDocumentFromCustomer: surveyorFilteredRequests.filter((request) => request.status === 'WAIT_DOCUMENT_FROM_CUSTOMER').length,
-      today: surveyorFilteredRequests.filter((request) => isToday(getCurrentSurveyDate(request))).length,
-      completed: surveyorFilteredRequests.filter((request) => request.status === 'SURVEY_COMPLETED').length
-    }),
-    [surveyorFilteredRequests]
-  );
-
   const workloadBySurveyor = useMemo(() => {
     const bySurveyor = new Map<string, number>();
 
@@ -122,11 +189,12 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
       return surveyorFilteredRequests;
     }
 
-    if (activeFilter === 'TODAY') {
-      return surveyorFilteredRequests.filter((request) => isToday(getCurrentSurveyDate(request)));
+    if (activeFilter in MAIN_FILTER_STATUS_MAP) {
+      const statuses = MAIN_FILTER_STATUS_MAP[activeFilter as keyof typeof MAIN_FILTER_STATUS_MAP];
+      return surveyorFilteredRequests.filter((request) => statuses.includes(request.status));
     }
 
-    return surveyorFilteredRequests.filter((request) => request.status === (activeFilter as RequestStatus));
+    return surveyorFilteredRequests.filter((request) => request.status === activeFilter);
   }, [activeFilter, surveyorFilteredRequests]);
 
   const handleSurveyorChange = (value: string) => {
@@ -145,89 +213,35 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
 
   return (
     <div className="space-y-4">
-      <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-7">
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รอตรวจเอกสาร</p>
-          <p className="mt-2 text-3xl font-semibold text-brand-700">{summary.waitDocumentReview}</p>
-        </article>
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รอเอกสารเพิ่ม</p>
-          <p className="mt-2 text-3xl font-semibold text-orange-700">{summary.waitDocumentFromCustomer}</p>
-        </article>
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">นัดวันนี้</p>
-          <p className="mt-2 text-3xl font-semibold text-sky-700">{summary.today}</p>
-        </article>
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">สำรวจแล้ว</p>
-          <p className="mt-2 text-3xl font-semibold text-emerald-700">{summary.completed}</p>
-        </article>
-      </section>
-
-      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
-        <div className="flex flex-col gap-3">
-          <div className="space-y-1">
-            <p className="text-sm text-slate-500">นักสำรวจ</p>
-            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
-              <select
-                aria-label="กรองตามนักสำรวจ"
-                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-                value={activeSurveyor}
-                onChange={(event) => handleSurveyorChange(event.target.value)}
-              >
-                <option value={ALL_SURVEYORS}>ทั้งหมด</option>
-                {surveyorOptions.map((name) => (
-                  <option key={name} value={name}>
-                    {name}
-                  </option>
-                ))}
-              </select>
-
-              <p className="text-sm text-slate-500">
-                {activeSurveyor === ALL_SURVEYORS ? 'กำลังแสดง: งานนักสำรวจทั้งหมด' : `กำลังกรอง: ${activeSurveyor}`}
-              </p>
-            </div>
+      <FilterContainer>
+        <div className="flex flex-col gap-4">
+          <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+            <SurveyorSelect activeSurveyor={activeSurveyor} options={surveyorOptions} onChange={handleSurveyorChange} />
+            <WorkloadSummary activeSurveyor={activeSurveyor} workloadBySurveyor={workloadBySurveyor} />
           </div>
 
           <div className="space-y-1">
-            <p className="text-sm text-slate-500">สถานะ</p>
-            <div className="overflow-x-auto">
-              <div className="flex w-max min-w-full items-center gap-2 pb-1">
-                {FILTER_OPTIONS.map((option) => {
-                  const isActive = activeFilter === option.value;
+            <p className="text-sm text-slate-500">สถานะหลัก</p>
+            <StatusChips options={MAIN_FILTER_OPTIONS} active={activeFilter} onChange={setActiveFilter} />
+          </div>
 
-                  return (
-                    <button
-                      key={option.value}
-                      className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                        isActive
-                          ? 'border-brand-600 bg-brand-50 text-brand-700'
-                          : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
-                      }`}
-                      type="button"
-                      onClick={() => setActiveFilter(option.value)}
-                      title={option.label}
-                    >
-                      <span className="block max-w-full truncate whitespace-nowrap">{option.label}</span>
-                    </button>
-                  );
-                })}
+          <div className="space-y-2">
+            <button
+              type="button"
+              className="text-sm font-medium text-brand-700 hover:text-brand-800"
+              onClick={() => setIsExpanded((prev) => !prev)}
+            >
+              {isExpanded ? '− ซ่อนตัวกรองเพิ่มเติม' : '+ ตัวกรองเพิ่มเติม'}
+            </button>
+            {isExpanded ? (
+              <div className="space-y-1">
+                <p className="text-sm text-slate-500">สถานะย่อย</p>
+                <StatusChips options={DETAIL_FILTER_OPTIONS} active={activeFilter} onChange={setActiveFilter} />
               </div>
-            </div>
+            ) : null}
           </div>
         </div>
-      </section>
-
-      <section className="card p-4">
-        <p className="text-sm font-medium text-slate-700">ภาระงานต่อคน</p>
-        <div className="mt-2 flex flex-wrap gap-2">
-          {workloadBySurveyor.map((item) => (
-            <span key={item.name} className="rounded-full bg-slate-100 px-3 py-1 text-sm text-slate-700">
-              {item.name}: {item.total} งาน
-            </span>
-          ))}
-        </div>
-      </section>
+      </FilterContainer>
 
       <section className="space-y-3">
         {filteredRequests.map((request) => (
