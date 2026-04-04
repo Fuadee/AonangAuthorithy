@@ -31,10 +31,6 @@ export default async function SurveyorPage({ searchParams }: SurveyorPageProps) 
   }
 
   const typedRequests = (requests ?? []) as ServiceRequest[];
-  const filteredRequestCount = selectedSurveyor
-    ? typedRequests.filter((request) => request.assigned_surveyor === selectedSurveyor).length
-    : typedRequests.length;
-
   const mapParams = new URLSearchParams({
     status: surveyQueueStatuses.join(',')
   });
@@ -55,7 +51,7 @@ export default async function SurveyorPage({ searchParams }: SurveyorPageProps) 
           href={mapHref}
         >
           <Map className="h-4 w-4" />
-          ดูงานในแผนที่ ({filteredRequestCount})
+          ดูงานในแผนที่
         </Link>
       </div>
 
