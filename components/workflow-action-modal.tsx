@@ -84,9 +84,11 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [submitError, setSubmitError] = useState<string | null>(null);
+  const [krabiRejectReason, setKrabiRejectReason] = useState('');
 
   useEffect(() => {
     setSubmitError(null);
+    setKrabiRejectReason('');
   }, [actionKey]);
 
   if (!actionKey) {
@@ -414,15 +416,47 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
   }
 
   if (actionKey === 'KRABI_RETURN_FOR_FIX') {
+    const onSubmitKrabiReturnForFix = (event: FormEvent<HTMLFormElement>) => {
+      event.preventDefault();
+      event.stopPropagation();
+      setSubmitError(null);
+      const formData = new FormData(event.currentTarget);
+      const reasonFromState = krabiRejectReason.trim();
+
+      if (reasonFromState) {
+        formData.set('reject_reason', reasonFromState);
+      }
+
+      startTransition(async () => {
+        try {
+          await markKrabiNeedsDocumentFixAction(formData);
+          setSubmitError(null);
+          onClose();
+          router.refresh();
+        } catch (error) {
+          const message = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดที่ไม่คาดคิด';
+          setSubmitError(message || 'ไม่สามารถบันทึกรายการได้ กรุณาลองใหม่อีกครั้ง');
+        }
+      });
+    };
+
     return (
       <ModalShell title="ส่งกลับให้อ่าวนางแก้ไขเอกสาร" onClose={onClose}>
-        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('KRABI_RETURN_FOR_FIX')}>
+        <form className="space-y-3" onSubmit={onSubmitKrabiReturnForFix}>
           <input name="request_id" type="hidden" value={requestId} />
           <QueueStayInput stayOnQueue={stayOnQueue} />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div>
             <label className="text-sm font-medium text-slate-700" htmlFor="krabi_reject_reason">เหตุผลที่ตีกลับ</label>
-            <textarea className="input min-h-24" disabled={isPending} id="krabi_reject_reason" name="reject_reason" required />
+            <textarea
+              className="input min-h-24"
+              disabled={isPending}
+              id="krabi_reject_reason"
+              name="reject_reason"
+              required
+              value={krabiRejectReason}
+              onChange={(event) => setKrabiRejectReason(event.target.value)}
+            />
           </div>
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
