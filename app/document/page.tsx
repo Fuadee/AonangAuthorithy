@@ -1,19 +1,42 @@
 import { RequestTable } from '@/components/request-table';
-import Link from 'next/link';
+import { DocumentSummaryCards } from '@/components/document-summary-cards';
+import {
+  DocumentSummaryKey,
+  getDocumentSummaryCounts,
+  getDocumentSummaryDefinition,
+  isDocumentSummaryKey
+} from '@/lib/requests/document-summary';
 import { getRequestStatusLabel, getStatusesByQueueGroup, REQUEST_QUEUE_GROUP_META, RequestStatus, ServiceRequest } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
+import Link from 'next/link';
 
 export const dynamic = 'force-dynamic';
 
 type DocumentQueuePageProps = {
-  searchParams?: Promise<{ status?: string }>;
+  searchParams?: Promise<{ status?: string; summary?: string }>;
 };
+
+function isSummaryCardActive(params: { activeSummary: DocumentSummaryKey | null; selectedStatus: RequestStatus | 'ALL'; cardKey: DocumentSummaryKey }): boolean {
+  const { activeSummary, selectedStatus, cardKey } = params;
+
+  if (activeSummary) {
+    return activeSummary === cardKey;
+  }
+
+  const definition = getDocumentSummaryDefinition(cardKey);
+  if (cardKey === 'ALL') {
+    return selectedStatus === 'ALL';
+  }
+
+  return selectedStatus !== 'ALL' && definition.statuses.includes(selectedStatus);
+}
 
 export default async function DocumentQueuePage({ searchParams }: DocumentQueuePageProps) {
   const params = searchParams ? await searchParams : undefined;
   const supabase = createServerSupabaseClient();
   const documentQueueStatuses = getStatusesByQueueGroup('DISPATCH');
   const selectedStatus = params?.status && documentQueueStatuses.includes(params.status as RequestStatus) ? (params.status as RequestStatus) : 'ALL';
+  const selectedSummary = isDocumentSummaryKey(params?.summary) ? params.summary : null;
 
   const { data: requests, error } = await supabase
     .from('service_requests')
@@ -28,19 +51,39 @@ export default async function DocumentQueuePage({ searchParams }: DocumentQueueP
   }
 
   const typedRequests = (requests ?? []) as ServiceRequest[];
-  const filteredRequests = selectedStatus === 'ALL' ? typedRequests : typedRequests.filter((request) => request.status === selectedStatus);
+  const summaryDefinition = selectedSummary ? getDocumentSummaryDefinition(selectedSummary) : null;
+  const filteredRequests = typedRequests.filter((request) => {
+    if (selectedStatus !== 'ALL') {
+      return request.status === selectedStatus;
+    }
+
+    if (!summaryDefinition || summaryDefinition.key === 'ALL') {
+      return true;
+    }
+
+    return summaryDefinition.statuses.includes(request.status);
+  });
+
   const statusCounts = documentQueueStatuses.map((status) => ({
     status,
     label: getRequestStatusLabel(status),
     count: typedRequests.filter((request) => request.status === status).length
   }));
 
+  const summaryCards = getDocumentSummaryCounts(typedRequests).map((item) => ({
+    ...item,
+    href: item.key === 'ALL' ? '/document' : `/document?summary=${item.key}`,
+    isActive: isSummaryCardActive({ activeSummary: selectedSummary, selectedStatus, cardKey: item.key })
+  }));
+
   return (
-    <div className="space-y-6">
+    <div className="space-y-5">
       <div>
         <h2 className="text-2xl font-semibold">{REQUEST_QUEUE_GROUP_META.DISPATCH.label}</h2>
-        <p className="mt-1 text-sm text-slate-500">แสดงงานย่อยในงานเอกสาร พร้อมกรองตามสถานะย่อยได้</p>
+        <p className="mt-1 text-sm text-slate-500">หน้านี้ใช้ติดตามคิวเอกสารและสถานะค้างงานได้ง่าย พร้อมกรองตามสถานะย่อยได้ทันที</p>
       </div>
+
+      <DocumentSummaryCards items={summaryCards} />
 
       <section className="card p-4">
         <div className="flex flex-wrap gap-2">
@@ -61,7 +104,9 @@ export default async function DocumentQueuePage({ searchParams }: DocumentQueueP
               href={`/document?status=${item.status}`}
               title={`${item.label} (${item.count})`}
             >
-              <span className="truncate">{item.label} ({item.count})</span>
+              <span className="truncate">
+                {item.label} ({item.count})
+              </span>
             </Link>
           ))}
         </div>
