@@ -6,9 +6,18 @@ import {
   approveFixFromPhotoAction,
   approveManagerReviewAction,
   completeSurveyAction,
+  completeLayoutDrawingAction,
   confirmDocumentsReceivedFromCustomerAction,
+  markCoordinatedWithConstructionAction,
+  markExpansionBillIssuedAction,
+  markKrabiDocumentFixCompletedAction,
+  markKrabiEstimationCompletedAction,
+  markKrabiInProgressAction,
+  markKrabiNeedsDocumentFixAction,
+  markSentToKrabiAction,
   markSurveyPassedAction,
   moveToResurveyAction,
+  queueForKrabiDispatchAction,
   rejectFixPhotoAndRequireResurveyAction,
   reportCustomerFixAction,
   startSurveyAction,
@@ -300,6 +309,154 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
             <button className="btn-primary" type="submit">ยืนยันอนุมัติ</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'LAYOUT_DRAWING_DONE') {
+    return (
+      <ModalShell title="ยืนยันวาดผังเสร็จ" onClose={onClose}>
+        <form action={completeLayoutDrawingAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <div>
+            <label className="text-sm font-medium text-slate-700" htmlFor="layout_note">หมายเหตุ (ถ้ามี)</label>
+            <textarea className="input min-h-24" id="layout_note" name="survey_note" />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" type="submit">ยืนยัน</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'QUEUE_KRABI_DISPATCH') {
+    return (
+      <ModalShell title="ยืนยันเข้าคิวส่งเอกสารกระบี่" onClose={onClose}>
+        <form action={queueForKrabiDispatchAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <p className="text-sm text-slate-600">ระบบจะกำหนดรอบส่งวันพุธ/ศุกร์ให้อัตโนมัติ</p>
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" type="submit">เข้าคิวส่ง</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'DISPATCHED_TO_KRABI') {
+    return (
+      <ModalShell title="บันทึกการส่งเอกสารไปกระบี่" onClose={onClose}>
+        <form action={markSentToKrabiAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <div>
+            <label className="text-sm font-medium text-slate-700" htmlFor="dispatcher_name">ผู้ส่งเอกสาร</label>
+            <input className="input" id="dispatcher_name" name="dispatcher_name" required />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" type="submit">ยืนยันส่งเอกสารแล้ว</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'KRABI_ACCEPT_AND_START') {
+    return (
+      <ModalShell title="ยืนยันว่าเอกสารครบและกระบี่รับดำเนินการ" onClose={onClose}>
+        <form action={markKrabiInProgressAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" type="submit">ยืนยัน</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'KRABI_RETURN_FOR_FIX') {
+    return (
+      <ModalShell title="ส่งกลับให้อ่าวนางแก้ไขเอกสาร" onClose={onClose}>
+        <form action={markKrabiNeedsDocumentFixAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <div>
+            <label className="text-sm font-medium text-slate-700" htmlFor="krabi_incomplete_docs_note">เหตุผลที่ส่งกลับ</label>
+            <textarea className="input min-h-24" id="krabi_incomplete_docs_note" name="incomplete_docs_note" required />
+          </div>
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" type="submit">ยืนยันส่งกลับ</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'KRABI_FIX_COMPLETED') {
+    return (
+      <ModalShell title="ยืนยันว่าแก้ไขเอกสารแล้วและพร้อมส่งกระบี่ใหม่" onClose={onClose}>
+        <form action={markKrabiDocumentFixCompletedAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" type="submit">ยืนยัน</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'KRABI_ESTIMATION_COMPLETED') {
+    return (
+      <ModalShell title="ยืนยันว่ากระบี่ประมาณการเสร็จแล้ว" onClose={onClose}>
+        <form action={markKrabiEstimationCompletedAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" type="submit">ยืนยัน</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'KRABI_BILL_ISSUED') {
+    return (
+      <ModalShell title="ยืนยันว่าออกใบแจ้งหนี้แล้ว" onClose={onClose}>
+        <form action={markExpansionBillIssuedAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" type="submit">ยืนยัน</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'COORDINATED_WITH_CONSTRUCTION') {
+    return (
+      <ModalShell title="ยืนยันว่าประสานงานแผนกก่อสร้างแล้ว" onClose={onClose}>
+        <form action={markCoordinatedWithConstructionAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" type="submit">ยืนยัน</button>
           </div>
         </form>
       </ModalShell>

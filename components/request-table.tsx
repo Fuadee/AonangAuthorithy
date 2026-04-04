@@ -111,8 +111,7 @@ export function RequestTable({
                       actions={getQueueWorkflowActions(request)}
                       compact
                       currentStatus={request.status}
-                      detailHref={`/requests/${request.id}`}
-                      maxVisibleActions={2}
+                      maxVisibleActions={1}
                       requestId={request.id}
                       stayOnQueue
                     />

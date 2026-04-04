@@ -187,6 +187,9 @@ export function WorkflowActionButtons({
 
   const visibleActions = maxVisibleActions ? actionsForRegularRendering.slice(0, maxVisibleActions) : actionsForRegularRendering;
   const overflowActions = maxVisibleActions ? actionsForRegularRendering.slice(maxVisibleActions) : [];
+  const hasWorkflowActionButtons =
+    (shouldGroupDocumentReviewActions && (Boolean(groupedDocCompleteAction) || groupedDocIncompleteActions.length > 0)) || visibleActions.length > 0;
+  const hasAnyActionControls = hasWorkflowActionButtons || overflowActions.length > 0 || Boolean(detailHref);
 
   useEffect(() => {
     if (activeAction !== null) {
@@ -313,6 +316,8 @@ export function WorkflowActionButtons({
             ดูรายละเอียด
           </Link>
         ) : null}
+
+        {!hasAnyActionControls ? <span className="px-1 text-slate-400">-</span> : null}
       </div>
 
       <SurveyScheduleActionDialog
