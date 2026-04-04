@@ -1,5 +1,5 @@
 import { SurveyorRequestsPanel } from '@/components/surveyor-requests-panel';
-import { getStatusesByQueueGroup, ServiceRequest } from '@/lib/requests/types';
+import { getStatusesByQueueGroup, REQUEST_QUEUE_GROUP_META, ServiceRequest } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -33,8 +33,8 @@ export default async function SurveyorPage({ searchParams }: SurveyorPageProps) 
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold">คิวนักสำรวจ</h2>
-        <p className="mt-1 text-sm text-slate-500">แสดงเฉพาะงานที่อยู่ในคิวนักสำรวจ และกรองดูรายบุคคลได้ในหน้าเดียว</p>
+        <h2 className="text-2xl font-semibold">{REQUEST_QUEUE_GROUP_META.SURVEY.label}</h2>
+        <p className="mt-1 text-sm text-slate-500">แสดงเฉพาะงานสำรวจ และกรองดูรายบุคคลได้ในหน้าเดียว</p>
       </div>
 
       <SurveyorRequestsPanel requests={typedRequests} defaultSurveyor={selectedSurveyor} />

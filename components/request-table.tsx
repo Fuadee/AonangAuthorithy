@@ -58,12 +58,12 @@ export function RequestTable({ requests }: RequestTableProps) {
           </colgroup>
           <thead className="bg-slate-50 text-left">
             <tr>
-              <th className="px-4 py-3 text-sm font-medium text-[#64748B]">Request No.</th>
-              <th className="px-4 py-3 text-sm font-medium text-[#64748B]">ลูกค้า</th>
-              <th className="px-4 py-3 text-sm font-medium text-[#64748B]">ประเภท</th>
-              <th className="px-4 py-3 text-sm font-medium text-[#64748B]">ผู้รับผิดชอบ</th>
-              <th className="px-4 py-3 text-sm font-medium text-[#64748B]">วันนัดสำรวจ</th>
-              <th className="px-4 py-3 text-sm font-medium text-[#64748B]">สถานะ</th>
+              <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">Request No.</th>
+              <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">ลูกค้า</th>
+              <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">ประเภท</th>
+              <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">ผู้รับผิดชอบ</th>
+              <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">วันนัดสำรวจ</th>
+              <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">สถานะ</th>
             </tr>
           </thead>
           <tbody className="bg-white text-[#0F172A]">

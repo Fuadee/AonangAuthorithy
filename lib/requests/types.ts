@@ -83,12 +83,12 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
 };
 
 export const REQUEST_QUEUE_GROUP_LABELS: Record<RequestQueueGroup, string> = {
-  SURVEY: 'คิวนักสำรวจ',
-  DISPATCH: 'คิวเอกสาร',
-  KRABI: 'คิวกระบี่',
-  BILLING: 'คิวการเงิน',
-  MANAGER: 'คิวผู้จัดการ',
-  DONE: 'งานเสร็จแล้ว',
+  SURVEY: 'สำรวจ',
+  DISPATCH: 'เอกสาร',
+  KRABI: 'ดำเนินการ',
+  BILLING: 'การเงิน',
+  MANAGER: 'อนุมัติ',
+  DONE: 'เสร็จสิ้น',
   OTHER: 'อื่น ๆ'
 };
 

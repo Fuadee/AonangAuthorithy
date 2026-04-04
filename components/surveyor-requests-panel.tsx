@@ -146,21 +146,21 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
   return (
     <div className="space-y-4">
       <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-7">
-        <article className="card p-4">
-          <p className="text-sm text-slate-500">งานรอตรวจเอกสาร</p>
-          <p className="mt-2 text-2xl font-semibold text-brand-700">{summary.waitDocumentReview}</p>
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รอตรวจเอกสาร</p>
+          <p className="mt-2 text-3xl font-semibold text-brand-700">{summary.waitDocumentReview}</p>
         </article>
-        <article className="card p-4">
-          <p className="text-sm text-slate-500">รอผู้ใช้ไฟนำเอกสารมาให้</p>
-          <p className="mt-2 text-2xl font-semibold text-orange-700">{summary.waitDocumentFromCustomer}</p>
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รอเอกสารเพิ่ม</p>
+          <p className="mt-2 text-3xl font-semibold text-orange-700">{summary.waitDocumentFromCustomer}</p>
         </article>
-        <article className="card p-4">
-          <p className="text-sm text-slate-500">งานนัดสำรวจวันนี้</p>
-          <p className="mt-2 text-2xl font-semibold text-sky-700">{summary.today}</p>
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">นัดวันนี้</p>
+          <p className="mt-2 text-3xl font-semibold text-sky-700">{summary.today}</p>
         </article>
-        <article className="card p-4">
-          <p className="text-sm text-slate-500">งานสำรวจแล้ว</p>
-          <p className="mt-2 text-2xl font-semibold text-emerald-700">{summary.completed}</p>
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">สำรวจแล้ว</p>
+          <p className="mt-2 text-3xl font-semibold text-emerald-700">{summary.completed}</p>
         </article>
       </section>
 
@@ -204,8 +204,9 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
                 }`}
                 type="button"
                 onClick={() => setActiveFilter(option.value)}
+                title={option.label}
               >
-                {option.label}
+                <span className="block max-w-full truncate whitespace-nowrap">{option.label}</span>
               </button>
             );
           })}
