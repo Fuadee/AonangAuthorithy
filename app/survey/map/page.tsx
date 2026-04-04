@@ -11,6 +11,7 @@ type SurveyMapPageProps = {
 
 export default async function SurveyMapPage({ searchParams }: SurveyMapPageProps) {
   const params = searchParams ? await searchParams : undefined;
+  // Map shows only active field survey jobs (IN_PROGRESS)
   const statuses = getSurveyMapStatusesFromQuery(params?.status);
 
   const supabase = createServerSupabaseClient();
