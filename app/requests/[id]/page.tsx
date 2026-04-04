@@ -150,10 +150,20 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
         owner: 'เจ้าหน้าที่รับคำร้อง / นักสำรวจ'
       };
     case 'IN_SURVEY':
-    case 'SURVEY_COMPLETED':
       return {
         nextStep: 'สำรวจหน้างานและบันทึกผลสำรวจ',
         owner: 'นักสำรวจ'
+      };
+    case 'SURVEY_COMPLETED':
+    case 'WAIT_LAYOUT_DRAWING':
+      return {
+        nextStep: 'วาดผังและยืนยัน “วาดผังเสร็จ”',
+        owner: 'นักสำรวจ'
+      };
+    case 'READY_TO_SEND_KRABI':
+      return {
+        nextStep: 'เตรียมส่งเอกสารให้กระบี่ (ค้างที่ขั้นตอนนี้ก่อน)',
+        owner: 'เจ้าหน้าที่'
       };
     default:
       return {
@@ -365,6 +375,8 @@ function getActionTitle(status: RequestStatus, requestType: RequestType): string
     case 'SURVEY_DOCS_INCOMPLETE':
     case 'WAIT_DOCUMENT_FROM_CUSTOMER':
     case 'SURVEY_COMPLETED':
+    case 'WAIT_LAYOUT_DRAWING':
+    case 'READY_TO_SEND_KRABI':
     case 'WAIT_DOCUMENT_REVIEW':
       return 'สถานะงาน';
     default:
@@ -409,7 +421,9 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
       'WAIT_FIX_REVIEW',
       'WAIT_BILLING',
       'WAIT_ACTION_CONFIRMATION',
-      'WAIT_MANAGER_REVIEW'
+      'WAIT_MANAGER_REVIEW',
+      'WAIT_LAYOUT_DRAWING',
+      'READY_TO_SEND_KRABI'
     ].includes(normalizedRequestStatus);
   const documentSummary = getDocumentStatusSummary(request);
   const postSurveyFixSummary = getPostSurveyFixSummary(request);

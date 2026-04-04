@@ -4,10 +4,11 @@ import { MouseEvent, ReactNode, useState } from 'react';
 import {
   approveFixFromPhotoAction,
   approveManagerReviewAction,
+  completeLayoutDrawingAction,
+  confirmBillingSurveyorSignAction,
   confirmDocumentsReceivedFromCustomerAction,
   confirmPaymentReceivedAction,
   completeSurveyAction,
-  confirmBillingSurveyorSignAction,
   issueBillingAction,
   markSurveyFailedAction,
   markSurveyPassedAction,
@@ -47,7 +48,8 @@ type MeterAction =
   | 'ISSUE_BILL'
   | 'SURVEYOR_SIGN'
   | 'CONFIRM_PAYMENT'
-  | 'MANAGER_APPROVE';
+  | 'MANAGER_APPROVE'
+  | 'LAYOUT_DRAWING_DONE';
 
 const ACTION_LABELS: Record<MeterAction, string> = {
   DOC_COMPLETE: 'เอกสารครบ',
@@ -67,7 +69,8 @@ const ACTION_LABELS: Record<MeterAction, string> = {
   ISSUE_BILL: 'ออกใบแจ้งหนี้',
   SURVEYOR_SIGN: 'เซ็นใบแจ้งหนี้แล้ว',
   CONFIRM_PAYMENT: 'ชำระเงินแล้ว',
-  MANAGER_APPROVE: 'อนุมัติแล้ว'
+  MANAGER_APPROVE: 'อนุมัติแล้ว',
+  LAYOUT_DRAWING_DONE: 'วาดผังเสร็จ'
 };
 
 function Modal({ children, title, onClose }: { children: ReactNode; title: string; onClose: () => void }) {
@@ -102,6 +105,7 @@ export function MeterWorkflowActions({
   if (
     ![
       'WAIT_DOCUMENT_REVIEW',
+      'SURVEY_COMPLETED',
       'WAIT_DOCUMENT_FROM_CUSTOMER',
       'READY_FOR_SURVEY',
       'IN_SURVEY',
@@ -110,10 +114,12 @@ export function MeterWorkflowActions({
       'READY_FOR_RESURVEY',
       'WAIT_BILLING',
       'WAIT_ACTION_CONFIRMATION',
-      'WAIT_MANAGER_REVIEW'
+      'WAIT_MANAGER_REVIEW',
+      'WAIT_LAYOUT_DRAWING',
+      'READY_TO_SEND_KRABI'
     ].includes(currentStatus)
   ) {
-    return <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">สถานะนี้ยังไม่มีงานใน workflow ขอมิเตอร์</p>;
+    return <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">สถานะนี้ยังไม่มีงานใน workflow</p>;
   }
 
   return (
@@ -232,7 +238,19 @@ export function MeterWorkflowActions({
             {ACTION_LABELS.MANAGER_APPROVE}
           </button>
         ) : null}
+
+        {requestType === 'EXPANSION' && ['SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING'].includes(currentStatus) ? (
+          <button className="btn-primary" type="button" onClick={() => setActiveAction('LAYOUT_DRAWING_DONE')}>
+            {ACTION_LABELS.LAYOUT_DRAWING_DONE}
+          </button>
+        ) : null}
       </div>
+
+      {requestType === 'EXPANSION' && currentStatus === 'READY_TO_SEND_KRABI' ? (
+        <p className="mt-3 rounded-lg bg-slate-50 p-3 text-sm text-slate-600">
+          งานขยายเขตอยู่สถานะ “เตรียมส่งเอกสารให้กระบี่” (สิ้นสุด flow ปัจจุบัน)
+        </p>
+      ) : null}
 
       {activeAction === 'DOC_COMPLETE' ? (
         <Modal title="ยืนยันเอกสารครบ" onClose={closeModal}>
@@ -485,6 +503,22 @@ export function MeterWorkflowActions({
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
               <button className="btn-primary" type="submit">ยืนยันอนุมัติ</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'LAYOUT_DRAWING_DONE' ? (
+        <Modal title="ยืนยันวาดผังเสร็จ" onClose={closeModal}>
+          <form action={completeLayoutDrawingAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor="layout_note">หมายเหตุ (ถ้ามี)</label>
+              <textarea className="input min-h-24" id="layout_note" name="survey_note" />
+            </div>
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
             </div>
           </form>
         </Modal>
