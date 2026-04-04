@@ -6,8 +6,10 @@ import {
   approveManagerReviewAction,
   completeLayoutDrawingAction,
   markKrabiEstimationCompletedAction,
+  markExpansionBillIssuedAction,
   markKrabiInProgressAction,
   markSentToKrabiAction,
+  markCoordinatedWithConstructionAction,
   confirmBillingSurveyorSignAction,
   confirmDocumentsReceivedFromCustomerAction,
   confirmPaymentReceivedAction,
@@ -57,7 +59,9 @@ type MeterAction =
   | 'QUEUE_KRABI_DISPATCH'
   | 'DISPATCHED_TO_KRABI'
   | 'KRABI_IN_PROGRESS'
-  | 'KRABI_ESTIMATION_COMPLETED';
+  | 'KRABI_ESTIMATION_COMPLETED'
+  | 'KRABI_BILL_ISSUED'
+  | 'COORDINATED_WITH_CONSTRUCTION';
 
 const ACTION_LABELS: Record<MeterAction, string> = {
   DOC_COMPLETE: 'เอกสารครบ',
@@ -82,7 +86,9 @@ const ACTION_LABELS: Record<MeterAction, string> = {
   QUEUE_KRABI_DISPATCH: 'เข้าคิวส่งกระบี่',
   DISPATCHED_TO_KRABI: 'ส่งเอกสารแล้ว',
   KRABI_IN_PROGRESS: 'กระบี่เริ่มดำเนินการ',
-  KRABI_ESTIMATION_COMPLETED: 'ประมาณการเสร็จ'
+  KRABI_ESTIMATION_COMPLETED: 'ประมาณการเสร็จ',
+  KRABI_BILL_ISSUED: 'ออกใบแจ้งหนี้แล้ว',
+  COORDINATED_WITH_CONSTRUCTION: 'ประสานงานแผนกก่อสร้างแล้ว'
 };
 
 function Modal({ children, title, onClose }: { children: ReactNode; title: string; onClose: () => void }) {
@@ -132,7 +138,9 @@ export function MeterWorkflowActions({
       'QUEUED_FOR_KRABI_DISPATCH',
       'SENT_TO_KRABI',
       'KRABI_IN_PROGRESS',
-      'KRABI_ESTIMATION_COMPLETED'
+      'KRABI_ESTIMATION_COMPLETED',
+      'BILL_ISSUED',
+      'COORDINATED_WITH_CONSTRUCTION'
     ].includes(currentStatus)
   ) {
     return <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">สถานะนี้ยังไม่มีงานใน workflow</p>;
@@ -286,6 +294,18 @@ export function MeterWorkflowActions({
         </button>
       ) : null}
 
+      {requestType === 'EXPANSION' && currentStatus === 'KRABI_ESTIMATION_COMPLETED' ? (
+        <button className="btn-primary mt-2" type="button" onClick={() => setActiveAction('KRABI_BILL_ISSUED')}>
+          {ACTION_LABELS.KRABI_BILL_ISSUED}
+        </button>
+      ) : null}
+
+      {requestType === 'EXPANSION' && currentStatus === 'BILL_ISSUED' ? (
+        <button className="btn-primary mt-2" type="button" onClick={() => setActiveAction('COORDINATED_WITH_CONSTRUCTION')}>
+          {ACTION_LABELS.COORDINATED_WITH_CONSTRUCTION}
+        </button>
+      ) : null}
+
       {activeAction === 'DOC_COMPLETE' ? (
         <Modal title="ยืนยันเอกสารครบ" onClose={closeModal}>
           <form action={updateDocumentReviewDecisionAction} className="space-y-3">
@@ -343,6 +363,30 @@ export function MeterWorkflowActions({
       {activeAction === 'KRABI_ESTIMATION_COMPLETED' ? (
         <Modal title="ยืนยันว่ากระบี่ประมาณการเสร็จแล้ว" onClose={closeModal}>
           <form action={markKrabiEstimationCompletedAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'KRABI_BILL_ISSUED' ? (
+        <Modal title="ยืนยันว่าออกใบแจ้งหนี้แล้ว" onClose={closeModal}>
+          <form action={markExpansionBillIssuedAction} className="space-y-3">
+            <input name="request_id" type="hidden" value={requestId} />
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'COORDINATED_WITH_CONSTRUCTION' ? (
+        <Modal title="ยืนยันว่าประสานงานแผนกก่อสร้างแล้ว" onClose={closeModal}>
+          <form action={markCoordinatedWithConstructionAction} className="space-y-3">
             <input name="request_id" type="hidden" value={requestId} />
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>

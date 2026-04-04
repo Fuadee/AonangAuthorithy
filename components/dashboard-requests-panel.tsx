@@ -30,6 +30,7 @@ type WorkflowFilter =
   | 'QUEUED_FOR_KRABI_DISPATCH_ONLY'
   | 'KRABI_IN_PROGRESS_ONLY'
   | 'KRABI_ESTIMATION_COMPLETED_ONLY'
+  | 'BILL_ISSUED_ONLY'
   | 'WAIT_BILLING_ONLY'
   | 'WAIT_ACTION_CONFIRMATION_ONLY'
   | 'WAIT_MANAGER_REVIEW_ONLY';
@@ -59,6 +60,7 @@ const WORKFLOW_FILTER_OPTIONS: Array<{ value: WorkflowFilter; label: string }> =
   { value: 'QUEUED_FOR_KRABI_DISPATCH_ONLY', label: 'เข้าคิวส่งกระบี่' },
   { value: 'KRABI_IN_PROGRESS_ONLY', label: 'กระบี่กำลังดำเนินการ' },
   { value: 'KRABI_ESTIMATION_COMPLETED_ONLY', label: 'กระบี่ประมาณการเสร็จ' },
+  { value: 'BILL_ISSUED_ONLY', label: 'ออกใบแจ้งหนี้แล้ว (ขยายเขต)' },
   { value: 'WAIT_BILLING_ONLY', label: 'รอออกใบแจ้งหนี้' },
   { value: 'WAIT_ACTION_CONFIRMATION_ONLY', label: 'รอดำเนินการหลังแจ้งหนี้' },
   { value: 'WAIT_MANAGER_REVIEW_ONLY', label: 'รอผู้จัดการตรวจ' }
@@ -118,6 +120,9 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
     }
     if (workflowFilter === 'KRABI_ESTIMATION_COMPLETED_ONLY') {
       result = result.filter((request) => request.status === 'KRABI_ESTIMATION_COMPLETED');
+    }
+    if (workflowFilter === 'BILL_ISSUED_ONLY') {
+      result = result.filter((request) => request.status === 'BILL_ISSUED');
     }
 
     if (workflowFilter === 'WAIT_ACTION_CONFIRMATION_ONLY') {

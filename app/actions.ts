@@ -92,6 +92,8 @@ const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>
   QUEUED_FOR_KRABI_DISPATCH: ['SENT_TO_KRABI'],
   SENT_TO_KRABI: ['KRABI_IN_PROGRESS'],
   KRABI_IN_PROGRESS: ['KRABI_ESTIMATION_COMPLETED'],
+  KRABI_ESTIMATION_COMPLETED: ['BILL_ISSUED'],
+  BILL_ISSUED: ['COORDINATED_WITH_CONSTRUCTION'],
   WAIT_ACTION_CONFIRMATION: ['WAIT_MANAGER_REVIEW'],
   WAIT_MANAGER_REVIEW: ['COMPLETED']
 };
@@ -257,7 +259,9 @@ export async function updateRequestStatusAction(formData: FormData) {
       'QUEUED_FOR_KRABI_DISPATCH',
       'SENT_TO_KRABI',
       'KRABI_IN_PROGRESS',
-      'KRABI_ESTIMATION_COMPLETED'
+      'KRABI_ESTIMATION_COMPLETED',
+      'BILL_ISSUED',
+      'COORDINATED_WITH_CONSTRUCTION'
     ].includes(nextStatus)
   ) {
     throw new Error('สถานะวาดผัง/ส่งเอกสารกระบี่รองรับเฉพาะงานขยายเขตเท่านั้น');
@@ -760,6 +764,60 @@ export async function markKrabiEstimationCompletedAction(formData: FormData) {
   const { error } = await supabase
     .from('service_requests')
     .update({ status: 'KRABI_ESTIMATION_COMPLETED', krabi_completed_at: nowIso, updated_at: nowIso })
+    .eq('id', requestId);
+  if (error) {
+    throw new Error(error.message);
+  }
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function markExpansionBillIssuedAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+  if ((request.request_type as RequestType) !== 'EXPANSION') {
+    throw new Error('สถานะออกใบแจ้งหนี้ฝั่งกระบี่รองรับเฉพาะงานขยายเขต');
+  }
+  if (request.status !== 'KRABI_ESTIMATION_COMPLETED') {
+    throw new Error('ต้องผ่านสถานะกระบี่ประมาณการเสร็จก่อน');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({ status: 'BILL_ISSUED', billed_at: nowIso, updated_at: nowIso })
+    .eq('id', requestId);
+  if (error) {
+    throw new Error(error.message);
+  }
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function markCoordinatedWithConstructionAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+  if ((request.request_type as RequestType) !== 'EXPANSION') {
+    throw new Error('สถานะประสานงานก่อสร้างรองรับเฉพาะงานขยายเขต');
+  }
+  if (request.status !== 'BILL_ISSUED') {
+    throw new Error('ต้องบันทึกว่าออกใบแจ้งหนี้แล้วก่อน');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({ status: 'COORDINATED_WITH_CONSTRUCTION', updated_at: nowIso })
     .eq('id', requestId);
   if (error) {
     throw new Error(error.message);

@@ -183,8 +183,18 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
       };
     case 'KRABI_ESTIMATION_COMPLETED':
       return {
-        nextStep: 'กระบี่ดำเนินการเสร็จในส่วนประมาณการแล้ว',
-        owner: 'เสร็จขั้นกระบี่'
+        nextStep: 'ยืนยันว่าออกใบแจ้งหนี้แล้ว',
+        owner: 'เจ้าหน้าที่'
+      };
+    case 'BILL_ISSUED':
+      return {
+        nextStep: 'ยืนยันว่าประสานงานแผนกก่อสร้างแล้ว เพื่อจบ flow ฝั่งกระบี่',
+        owner: 'เจ้าหน้าที่'
+      };
+    case 'COORDINATED_WITH_CONSTRUCTION':
+      return {
+        nextStep: 'จบขั้นตอนฝั่งกระบี่แล้ว และส่งต่อแผนกก่อสร้างเรียบร้อย',
+        owner: 'เสร็จสิ้น'
       };
     default:
       return {
@@ -451,6 +461,8 @@ function getActionTitle(status: RequestStatus, requestType: RequestType): string
     case 'SENT_TO_KRABI':
     case 'KRABI_IN_PROGRESS':
     case 'KRABI_ESTIMATION_COMPLETED':
+    case 'BILL_ISSUED':
+    case 'COORDINATED_WITH_CONSTRUCTION':
     case 'WAIT_DOCUMENT_REVIEW':
       return 'สถานะงาน';
     default:
@@ -501,7 +513,9 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
       'QUEUED_FOR_KRABI_DISPATCH',
       'SENT_TO_KRABI',
       'KRABI_IN_PROGRESS',
-      'KRABI_ESTIMATION_COMPLETED'
+      'KRABI_ESTIMATION_COMPLETED',
+      'BILL_ISSUED',
+      'COORDINATED_WITH_CONSTRUCTION'
     ].includes(normalizedRequestStatus);
   const documentSummary = getDocumentStatusSummary(request);
   const postSurveyFixSummary = getPostSurveyFixSummary(request);
