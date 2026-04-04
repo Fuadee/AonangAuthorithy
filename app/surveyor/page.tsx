@@ -1,3 +1,5 @@
+import Link from 'next/link';
+import { Map } from 'lucide-react';
 import { SurveyorRequestsPanel } from '@/components/surveyor-requests-panel';
 import { getStatusesByQueueGroup, REQUEST_QUEUE_GROUP_META, ServiceRequest } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -29,12 +31,32 @@ export default async function SurveyorPage({ searchParams }: SurveyorPageProps) 
   }
 
   const typedRequests = (requests ?? []) as ServiceRequest[];
+  const filteredRequestCount = selectedSurveyor
+    ? typedRequests.filter((request) => request.assigned_surveyor === selectedSurveyor).length
+    : typedRequests.length;
+
+  const mapParams = new URLSearchParams({
+    status: surveyQueueStatuses.join(',')
+  });
+  if (selectedSurveyor) {
+    mapParams.set('surveyor', selectedSurveyor);
+  }
+  const mapHref = `/survey/map?${mapParams.toString()}`;
 
   return (
     <div className="space-y-6">
-      <div>
-        <h2 className="text-2xl font-semibold">{REQUEST_QUEUE_GROUP_META.SURVEY.label}</h2>
-        <p className="mt-1 text-sm text-slate-500">แสดงเฉพาะงานสำรวจ และกรองดูรายบุคคลได้ในหน้าเดียว</p>
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className="text-2xl font-semibold">{REQUEST_QUEUE_GROUP_META.SURVEY.label}</h2>
+          <p className="mt-1 text-sm text-slate-500">แสดงเฉพาะงานสำรวจ และกรองดูรายบุคคลได้ในหน้าเดียว</p>
+        </div>
+        <Link
+          className="inline-flex items-center gap-2 rounded-lg bg-[#1E3A8A] px-5 py-2.5 font-medium text-white shadow-sm transition-colors hover:bg-[#1D4ED8]"
+          href={mapHref}
+        >
+          <Map className="h-4 w-4" />
+          ดูงานในแผนที่ ({filteredRequestCount})
+        </Link>
       </div>
 
       <SurveyorRequestsPanel requests={typedRequests} defaultSurveyor={selectedSurveyor} />
