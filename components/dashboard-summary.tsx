@@ -1,160 +1,26 @@
-type DashboardSummaryProps = {
-  totalCount: number;
-  meterCount: number;
-  expansionCount: number;
-  surveyQueueCount: number;
-  billingQueueCount: number;
-  managerQueueCount: number;
-  pendingSurveyReviewCount: number;
-  waitDocumentReviewCount: number;
-  waitDocumentFromCustomerCount: number;
-  readyToScheduleSurveyCount: number;
-  rescheduledSurveyCount: number;
-  inSurveyCount: number;
-  waitCustomerFixCount: number;
-  waitFixReviewCount: number;
-  readyForResurveyCount: number;
-  waitLayoutDrawingCount: number;
-  readyToSendKrabiCount: number;
-  queuedForKrabiDispatchCount: number;
-  waitKrabiDocumentCheckCount: number;
-  krabiNeedsDocumentFixCount: number;
-  krabiInProgressCount: number;
-  krabiCompletedCount: number;
-  waitBillingCount: number;
-  waitActionConfirmationCount: number;
-  approvedViaPhotoCount: number;
+import Link from 'next/link';
+
+type QueueSummaryItem = {
+  queue: string;
+  label: string;
+  count: number;
+  href: string;
+  toneClass: string;
 };
 
-export function DashboardSummary({
-  totalCount,
-  meterCount,
-  expansionCount,
-  surveyQueueCount,
-  billingQueueCount,
-  managerQueueCount,
-  pendingSurveyReviewCount,
-  waitDocumentReviewCount,
-  waitDocumentFromCustomerCount,
-  readyToScheduleSurveyCount,
-  rescheduledSurveyCount,
-  inSurveyCount,
-  waitCustomerFixCount,
-  waitFixReviewCount,
-  readyForResurveyCount,
-  waitLayoutDrawingCount,
-  readyToSendKrabiCount,
-  queuedForKrabiDispatchCount,
-  waitKrabiDocumentCheckCount,
-  krabiNeedsDocumentFixCount,
-  krabiInProgressCount,
-  krabiCompletedCount,
-  waitBillingCount,
-  waitActionConfirmationCount,
-  approvedViaPhotoCount
-}: DashboardSummaryProps) {
+type DashboardSummaryProps = {
+  queueItems: QueueSummaryItem[];
+};
+
+export function DashboardSummary({ queueItems }: DashboardSummaryProps) {
   return (
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-12">
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">คำร้องทั้งหมด</p>
-        <p className="mt-2 text-3xl font-semibold text-slate-900">{totalCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">คำร้องขอมิเตอร์</p>
-        <p className="mt-2 text-3xl font-semibold text-brand-600">{meterCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">คำร้องขยายเขต</p>
-        <p className="mt-2 text-3xl font-semibold text-brand-600">{expansionCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">คิวนักสำรวจ</p>
-        <p className="mt-2 text-3xl font-semibold text-sky-700">{surveyQueueCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">คิวการเงิน</p>
-        <p className="mt-2 text-3xl font-semibold text-purple-700">{billingQueueCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">คิวผู้จัดการ</p>
-        <p className="mt-2 text-3xl font-semibold text-indigo-700">{managerQueueCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">รอตรวจเอกสารนักสำรวจ</p>
-        <p className="mt-2 text-3xl font-semibold text-amber-600">{pendingSurveyReviewCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">รอตรวจเอกสารหลังสำรวจ</p>
-        <p className="mt-2 text-3xl font-semibold text-amber-600">{waitDocumentReviewCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">รอผู้ใช้ไฟนำเอกสารมาให้</p>
-        <p className="mt-2 text-3xl font-semibold text-orange-600">{waitDocumentFromCustomerCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">พร้อมนัดสำรวจ</p>
-        <p className="mt-2 text-3xl font-semibold text-cyan-700">{readyToScheduleSurveyCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">นัดสำรวจใหม่แล้ว</p>
-        <p className="mt-2 text-3xl font-semibold text-orange-700">{rescheduledSurveyCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">กำลังสำรวจ</p>
-        <p className="mt-2 text-3xl font-semibold text-sky-700">{inSurveyCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">รอผู้ใช้ไฟแก้ไข</p>
-        <p className="mt-2 text-3xl font-semibold text-rose-700">{waitCustomerFixCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">รอตรวจจากรูป</p>
-        <p className="mt-2 text-3xl font-semibold text-violet-700">{waitFixReviewCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">รอนัดตรวจซ้ำ</p>
-        <p className="mt-2 text-3xl font-semibold text-cyan-700">{readyForResurveyCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">คิววาดผัง</p>
-        <p className="mt-2 text-3xl font-semibold text-sky-700">{waitLayoutDrawingCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">คิวเตรียมส่งกระบี่</p>
-        <p className="mt-2 text-3xl font-semibold text-amber-700">{readyToSendKrabiCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">คิวรอส่งกระบี่</p>
-        <p className="mt-2 text-3xl font-semibold text-orange-700">{queuedForKrabiDispatchCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">รอกระบี่ตรวจรับเอกสาร</p>
-        <p className="mt-2 text-3xl font-semibold text-violet-700">{waitKrabiDocumentCheckCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">กระบี่ตีกลับให้แก้ไขเอกสาร</p>
-        <p className="mt-2 text-3xl font-semibold text-rose-700">{krabiNeedsDocumentFixCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">กระบี่กำลังประมาณการ</p>
-        <p className="mt-2 text-3xl font-semibold text-violet-700">{krabiInProgressCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">คิวกระบี่เสร็จแล้ว</p>
-        <p className="mt-2 text-3xl font-semibold text-emerald-700">{krabiCompletedCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">รอออกใบแจ้งหนี้</p>
-        <p className="mt-2 text-3xl font-semibold text-purple-700">{waitBillingCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">รอดำเนินการหลังแจ้งหนี้</p>
-        <p className="mt-2 text-3xl font-semibold text-emerald-700">{waitActionConfirmationCount}</p>
-      </article>
-      <article className="card p-5">
-        <p className="text-sm text-slate-500">งานผ่านจากรูป</p>
-        <p className="mt-2 text-3xl font-semibold text-emerald-700">{approvedViaPhotoCount}</p>
-      </article>
+    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+      {queueItems.map((item) => (
+        <Link key={item.queue} className="card p-5 transition hover:-translate-y-0.5 hover:shadow-md" href={item.href}>
+          <p className="text-sm text-slate-500">{item.label}</p>
+          <p className={`mt-2 text-3xl font-semibold ${item.toneClass}`}>{item.count}</p>
+        </Link>
+      ))}
     </section>
   );
 }
