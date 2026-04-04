@@ -134,7 +134,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                   <td className="px-4 py-3">{formatCurrency(request.billing_amount)}</td>
                   <td className="px-4 py-3">{formatSurveyDate(getCurrentSurveyDate(request))}</td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
-                  <td className="px-4 py-3">
+                  <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
                     <BillingWorkflowActionRenderer
                       compact
                       currentStatus={request.status}
