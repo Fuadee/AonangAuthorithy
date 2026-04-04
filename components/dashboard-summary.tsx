@@ -14,11 +14,15 @@ type DashboardSummaryProps = {
 
 export function DashboardSummary({ queueItems }: DashboardSummaryProps) {
   return (
-    <section className="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+    <section className="flex gap-3 overflow-x-auto pb-2">
       {queueItems.map((item) => (
-        <Link key={item.queue} className="card p-5 transition hover:-translate-y-0.5 hover:shadow-md" href={item.href}>
-          <p className="text-sm text-slate-500">{item.label}</p>
-          <p className={`mt-2 text-3xl font-semibold ${item.toneClass}`}>{item.count}</p>
+        <Link
+          key={item.queue}
+          className="flex h-[52px] min-w-[140px] items-center justify-between rounded-xl border bg-white px-4 py-2 shadow-sm transition hover:-translate-y-0.5 hover:shadow"
+          href={item.href}
+        >
+          <p className="truncate pr-3 text-sm text-gray-600">{item.label}</p>
+          <p className={`text-lg font-semibold ${item.toneClass}`}>{item.count}</p>
         </Link>
       ))}
     </section>

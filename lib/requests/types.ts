@@ -102,42 +102,42 @@ export const REQUEST_QUEUE_GROUP_META: Record<
     label: REQUEST_QUEUE_GROUP_LABELS.SURVEY,
     href: '/surveyor',
     order: 1,
-    toneClass: 'text-sky-700',
+    toneClass: 'text-blue-600',
     showOnDashboard: true
   },
   BILLING: {
     label: REQUEST_QUEUE_GROUP_LABELS.BILLING,
     href: '/billing',
     order: 2,
-    toneClass: 'text-purple-700',
+    toneClass: 'text-purple-600',
     showOnDashboard: true
   },
   MANAGER: {
     label: REQUEST_QUEUE_GROUP_LABELS.MANAGER,
     href: '/manager',
     order: 3,
-    toneClass: 'text-indigo-700',
+    toneClass: 'text-black',
     showOnDashboard: true
   },
   DISPATCH: {
     label: REQUEST_QUEUE_GROUP_LABELS.DISPATCH,
     href: '/document',
     order: 4,
-    toneClass: 'text-amber-700',
+    toneClass: 'text-orange-600',
     showOnDashboard: true
   },
   KRABI: {
     label: REQUEST_QUEUE_GROUP_LABELS.KRABI,
     href: '/krabi',
     order: 5,
-    toneClass: 'text-violet-700',
+    toneClass: 'text-indigo-600',
     showOnDashboard: true
   },
   DONE: {
     label: REQUEST_QUEUE_GROUP_LABELS.DONE,
     href: '/dashboard?queue=DONE',
     order: 6,
-    toneClass: 'text-emerald-700',
+    toneClass: 'text-green-600',
     showOnDashboard: true
   },
   OTHER: {
