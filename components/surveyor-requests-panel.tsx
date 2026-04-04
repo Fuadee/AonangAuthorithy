@@ -5,7 +5,16 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { getAvailableRequestActions } from '@/lib/requests/workflow-action-config';
-import { getRequestStatusLabel, RequestStatus, REQUEST_TYPE_LABELS, ServiceRequest } from '@/lib/requests/types';
+import {
+  formatThaiSurveyDate,
+  getCurrentSurveyDate,
+  getRequestStatusLabel,
+  isSurveyScheduledTodayInBangkok,
+  RequestStatus,
+  REQUEST_TYPE_LABELS,
+  ServiceRequest,
+  SURVEYOR_PRIMARY_STATUS_MAP
+} from '@/lib/requests/types';
 
 type SurveyorRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -37,13 +46,6 @@ const DETAIL_FILTER_OPTIONS: StatusOption<DetailSurveyorFilter>[] = [
   { value: 'WAIT_FIX_REVIEW', label: 'รอตรวจจากรูป' },
   { value: 'READY_FOR_RESURVEY', label: 'รอนัดตรวจซ้ำ' }
 ];
-
-const MAIN_FILTER_STATUS_MAP: Record<Exclude<MainSurveyorFilter, 'ALL'>, RequestStatus[]> = {
-  WAITING_REVIEW: ['WAIT_DOCUMENT_REVIEW', 'PENDING_SURVEY_REVIEW'],
-  READY: ['READY_FOR_SURVEY', 'SURVEY_ACCEPTED', 'SURVEY_RESCHEDULE_REQUESTED'],
-  IN_PROGRESS: ['IN_SURVEY'],
-  DONE: ['SURVEY_COMPLETED']
-};
 
 function SurveyorSelect({
   activeSurveyor,
@@ -191,9 +193,15 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
       return surveyorFilteredRequests;
     }
 
-    if (activeFilter in MAIN_FILTER_STATUS_MAP) {
-      const statuses = MAIN_FILTER_STATUS_MAP[activeFilter as keyof typeof MAIN_FILTER_STATUS_MAP];
-      return surveyorFilteredRequests.filter((request) => statuses.includes(request.status));
+    if (activeFilter in SURVEYOR_PRIMARY_STATUS_MAP) {
+      const statuses = SURVEYOR_PRIMARY_STATUS_MAP[activeFilter as keyof typeof SURVEYOR_PRIMARY_STATUS_MAP];
+      const byPrimaryStatus = surveyorFilteredRequests.filter((request) => statuses.includes(request.status));
+
+      if (activeFilter === 'READY') {
+        return byPrimaryStatus.filter((request) => isSurveyScheduledTodayInBangkok(request));
+      }
+
+      return byPrimaryStatus;
     }
 
     return surveyorFilteredRequests.filter((request) => request.status === activeFilter);
@@ -255,7 +263,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
                 <th className="whitespace-nowrap px-4 py-3 font-medium">ประเภท</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">พื้นที่</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">สถานะ</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">อัปเดตล่าสุด</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">วันที่สำรวจ</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">จัดการ</th>
               </tr>
             </thead>
@@ -271,7 +279,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
                   <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
                   <td className="px-4 py-3">{request.area_name}</td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
-                  <td className="px-4 py-3">{new Date(request.updated_at).toLocaleString('th-TH')}</td>
+                  <td className="px-4 py-3">{formatThaiSurveyDate(getCurrentSurveyDate(request))}</td>
                   <td className="px-4 py-3">
                     <WorkflowActionButtons
                       actions={getAvailableRequestActions(request)}
@@ -287,7 +295,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
               {!filteredRequests.length && (
                 <tr>
                   <td className="px-4 py-6 text-center text-slate-500" colSpan={7}>
-                    ไม่พบรายการตามตัวกรองนี้
+                    {activeFilter === 'READY' ? 'วันนี้ไม่มีงานที่นัดสำรวจ' : 'ไม่พบรายการตามตัวกรองนี้'}
                   </td>
                 </tr>
               )}
