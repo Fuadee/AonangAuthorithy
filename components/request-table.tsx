@@ -1,13 +1,12 @@
 'use client';
 
 import Link from 'next/link';
+import { RequestStatusBadge } from '@/components/queue/request-status-badge';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { getQueueWorkflowActions } from '@/lib/requests/workflow-action-config';
 import {
   getCurrentSurveyDate,
   getDispatchSubStatus,
-  getRequestQueueGroup,
-  getRequestStatusLabel,
   REQUEST_TYPE_LABELS,
   ServiceRequest
 } from '@/lib/requests/types';
@@ -27,25 +26,6 @@ function formatSurveyDate(value: string | null): string {
   return new Date(`${value}T00:00:00`).toLocaleDateString('th-TH', { dateStyle: 'medium' });
 }
 
-function getStatusBadgeClass(request: ServiceRequest): string {
-  if (request.status === 'COMPLETED') {
-    return 'bg-emerald-100 text-emerald-700';
-  }
-
-  const queue = getRequestQueueGroup(request.status);
-  if (queue === 'SURVEY') {
-    return 'bg-blue-100 text-blue-700';
-  }
-  if (queue === 'BILLING') {
-    return 'bg-amber-100 text-amber-700';
-  }
-  if (queue === 'MANAGER' || queue === 'KRABI') {
-    return 'bg-indigo-100 text-indigo-700';
-  }
-
-  return 'bg-slate-100 text-slate-600';
-}
-
 export function RequestTable({
   requests,
   emptyMessage = 'ยังไม่มีคำร้อง',
@@ -53,18 +33,21 @@ export function RequestTable({
   actionColumnLabel
 }: RequestTableProps) {
   const resolvedActionColumnLabel = actionColumnLabel ?? (actionColumnMode === 'workflow' ? 'จัดการ' : 'สถานะ');
+  const hasSeparateStatusColumn = actionColumnMode === 'workflow';
+  const totalColumns = hasSeparateStatusColumn ? 7 : 6;
 
   return (
     <div className="card mt-6 overflow-hidden">
       <div className="overflow-x-auto">
         <table className="w-full table-fixed border-separate border-spacing-0 text-sm">
           <colgroup>
-            <col className="w-[16%]" />
-            <col className="w-[22%]" />
-            <col className="w-[14%]" />
-            <col className="w-[16%]" />
-            <col className="w-[14%]" />
-            <col className="w-[18%]" />
+            <col className={hasSeparateStatusColumn ? 'w-[15%]' : 'w-[16%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[20%]' : 'w-[22%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[14%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[15%]' : 'w-[16%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[14%]' : 'w-[14%]'} />
+            {hasSeparateStatusColumn ? <col className="w-[14%]" /> : null}
+            <col className={hasSeparateStatusColumn ? 'w-[10%]' : 'w-[18%]'} />
           </colgroup>
           <thead className="bg-slate-50 text-left">
             <tr>
@@ -73,6 +56,7 @@ export function RequestTable({
               <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">ประเภท</th>
               <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">ผู้รับผิดชอบ</th>
               <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">วันนัดสำรวจ</th>
+              {hasSeparateStatusColumn ? <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">สถานะ</th> : null}
               <th className="whitespace-nowrap px-4 py-3 text-sm font-medium text-[#64748B]">{resolvedActionColumnLabel}</th>
             </tr>
           </thead>
@@ -99,33 +83,33 @@ export function RequestTable({
                 <td className="max-w-0 px-4 py-3 align-middle">
                   <p className="truncate whitespace-nowrap text-[#64748B]">{formatSurveyDate(getCurrentSurveyDate(request))}</p>
                 </td>
+                {hasSeparateStatusColumn ? (
+                  <td className="px-4 py-3 align-middle">
+                    <div className="space-y-1.5">
+                      <RequestStatusBadge status={request.status} />
+                      {getDispatchSubStatus(request) ? <p className="text-xs text-slate-600">{getDispatchSubStatus(request)}</p> : null}
+                    </div>
+                  </td>
+                ) : null}
                 <td className="px-4 py-3 align-middle">
                   {actionColumnMode === 'workflow' ? (
-                    <div className="space-y-1.5">
-                      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(request)}`}>
-                        {getRequestStatusLabel(request.status)}
-                      </span>
-                      {getDispatchSubStatus(request) ? <p className="text-xs text-slate-600">{getDispatchSubStatus(request)}</p> : null}
-                      <WorkflowActionButtons
-                        actions={getQueueWorkflowActions(request)}
-                        compact
-                        currentStatus={request.status}
-                        maxVisibleActions={1}
-                        requestId={request.id}
-                        stayOnQueue
-                      />
-                    </div>
+                    <WorkflowActionButtons
+                      actions={getQueueWorkflowActions(request)}
+                      compact
+                      currentStatus={request.status}
+                      maxVisibleActions={1}
+                      requestId={request.id}
+                      stayOnQueue
+                    />
                   ) : (
-                    <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(request)}`}>
-                      {getRequestStatusLabel(request.status)}
-                    </span>
+                    <RequestStatusBadge status={request.status} />
                   )}
                 </td>
               </tr>
             ))}
             {!requests.length && (
               <tr>
-                <td className="px-4 py-8 text-center text-sm text-[#64748B]" colSpan={6}>
+                <td className="px-4 py-8 text-center text-sm text-[#64748B]" colSpan={totalColumns}>
                   {emptyMessage}
                 </td>
               </tr>
