@@ -10,11 +10,9 @@ import {
   markKrabiNeedsDocumentFixAction,
   markSentToKrabiAction,
   markCoordinatedWithConstructionAction,
-  confirmBillingSurveyorSignAction,
-  confirmPaymentReceivedAction,
-  issueBillingAction,
   queueForKrabiDispatchAction,
 } from '@/app/actions';
+import { BillingWorkflowActionRenderer } from '@/components/billing-workflow-action-renderer';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { getWorkflowActionLabel, getWorkflowActionsForRequest, WorkflowActionKey } from '@/lib/requests/workflow-action-config';
 import { RequestStatus, RequestType } from '@/lib/requests/types';
@@ -104,22 +102,12 @@ export function MeterWorkflowActions({
       <WorkflowActionButtons actions={resolvedActions} currentStatus={currentStatus} requestId={requestId} />
 
       <div className="flex flex-wrap gap-2">
-        {currentStatus === 'WAIT_BILLING' ? (
-          <button className="btn-primary" type="button" onClick={() => setActiveAction('ISSUE_BILL')}>
-            {getWorkflowActionLabel('ISSUE_BILL')}
-          </button>
-        ) : null}
-
-        {currentStatus === 'WAIT_ACTION_CONFIRMATION' ? (
-          <>
-            <button className="btn-primary disabled:cursor-not-allowed disabled:opacity-50" disabled={isInvoiceSigned} type="button" onClick={() => setActiveAction('SURVEYOR_SIGN')}>
-              {isInvoiceSigned ? 'เซ็นใบแจ้งหนี้แล้ว' : getWorkflowActionLabel('SURVEYOR_SIGN')}
-            </button>
-            <button className="btn-primary disabled:cursor-not-allowed disabled:opacity-50" disabled={isPaid} type="button" onClick={() => setActiveAction('CONFIRM_PAYMENT')}>
-              {isPaid ? 'ชำระเงินแล้ว' : getWorkflowActionLabel('CONFIRM_PAYMENT')}
-            </button>
-          </>
-        ) : null}
+        <BillingWorkflowActionRenderer
+          currentStatus={currentStatus}
+          isInvoiceSigned={isInvoiceSigned}
+          isPaid={isPaid}
+          requestId={requestId}
+        />
 
         {requestType === 'EXPANSION' && ['SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING'].includes(currentStatus) ? (
           <button className="btn-primary" type="button" onClick={() => setActiveAction('LAYOUT_DRAWING_DONE')}>
@@ -272,47 +260,6 @@ export function MeterWorkflowActions({
         <Modal title="ยืนยันว่าประสานงานแผนกก่อสร้างแล้ว" onClose={closeModal}>
           <form action={markCoordinatedWithConstructionAction} className="space-y-3">
             <input name="request_id" type="hidden" value={requestId} />
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
-
-      {activeAction === 'ISSUE_BILL' ? (
-        <Modal title="ออกใบแจ้งหนี้" onClose={closeModal}>
-          <form action={issueBillingAction} className="space-y-3">
-            <input name="request_id" type="hidden" value={requestId} />
-            <input className="input" min="0.01" name="billing_amount" placeholder="จำนวนเงิน" required step="0.01" type="number" />
-            <input className="input" name="billed_by" placeholder="ออกโดย" required type="text" />
-            <textarea className="input min-h-24" name="billing_note" placeholder="หมายเหตุ (ถ้ามี)" />
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยันออกใบแจ้งหนี้</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
-
-      {activeAction === 'SURVEYOR_SIGN' ? (
-        <Modal title="เซ็นรับรองใบแจ้งหนี้" onClose={closeModal}>
-          <form action={confirmBillingSurveyorSignAction} className="space-y-3">
-            <input name="request_id" type="hidden" value={requestId} />
-            <input className="input" name="invoice_signed_by" placeholder="ผู้เซ็นรับรอง" required type="text" />
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
-
-      {activeAction === 'CONFIRM_PAYMENT' ? (
-        <Modal title="ยืนยันรับชำระเงิน" onClose={closeModal}>
-          <form action={confirmPaymentReceivedAction} className="space-y-3">
-            <input name="request_id" type="hidden" value={requestId} />
-            <input className="input" name="paid_by" placeholder="รับชำระโดย" required type="text" />
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
               <button className="btn-primary" type="submit">ยืนยัน</button>

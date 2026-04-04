@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
+import { BillingWorkflowActionRenderer } from '@/components/billing-workflow-action-renderer';
 import { getCurrentSurveyDate, getRequestStatusLabel, REQUEST_TYPE_LABELS, RequestStatus, ServiceRequest } from '@/lib/requests/types';
 
 type BillingRequestsPanelProps = {
@@ -121,7 +122,11 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
             <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
               {filteredRequests.map((request) => (
                 <tr key={request.id} className="hover:bg-slate-50">
-                  <td className="px-4 py-3 font-medium text-brand-700">{request.request_no}</td>
+                  <td className="px-4 py-3 font-medium text-brand-700">
+                    <Link className="hover:underline" href={`/requests/${request.id}`}>
+                      {request.request_no}
+                    </Link>
+                  </td>
                   <td className="px-4 py-3">{request.customer_name}</td>
                   <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
                   <td className="px-4 py-3">{request.area_name}</td>
@@ -130,9 +135,13 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                   <td className="px-4 py-3">{formatSurveyDate(getCurrentSurveyDate(request))}</td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3">
-                    <Link className="btn-secondary" href={`/requests/${request.id}`}>
-                      เปิดดู
-                    </Link>
+                    <BillingWorkflowActionRenderer
+                      compact
+                      currentStatus={request.status}
+                      isInvoiceSigned={request.invoice_signed_at !== null}
+                      isPaid={request.paid_at !== null}
+                      requestId={request.id}
+                    />
                   </td>
                 </tr>
               ))}
