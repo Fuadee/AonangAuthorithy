@@ -8,8 +8,7 @@ export const REQUEST_STATUSES = [
   'SURVEY_RESCHEDULE_REQUESTED',
   'SURVEY_COMPLETED',
   'WAIT_LAYOUT_DRAWING',
-  'READY_TO_SEND_KRABI',
-  'QUEUED_FOR_KRABI_DISPATCH',
+  'WAITING_TO_SEND_TO_KRABI',
   'SENT_TO_KRABI',
   'WAIT_KRABI_DOCUMENT_CHECK',
   'KRABI_NEEDS_DOCUMENT_FIX',
@@ -60,8 +59,7 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   SURVEY_RESCHEDULE_REQUESTED: 'ขอเลื่อนวันสำรวจ (สถานะเดิม)',
   SURVEY_COMPLETED: 'สำรวจแล้ว',
   WAIT_LAYOUT_DRAWING: 'รอวาดผัง',
-  READY_TO_SEND_KRABI: 'เตรียมส่งเอกสารให้กระบี่',
-  QUEUED_FOR_KRABI_DISPATCH: 'เข้าคิวส่งเอกสารไปกระบี่',
+  WAITING_TO_SEND_TO_KRABI: 'รอส่งเอกสารให้กระบี่',
   SENT_TO_KRABI: 'ส่งเอกสารไปกระบี่แล้ว',
   WAIT_KRABI_DOCUMENT_CHECK: 'รอกระบี่ตรวจรับเอกสาร',
   KRABI_NEEDS_DOCUMENT_FIX: 'กระบี่ตีกลับให้แก้ไขเอกสาร',
@@ -157,8 +155,7 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   SURVEY_RESCHEDULE_REQUESTED: 'SURVEY',
   SURVEY_COMPLETED: 'SURVEY',
   WAIT_LAYOUT_DRAWING: 'DISPATCH',
-  READY_TO_SEND_KRABI: 'DISPATCH',
-  QUEUED_FOR_KRABI_DISPATCH: 'DISPATCH',
+  WAITING_TO_SEND_TO_KRABI: 'DISPATCH',
   SENT_TO_KRABI: 'DISPATCH',
   WAIT_KRABI_DOCUMENT_CHECK: 'DISPATCH',
   KRABI_NEEDS_DOCUMENT_FIX: 'KRABI',
@@ -209,6 +206,20 @@ export function getRequestStatusLabel(status: RequestStatus): string {
   return REQUEST_STATUS_LABELS[status];
 }
 
+export function getDispatchSubStatus(
+  request: Pick<ServiceRequest, 'status' | 'is_document_ready' | 'planned_dispatch_date'>
+): string | null {
+  if (request.status !== 'WAITING_TO_SEND_TO_KRABI') {
+    return null;
+  }
+
+  if (!request.is_document_ready) {
+    return '🛠️ กำลังจัดเตรียมเอกสาร';
+  }
+
+  return `🚚 รอส่งรอบถัดไป${request.planned_dispatch_date ? ` (${request.planned_dispatch_date})` : ''}`;
+}
+
 export function normalizeSurveyWorkflowStatus(status: RequestStatus): RequestStatus {
   if (status === 'PENDING_SURVEY_REVIEW') {
     return 'WAIT_DOCUMENT_REVIEW';
@@ -252,23 +263,23 @@ function getAgeInDays(since: string | null | undefined, now: Date = new Date()):
 
 export function getKrabiDispatchWarning(
   request: Pick<ServiceRequest, 'status'> &
-    Partial<Pick<ServiceRequest, 'ready_to_send_krabi_at' | 'queued_for_dispatch_at' | 'planned_dispatch_date'>>
+    Partial<Pick<ServiceRequest, 'document_prepared_at' | 'planned_dispatch_date' | 'is_document_ready'>>
 ): string | null {
-  if (request.status === 'READY_TO_SEND_KRABI') {
-    const ageInDays = getAgeInDays(request.ready_to_send_krabi_at);
-    if (ageInDays !== null && ageInDays >= 2) {
-      return `ค้างขั้นเตรียมส่งกระบี่ ${ageInDays} วัน`;
-    }
-  }
+  if (request.status === 'WAITING_TO_SEND_TO_KRABI') {
+    if (request.is_document_ready) {
+      if (request.planned_dispatch_date && request.planned_dispatch_date < new Date().toISOString().slice(0, 10)) {
+        return `เลยรอบส่ง ${request.planned_dispatch_date}`;
+      }
 
-  if (request.status === 'QUEUED_FOR_KRABI_DISPATCH') {
-    if (request.planned_dispatch_date && request.planned_dispatch_date < new Date().toISOString().slice(0, 10)) {
-      return `เลยรอบส่ง ${request.planned_dispatch_date}`;
-    }
-
-    const ageInDays = getAgeInDays(request.queued_for_dispatch_at);
-    if (ageInDays !== null && ageInDays >= 3) {
-      return `ค้างคิวส่งกระบี่ ${ageInDays} วัน`;
+      const ageInDays = getAgeInDays(request.document_prepared_at);
+      if (ageInDays !== null && ageInDays >= 3) {
+        return `ค้างคิวส่งกระบี่ ${ageInDays} วัน`;
+      }
+    } else {
+      const ageInDays = getAgeInDays(request.document_prepared_at);
+      if (ageInDays !== null && ageInDays >= 2) {
+        return `ค้างขั้นเตรียมส่งกระบี่ ${ageInDays} วัน`;
+      }
     }
   }
 
@@ -666,8 +677,8 @@ export type ServiceRequest = {
   invoice_signed_by: string | null;
   paid_at: string | null;
   paid_by: string | null;
-  ready_to_send_krabi_at: string | null;
-  queued_for_dispatch_at: string | null;
+  is_document_ready: boolean;
+  document_prepared_at: string | null;
   planned_dispatch_date: string | null;
   dispatched_to_krabi_at: string | null;
   dispatched_to_krabi_by: string | null;

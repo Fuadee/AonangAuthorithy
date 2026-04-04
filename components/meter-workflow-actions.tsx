@@ -14,6 +14,7 @@ type MeterWorkflowActionsProps = {
   surveyDateCurrent: string | null;
   isInvoiceSigned: boolean;
   isPaid: boolean;
+  isDocumentReady: boolean;
 };
 
 export function MeterWorkflowActions({
@@ -24,7 +25,8 @@ export function MeterWorkflowActions({
   scheduledSurveyDate,
   surveyDateCurrent,
   isInvoiceSigned,
-  isPaid
+  isPaid,
+  isDocumentReady
 }: MeterWorkflowActionsProps) {
   const resolvedActions = getWorkflowActionsForRequest({
     status: currentStatus,
@@ -33,7 +35,8 @@ export function MeterWorkflowActions({
     scheduled_survey_date: scheduledSurveyDate,
     survey_date_current: surveyDateCurrent,
     invoice_signed_at: isInvoiceSigned ? 'signed' : null,
-    paid_at: isPaid ? 'paid' : null
+    paid_at: isPaid ? 'paid' : null,
+    is_document_ready: isDocumentReady
   });
 
   if (
@@ -50,8 +53,7 @@ export function MeterWorkflowActions({
       'WAIT_ACTION_CONFIRMATION',
       'WAIT_MANAGER_REVIEW',
       'WAIT_LAYOUT_DRAWING',
-      'READY_TO_SEND_KRABI',
-      'QUEUED_FOR_KRABI_DISPATCH',
+      'WAITING_TO_SEND_TO_KRABI',
       'SENT_TO_KRABI',
       'WAIT_KRABI_DOCUMENT_CHECK',
       'KRABI_NEEDS_DOCUMENT_FIX',

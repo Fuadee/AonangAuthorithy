@@ -28,7 +28,7 @@ export type WorkflowActionKey =
   | 'CONFIRM_PAYMENT'
   | 'MANAGER_APPROVE'
   | 'LAYOUT_DRAWING_DONE'
-  | 'QUEUE_KRABI_DISPATCH'
+  | 'MARK_DOCUMENT_READY'
   | 'DISPATCHED_TO_KRABI'
   | 'KRABI_ACCEPT_AND_START'
   | 'KRABI_RETURN_FOR_FIX'
@@ -61,7 +61,7 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   CONFIRM_PAYMENT: 'ชำระเงินแล้ว',
   MANAGER_APPROVE: 'อนุมัติแล้ว',
   LAYOUT_DRAWING_DONE: 'วาดผังเสร็จ',
-  QUEUE_KRABI_DISPATCH: 'เตรียมส่งเอกสาร',
+  MARK_DOCUMENT_READY: 'จัดเตรียมเอกสารเสร็จ',
   DISPATCHED_TO_KRABI: 'ส่งเอกสารไปกระบี่',
   KRABI_ACCEPT_AND_START: 'ยืนยันรับเอกสาร',
   KRABI_RETURN_FOR_FIX: 'เอกสารไม่พร้อม ส่งกลับแก้ไข',
@@ -129,7 +129,7 @@ function toAction(
 export function getAvailableRequestActions(
   request: Pick<
     ServiceRequest,
-    'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at'
+    'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at' | 'is_document_ready'
   >
 ): AvailableRequestAction[] {
   const status = request.status;
@@ -200,12 +200,11 @@ export function getAvailableRequestActions(
     return [toAction('LAYOUT_DRAWING_DONE', { variant: 'primary', requiresConfirmation: 'ยืนยันวาดผังเสร็จแล้ว?' })];
   }
 
-  if (request.request_type === 'EXPANSION' && status === 'READY_TO_SEND_KRABI') {
-    return [toAction('QUEUE_KRABI_DISPATCH', { variant: 'primary', requiresConfirmation: 'ยืนยันเข้าคิวส่งเอกสารไปกระบี่?' })];
-  }
-
-  if (request.request_type === 'EXPANSION' && status === 'QUEUED_FOR_KRABI_DISPATCH') {
-    return [toAction('DISPATCHED_TO_KRABI', { variant: 'primary' })];
+  if (request.request_type === 'EXPANSION' && status === 'WAITING_TO_SEND_TO_KRABI') {
+    if (!request.is_document_ready) {
+      return [toAction('MARK_DOCUMENT_READY', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าจัดเตรียมเอกสารเสร็จแล้ว?' })];
+    }
+    return [];
   }
 
   if (request.request_type === 'EXPANSION' && ['SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK'].includes(status)) {
@@ -237,7 +236,7 @@ export function getAvailableRequestActions(
 export function getQueueWorkflowActions(
   request: Pick<
     ServiceRequest,
-    'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at'
+    'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at' | 'is_document_ready'
   >
 ): QueueWorkflowAction[] {
   return dedupeWorkflowActions(getAvailableRequestActions(request));
@@ -246,7 +245,7 @@ export function getQueueWorkflowActions(
 export function getWorkflowActionsForRequest(
   request: Pick<
     ServiceRequest,
-    'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at'
+    'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at' | 'is_document_ready'
   >
 ): AvailableRequestAction[] {
   return dedupeWorkflowActions(getAvailableRequestActions(request));
