@@ -135,7 +135,7 @@ export function RequestTable({
             <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[15%]'} />
             <col className={hasSeparateStatusColumn ? 'w-[14%]' : 'w-[13%]'} />
             {hasSeparateStatusColumn ? <col className="w-[16%]" /> : null}
-            <col className="w-[10%] min-w-[160px]" />
+            <col className="w-[10%]" />
           </colgroup>
           <thead className="bg-slate-50 text-left">
             <tr>
@@ -145,7 +145,7 @@ export function RequestTable({
               <th className="whitespace-nowrap px-4 py-3 align-middle text-sm font-medium text-[#64748B]">ผู้รับผิดชอบ</th>
               <th className="whitespace-nowrap px-4 py-3 align-middle text-sm font-medium text-[#64748B]">วันนัดสำรวจ</th>
               {hasSeparateStatusColumn ? <th className="whitespace-nowrap px-4 py-3 align-middle text-sm font-medium text-[#64748B]">สถานะ</th> : null}
-              <th className="whitespace-nowrap px-4 py-3 align-middle text-center text-sm font-medium text-[#64748B]">{resolvedActionColumnLabel}</th>
+              <th className="min-w-[160px] whitespace-nowrap px-4 py-3 align-middle text-center text-sm font-medium text-[#64748B]">{resolvedActionColumnLabel}</th>
             </tr>
           </thead>
           <tbody className="bg-white text-[#0F172A]">
@@ -186,9 +186,9 @@ export function RequestTable({
                       </div>
                     </td>
                   ) : null}
-                  <td className="px-4 py-3 align-middle text-center">
+                  <td className="min-w-[160px] px-4 py-3 align-middle text-center">
                     {actionColumnMode === 'workflow' ? (
-                      <div className="flex min-h-10 items-center justify-center [&_button]:min-w-[136px] [&_summary]:min-w-[136px]">
+                      <div className="flex min-h-10 min-w-[160px] items-center justify-center [&_button]:min-w-[160px] [&_details>summary]:min-w-[160px] [&_summary]:min-w-[160px]">
                         <WorkflowActionButtons
                           actions={getQueueWorkflowActions(request)}
                           compact
