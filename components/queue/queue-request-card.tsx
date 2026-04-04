@@ -1,7 +1,7 @@
 import { RequestCardActionPanel } from '@/components/queue/request-card-action-panel';
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
 import { RequestTypeBadge } from '@/components/queue/request-type-badge';
-import { getWorkflowInstruction, getQueueWorkflowActions } from '@/lib/requests/workflow-action-config';
+import { getQueueWorkflowActions } from '@/lib/requests/workflow-action-config';
 import { RequestStatus, RequestType } from '@/lib/requests/types';
 
 export type QueueRequestCardProps = {
@@ -52,36 +52,32 @@ export function QueueRequestCard({
   });
   const hasSurveyor = Boolean(surveyorName);
   const shouldShowSurveyor = hasSurveyor && surveyorName !== assigneeName;
-  const compactMetaItems = [
-    `พื้นที่ ${areaName}`,
-    `ผู้รับผิดชอบ: ${assigneeName}`,
-    shouldShowSurveyor ? `นักสำรวจ: ${surveyorName}` : null,
-    `อัปเดต ${formatDateTime(updatedAt)}`
-  ].filter(Boolean);
+  const compactMetaItems = [requestNo, customerName, `พื้นที่ ${areaName}`, assigneeName, shouldShowSurveyor ? surveyorName : null, formatDateTime(updatedAt)].filter(
+    (item): item is string => Boolean(item)
+  );
 
   return (
-    <article className="rounded-xl border border-slate-200 bg-white p-3 shadow-sm sm:p-3.5">
-      <header className="flex flex-wrap items-start justify-between gap-x-3 gap-y-2">
-        <div>
-          <p className="text-sm font-semibold text-brand-700">{requestNo}</p>
-          <p className="mt-0.5 text-base font-semibold text-slate-900 sm:text-lg">{customerName}</p>
-        </div>
-        <div className="flex flex-wrap items-center gap-2">
+    <article className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-3">
+      <header className="flex flex-wrap items-center justify-between gap-x-3 gap-y-1.5">
+        <p className="text-sm text-slate-600 leading-6">
+          <span className="font-semibold text-brand-700">{requestNo}</span>
+          <span className="text-slate-400"> • </span>
+          <span className="font-semibold text-slate-900">{customerName}</span>
+          {compactMetaItems.slice(2).map((item) => (
+            <span key={item}>
+              <span className="text-slate-400"> • </span>
+              <span>{item}</span>
+            </span>
+          ))}
+        </p>
+        <div className="flex flex-wrap items-center gap-1.5">
           <RequestTypeBadge requestType={requestType} />
           <RequestStatusBadge status={currentStatus} />
         </div>
       </header>
 
-      <p className="mt-2 text-sm text-slate-600">{compactMetaItems.join(' • ')}</p>
-
-      <div className="mt-2 rounded-md border border-slate-200 bg-slate-50 px-2.5 py-1.5">
-        <p className="text-sm text-slate-700">
-          <span className="font-medium text-slate-800">สิ่งที่ต้องทำ:</span> {getWorkflowInstruction(currentStatus)}
-        </p>
-      </div>
-
-      <div className="mt-2.5">
-        <RequestCardActionPanel actions={actions} currentStatus={currentStatus} detailHref={detailHref} requestId={requestId} />
+      <div className="mt-1.5">
+        <RequestCardActionPanel actions={actions} compact currentStatus={currentStatus} detailHref={detailHref} requestId={requestId} />
       </div>
     </article>
   );
