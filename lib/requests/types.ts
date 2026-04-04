@@ -198,21 +198,11 @@ export function getStatusesByQueueGroup(queue: RequestQueueGroup): RequestStatus
 export const SURVEYOR_VISIBLE_STATUSES: RequestStatus[] = getStatusesByQueueGroup('SURVEY');
 export const BILLING_VISIBLE_STATUSES: RequestStatus[] = getStatusesByQueueGroup('BILLING');
 export const MANAGER_VISIBLE_STATUSES: RequestStatus[] = getStatusesByQueueGroup('MANAGER');
-export const SURVEY_MAP_ELIGIBLE_STATUSES: RequestStatus[] = getStatusesByQueueGroup('SURVEY');
-export const SURVEY_MAP_DEFAULT_STATUSES: RequestStatus[] = ['IN_SURVEY'];
+export const SURVEY_MAP_ACTIVE_STATUS: RequestStatus = 'IN_SURVEY';
+export const SURVEY_MAP_DEFAULT_STATUSES: RequestStatus[] = [SURVEY_MAP_ACTIVE_STATUS];
 
-export function getSurveyMapStatusesFromQuery(rawStatus: string | null | undefined): RequestStatus[] {
-  if (!rawStatus?.trim()) {
-    return SURVEY_MAP_DEFAULT_STATUSES;
-  }
-
-  const parsedStatuses = rawStatus
-    .split(',')
-    .map((status) => status.trim())
-    .filter((status): status is RequestStatus => REQUEST_STATUSES.includes(status as RequestStatus));
-
-  const filteredStatuses = parsedStatuses.filter((status) => SURVEY_MAP_ELIGIBLE_STATUSES.includes(status));
-  return filteredStatuses.length ? filteredStatuses : SURVEY_MAP_DEFAULT_STATUSES;
+export function getSurveyMapStatusesFromQuery(_rawStatus: string | null | undefined): RequestStatus[] {
+  return SURVEY_MAP_DEFAULT_STATUSES;
 }
 
 export function getRequestStatusLabel(status: RequestStatus): string {
