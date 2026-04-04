@@ -67,7 +67,7 @@ export default async function DocumentQueuePage({ searchParams }: DocumentQueueP
         </div>
       </section>
 
-      <RequestTable actionColumnLabel="จัดการ" actionColumnMode="workflow" presentation="grid" requests={filteredRequests} />
+      <RequestTable actionColumnLabel="จัดการ*" actionColumnMode="workflow" presentation="table" requests={filteredRequests} />
     </div>
   );
 }
