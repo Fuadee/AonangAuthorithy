@@ -130,12 +130,12 @@ export function RequestTable({
         <table className="w-full table-fixed border-separate border-spacing-0 text-sm">
           <colgroup>
             <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[16%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[22%]' : 'w-[31%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[11%]' : 'w-[14%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[11%]' : 'w-[15%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[16%]' : 'w-[31%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[14%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[15%]'} />
             <col className={hasSeparateStatusColumn ? 'w-[13%]' : 'w-[13%]'} />
-            {hasSeparateStatusColumn ? <col className="w-[17%]" /> : null}
-            <col className={hasSeparateStatusColumn ? 'w-[14%]' : 'w-[11%]'} />
+            {hasSeparateStatusColumn ? <col className="w-[19%]" /> : null}
+            <col className={hasSeparateStatusColumn ? 'w-[16%]' : 'w-[11%]'} />
           </colgroup>
           <thead className="bg-slate-50 text-left">
             <tr>
