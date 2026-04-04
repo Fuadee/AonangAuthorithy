@@ -2,8 +2,6 @@
 
 import { MouseEvent, ReactNode, useState } from 'react';
 import {
-  approveFixFromPhotoAction,
-  approveManagerReviewAction,
   completeLayoutDrawingAction,
   markKrabiEstimationCompletedAction,
   markExpansionBillIssuedAction,
@@ -13,20 +11,13 @@ import {
   markSentToKrabiAction,
   markCoordinatedWithConstructionAction,
   confirmBillingSurveyorSignAction,
-  confirmDocumentsReceivedFromCustomerAction,
   confirmPaymentReceivedAction,
-  completeSurveyAction,
   issueBillingAction,
   markSurveyFailedAction,
-  markSurveyPassedAction,
-  moveToResurveyAction,
-  rejectFixPhotoAndRequireResurveyAction,
-  reportCustomerFixAction,
-  startSurveyAction,
   queueForKrabiDispatchAction,
   updateSurveyScheduleAction,
-  updateDocumentReviewDecisionAction
 } from '@/app/actions';
+import { WorkflowActionModal } from '@/components/workflow-action-modal';
 import { getWorkflowActionLabel, getWorkflowActionsForRequest, QueueWorkflowAction, WorkflowActionKey } from '@/lib/requests/workflow-action-config';
 import { RequestStatus, RequestType } from '@/lib/requests/types';
 
@@ -195,19 +186,6 @@ export function MeterWorkflowActions({
         </button>
       ) : null}
 
-      {activeAction === 'DOC_COMPLETE' ? (
-        <Modal title="ยืนยันเอกสารครบ" onClose={closeModal}>
-          <form action={updateDocumentReviewDecisionAction} className="space-y-3">
-            <input name="request_id" type="hidden" value={requestId} />
-            <input name="decision" type="hidden" value="COMPLETE" />
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
-
       {activeAction === 'QUEUE_KRABI_DISPATCH' ? (
         <Modal title="ยืนยันเข้าคิวส่งเอกสารกระบี่" onClose={closeModal}>
           <form action={queueForKrabiDispatchAction} className="space-y-3">
@@ -313,43 +291,6 @@ export function MeterWorkflowActions({
         </Modal>
       ) : null}
 
-      {activeAction === 'DOC_INCOMPLETE_COLLECT_ON_SITE' || activeAction === 'DOC_INCOMPLETE_WAIT_CUSTOMER' ? (
-        <Modal
-          title={activeAction === 'DOC_INCOMPLETE_COLLECT_ON_SITE' ? 'ระบุว่าเอกสารไม่ครบ (รับเอกสารหน้างาน)' : 'ระบุว่าเอกสารไม่ครบ (รอลูกค้านำเอกสารมา)'}
-          onClose={closeModal}
-        >
-          <form action={updateDocumentReviewDecisionAction} className="space-y-3">
-            <input name="request_id" type="hidden" value={requestId} />
-            <input
-              name="decision"
-              type="hidden"
-              value={activeAction === 'DOC_INCOMPLETE_COLLECT_ON_SITE' ? 'INCOMPLETE_COLLECT_ON_SITE' : 'INCOMPLETE_WAIT_CUSTOMER'}
-            />
-            <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="incomplete_docs_note">หมายเหตุเอกสารขาด</label>
-              <textarea className="input min-h-24" id="incomplete_docs_note" name="incomplete_docs_note" required />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
-
-      {activeAction === 'CONFIRM_DOCS_RECEIVED' ? (
-        <Modal title="ยืนยันว่าได้รับเอกสารครบแล้ว" onClose={closeModal}>
-          <form action={confirmDocumentsReceivedFromCustomerAction} className="space-y-3">
-            <input name="request_id" type="hidden" value={requestId} />
-            <p className="text-sm text-slate-600">หลังยืนยันเอกสาร งานจะกลับไปสถานะ “พร้อมนัดสำรวจ” และยังไม่เริ่มสำรวจทันที</p>
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
-
       {activeAction === 'SCHEDULE_SURVEY' || activeAction === 'EDIT_SURVEY_DATE' ? (
         <Modal title={activeAction === 'SCHEDULE_SURVEY' ? 'กำหนดวันสำรวจ' : 'แก้ไขวันนัดสำรวจ'} onClose={closeModal}>
           <form action={updateSurveyScheduleAction} className="space-y-3">
@@ -367,50 +308,6 @@ export function MeterWorkflowActions({
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
               <button className="btn-primary" type="submit">บันทึกวันนัด</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
-
-      {activeAction === 'START_SURVEY' ? (
-        <Modal title={currentStatus === 'READY_FOR_RESURVEY' ? 'ยืนยันออกตรวจซ้ำหน้างาน' : 'ยืนยันรับงานและเริ่มสำรวจ'} onClose={closeModal}>
-          <form action={startSurveyAction}>
-            <input name="request_id" type="hidden" value={requestId} />
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
-
-      {activeAction === 'SURVEY_PASS' ? (
-        <Modal title="ยืนยันสำรวจผ่าน" onClose={closeModal}>
-          <form action={markSurveyPassedAction} className="space-y-3">
-            <input name="request_id" type="hidden" value={requestId} />
-            <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="survey_note">หมายเหตุ (ถ้ามี)</label>
-              <textarea className="input min-h-24" id="survey_note" name="survey_note" />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
-
-      {activeAction === 'COMPLETE_SURVEY' ? (
-        <Modal title="ยืนยันสำรวจเสร็จ" onClose={closeModal}>
-          <form action={completeSurveyAction} className="space-y-3">
-            <input name="request_id" type="hidden" value={requestId} />
-            <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="survey_note_complete">หมายเหตุ (ถ้ามี)</label>
-              <textarea className="input min-h-24" id="survey_note_complete" name="survey_note" />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
             </div>
           </form>
         </Modal>
@@ -449,59 +346,7 @@ export function MeterWorkflowActions({
         </Modal>
       ) : null}
 
-      {activeAction === 'REPORT_CUSTOMER_FIX' ? (
-        <Modal title="ผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว" onClose={closeModal}>
-          <form action={reportCustomerFixAction} className="space-y-3">
-            <input name="request_id" type="hidden" value={requestId} />
-            <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="customer_fix_note_confirm">หมายเหตุจากผู้ใช้ไฟ (ถ้ามี)</label>
-              <textarea className="input min-h-24" id="customer_fix_note_confirm" name="customer_fix_note" />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
-
-      {activeAction === 'SCHEDULE_RESURVEY' ? (
-        <Modal title="ยืนยันนัดตรวจซ้ำ" onClose={closeModal}>
-          <form action={moveToResurveyAction}>
-            <input name="request_id" type="hidden" value={requestId} />
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
-
-      {activeAction === 'PHOTO_APPROVE' ? (
-        <Modal title="อนุมัติผ่านจากรูป" onClose={closeModal}>
-          <form action={approveFixFromPhotoAction} className="space-y-3">
-            <input name="request_id" type="hidden" value={requestId} />
-            <input className="input" name="photo_reviewed_by" placeholder="ผู้ตรวจรูป" required type="text" />
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
-
-      {activeAction === 'PHOTO_REJECT_TO_RESURVEY' ? (
-        <Modal title="รูปยังไม่พอ ต้องตรวจซ้ำ" onClose={closeModal}>
-          <form action={rejectFixPhotoAndRequireResurveyAction} className="space-y-3">
-            <input name="request_id" type="hidden" value={requestId} />
-            <input className="input" name="photo_reviewed_by" placeholder="ผู้ตรวจรูป" required type="text" />
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
+      <WorkflowActionModal actionKey={activeAction} currentStatus={currentStatus} onClose={closeModal} requestId={requestId} />
 
       {activeAction === 'ISSUE_BILL' ? (
         <Modal title="ออกใบแจ้งหนี้" onClose={closeModal}>
@@ -539,18 +384,6 @@ export function MeterWorkflowActions({
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
               <button className="btn-primary" type="submit">ยืนยัน</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
-
-      {activeAction === 'MANAGER_APPROVE' ? (
-        <Modal title="ผู้จัดการอนุมัติปิดงาน" onClose={closeModal}>
-          <form action={approveManagerReviewAction}>
-            <input name="request_id" type="hidden" value={requestId} />
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยันอนุมัติ</button>
             </div>
           </form>
         </Modal>
