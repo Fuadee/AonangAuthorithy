@@ -2,7 +2,7 @@ import { RequestCardActionPanel } from '@/components/queue/request-card-action-p
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
 import { RequestTypeBadge } from '@/components/queue/request-type-badge';
 import { getQueueWorkflowActions } from '@/lib/requests/workflow-action-config';
-import { RequestStatus, RequestType } from '@/lib/requests/types';
+import { getDispatchSubStatus, RequestStatus, RequestType } from '@/lib/requests/types';
 
 export type QueueRequestCardProps = {
   requestId: string;
@@ -21,6 +21,7 @@ export type QueueRequestCardProps = {
     surveyDateCurrent: string | null;
     invoiceSignedAt: string | null;
     paidAt: string | null;
+    isDocumentReady: boolean;
   };
 };
 
@@ -48,13 +49,19 @@ export function QueueRequestCard({
     scheduled_survey_date: workflowContext.scheduledSurveyDate,
     survey_date_current: workflowContext.surveyDateCurrent,
     invoice_signed_at: workflowContext.invoiceSignedAt,
-    paid_at: workflowContext.paidAt
+    paid_at: workflowContext.paidAt,
+    is_document_ready: workflowContext.isDocumentReady
   });
   const hasSurveyor = Boolean(surveyorName);
   const shouldShowSurveyor = hasSurveyor && surveyorName !== assigneeName;
   const compactMetaItems = [requestNo, customerName, `พื้นที่ ${areaName}`, assigneeName, shouldShowSurveyor ? surveyorName : null, formatDateTime(updatedAt)].filter(
     (item): item is string => Boolean(item)
   );
+  const dispatchSubStatus = getDispatchSubStatus({
+    status: currentStatus,
+    is_document_ready: workflowContext.isDocumentReady,
+    planned_dispatch_date: null
+  });
 
   return (
     <article className="rounded-xl border border-slate-200 bg-white p-2.5 shadow-sm sm:p-3">
@@ -77,6 +84,7 @@ export function QueueRequestCard({
       </header>
 
       <div className="mt-1.5">
+        {dispatchSubStatus ? <p className="mb-1 text-xs text-slate-600">{dispatchSubStatus}</p> : null}
         <RequestCardActionPanel actions={actions} compact currentStatus={currentStatus} detailHref={detailHref} requestId={requestId} />
       </div>
     </article>

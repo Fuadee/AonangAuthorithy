@@ -101,12 +101,11 @@ function finalizeWorkflowAction(requestId: string, formData: FormData): void {
 }
 
 const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>> = {
-  WAIT_LAYOUT_DRAWING: ['READY_TO_SEND_KRABI'],
-  READY_TO_SEND_KRABI: ['QUEUED_FOR_KRABI_DISPATCH'],
-  QUEUED_FOR_KRABI_DISPATCH: ['SENT_TO_KRABI'],
+  WAIT_LAYOUT_DRAWING: ['WAITING_TO_SEND_TO_KRABI'],
+  WAITING_TO_SEND_TO_KRABI: ['SENT_TO_KRABI'],
   SENT_TO_KRABI: ['WAIT_KRABI_DOCUMENT_CHECK'],
   WAIT_KRABI_DOCUMENT_CHECK: ['KRABI_IN_PROGRESS', 'KRABI_NEEDS_DOCUMENT_FIX'],
-  KRABI_NEEDS_DOCUMENT_FIX: ['READY_TO_SEND_KRABI'],
+  KRABI_NEEDS_DOCUMENT_FIX: ['WAITING_TO_SEND_TO_KRABI'],
   KRABI_IN_PROGRESS: ['KRABI_ESTIMATION_COMPLETED'],
   KRABI_ESTIMATION_COMPLETED: ['BILL_ISSUED'],
   BILL_ISSUED: ['COORDINATED_WITH_CONSTRUCTION'],
@@ -271,8 +270,7 @@ export async function updateRequestStatusAction(formData: FormData) {
     request.request_type === 'METER' &&
     [
       'WAIT_LAYOUT_DRAWING',
-      'READY_TO_SEND_KRABI',
-      'QUEUED_FOR_KRABI_DISPATCH',
+      'WAITING_TO_SEND_TO_KRABI',
       'SENT_TO_KRABI',
       'WAIT_KRABI_DOCUMENT_CHECK',
       'KRABI_NEEDS_DOCUMENT_FIX',
@@ -289,12 +287,12 @@ export async function updateRequestStatusAction(formData: FormData) {
     throw new Error('งานขยายเขตต้องไปขั้นวาดผังก่อน และค้างที่เตรียมส่งเอกสารให้กระบี่');
   }
 
-  if (request.request_type === 'EXPANSION' && request.status === 'SURVEY_COMPLETED' && !['WAIT_LAYOUT_DRAWING', 'READY_TO_SEND_KRABI'].includes(nextStatus)) {
-    throw new Error('งานขยายเขตหลังสำรวจต้องไปขั้นรอวาดผังหรือเตรียมส่งเอกสารให้กระบี่');
+  if (request.request_type === 'EXPANSION' && request.status === 'SURVEY_COMPLETED' && !['WAIT_LAYOUT_DRAWING', 'WAITING_TO_SEND_TO_KRABI'].includes(nextStatus)) {
+    throw new Error('งานขยายเขตหลังสำรวจต้องไปขั้นรอวาดผังหรือรอส่งเอกสารให้กระบี่');
   }
 
-  if (request.request_type === 'EXPANSION' && request.status === 'WAIT_LAYOUT_DRAWING' && nextStatus !== 'READY_TO_SEND_KRABI') {
-    throw new Error('งานขยายเขตต้องกดวาดผังเสร็จเพื่อไปสถานะเตรียมส่งเอกสารให้กระบี่');
+  if (request.request_type === 'EXPANSION' && request.status === 'WAIT_LAYOUT_DRAWING' && nextStatus !== 'WAITING_TO_SEND_TO_KRABI') {
+    throw new Error('งานขยายเขตต้องกดวาดผังเสร็จเพื่อไปสถานะรอส่งเอกสารให้กระบี่');
   }
 
   if (nextStatus === 'WAIT_MANAGER_REVIEW' && !canMoveToManagerReview(request)) {
@@ -644,11 +642,11 @@ export async function completeLayoutDrawingAction(formData: FormData) {
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: 'READY_TO_SEND_KRABI',
+      status: 'WAITING_TO_SEND_TO_KRABI',
       survey_note: drawingNote ?? request.survey_note ?? null,
-      ready_to_send_krabi_at: nowIso,
+      is_document_ready: false,
+      document_prepared_at: null,
       planned_dispatch_date: calculateNextPlannedDispatchDate(new Date()),
-      queued_for_dispatch_at: null,
       dispatched_to_krabi_at: null,
       dispatched_to_krabi_by: null,
       krabi_received_at: null,
@@ -665,12 +663,12 @@ export async function completeLayoutDrawingAction(formData: FormData) {
   finalizeWorkflowAction(requestId, formData);
 }
 
-export async function queueForKrabiDispatchAction(formData: FormData) {
+export async function markDocumentReadyAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type,is_document_ready').eq('id', requestId).single();
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
@@ -678,15 +676,19 @@ export async function queueForKrabiDispatchAction(formData: FormData) {
   if ((request.request_type as RequestType) !== 'EXPANSION') {
     throw new Error('คิวส่งเอกสารกระบี่รองรับเฉพาะงานขยายเขต');
   }
-  if (request.status !== 'READY_TO_SEND_KRABI') {
-    throw new Error('เข้าคิวส่งกระบี่ได้เฉพาะสถานะเตรียมส่งเอกสารให้กระบี่');
+  if (request.status !== 'WAITING_TO_SEND_TO_KRABI') {
+    throw new Error('จัดเตรียมเอกสารได้เฉพาะสถานะรอส่งเอกสารให้กระบี่');
+  }
+
+  if (request.is_document_ready) {
+    throw new Error('เอกสารถูกจัดเตรียมเรียบร้อยแล้ว');
   }
 
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: 'QUEUED_FOR_KRABI_DISPATCH',
-      queued_for_dispatch_at: nowIso,
+      is_document_ready: true,
+      document_prepared_at: nowIso,
       planned_dispatch_date: calculateNextPlannedDispatchDate(new Date()),
       updated_at: nowIso
     })
@@ -704,21 +706,21 @@ export async function markSentToKrabiAction(formData: FormData) {
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type,is_document_ready').eq('id', requestId).single();
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
   if ((request.request_type as RequestType) !== 'EXPANSION') {
     throw new Error('การส่งเอกสารกระบี่รองรับเฉพาะงานขยายเขต');
   }
-  if (request.status !== 'QUEUED_FOR_KRABI_DISPATCH') {
-    throw new Error('ต้องเข้าคิวส่งกระบี่ก่อนจึงจะบันทึกว่าส่งเอกสารแล้วได้');
+  if (request.status !== 'WAITING_TO_SEND_TO_KRABI' || !request.is_document_ready) {
+    throw new Error('ต้องจัดเตรียมเอกสารให้พร้อมก่อนจึงจะบันทึกว่าส่งเอกสารแล้วได้');
   }
 
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: 'WAIT_KRABI_DOCUMENT_CHECK',
+      status: 'SENT_TO_KRABI',
       dispatched_to_krabi_at: nowIso,
       dispatched_to_krabi_by: dispatcherName,
       krabi_received_at: nowIso,
@@ -804,10 +806,10 @@ export async function markKrabiDocumentFixCompletedAction(formData: FormData) {
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: 'READY_TO_SEND_KRABI',
-      ready_to_send_krabi_at: nowIso,
+      status: 'WAITING_TO_SEND_TO_KRABI',
+      is_document_ready: false,
+      document_prepared_at: null,
       planned_dispatch_date: calculateNextPlannedDispatchDate(new Date()),
-      queued_for_dispatch_at: null,
       dispatched_to_krabi_at: null,
       dispatched_to_krabi_by: null,
       krabi_received_at: null,

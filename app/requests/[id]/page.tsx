@@ -150,14 +150,9 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
         nextStep: 'วาดผังและยืนยัน “วาดผังเสร็จ”',
         owner: 'นักสำรวจ'
       };
-    case 'READY_TO_SEND_KRABI':
+    case 'WAITING_TO_SEND_TO_KRABI':
       return {
-        nextStep: 'รอฝ่ายส่งเอกสารจัดเข้าคิวรอบส่งวันพุธ/ศุกร์',
-        owner: 'ฝ่ายส่งเอกสาร'
-      };
-    case 'QUEUED_FOR_KRABI_DISPATCH':
-      return {
-        nextStep: 'รอออกรอบส่งตามวันที่วางแผน',
+        nextStep: 'เตรียมเอกสารให้ครบ แล้วรอออกรอบส่งวันพุธ/ศุกร์',
         owner: 'ฝ่ายส่งเอกสาร'
       };
     case 'SENT_TO_KRABI':
@@ -234,8 +229,8 @@ function getTimeline(request: {
   photo_reviewed_at: string | null;
   photo_reviewed_by: string | null;
   fix_approved_via: 'PHOTO' | 'RESURVEY' | null;
-  ready_to_send_krabi_at: string | null;
-  queued_for_dispatch_at: string | null;
+  is_document_ready: boolean;
+  document_prepared_at: string | null;
   planned_dispatch_date: string | null;
   dispatched_to_krabi_at: string | null;
   dispatched_to_krabi_by: string | null;
@@ -311,20 +306,12 @@ function getTimeline(request: {
     });
   }
 
-  if (request.ready_to_send_krabi_at) {
+  if (request.document_prepared_at) {
     items.push({
-      key: 'ready-to-send-krabi',
-      title: 'เตรียมส่งเอกสารให้กระบี่',
-      at: request.ready_to_send_krabi_at
-    });
-  }
-
-  if (request.queued_for_dispatch_at) {
-    items.push({
-      key: 'queued-dispatch',
-      title: 'เข้าคิวส่งเอกสารไปกระบี่',
+      key: 'document-prepared',
+      title: 'จัดเตรียมเอกสารเสร็จ',
       description: request.planned_dispatch_date ? `รอบส่ง: ${formatSurveyDate(request.planned_dispatch_date)}` : undefined,
-      at: request.queued_for_dispatch_at
+      at: request.document_prepared_at
     });
   }
 
@@ -454,8 +441,7 @@ function getActionTitle(status: RequestStatus, requestType: RequestType): string
     case 'WAIT_DOCUMENT_FROM_CUSTOMER':
     case 'SURVEY_COMPLETED':
     case 'WAIT_LAYOUT_DRAWING':
-    case 'READY_TO_SEND_KRABI':
-    case 'QUEUED_FOR_KRABI_DISPATCH':
+    case 'WAITING_TO_SEND_TO_KRABI':
     case 'SENT_TO_KRABI':
     case 'WAIT_KRABI_DOCUMENT_CHECK':
     case 'KRABI_NEEDS_DOCUMENT_FIX':
@@ -477,7 +463,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,ready_to_send_krabi_at,queued_for_dispatch_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,latitude,longitude,location_note,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,latitude,longitude,location_note,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -509,8 +495,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
       'WAIT_ACTION_CONFIRMATION',
       'WAIT_MANAGER_REVIEW',
       'WAIT_LAYOUT_DRAWING',
-      'READY_TO_SEND_KRABI',
-      'QUEUED_FOR_KRABI_DISPATCH',
+      'WAITING_TO_SEND_TO_KRABI',
       'SENT_TO_KRABI',
       'WAIT_KRABI_DOCUMENT_CHECK',
       'KRABI_NEEDS_DOCUMENT_FIX',
@@ -567,8 +552,8 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     photo_reviewed_at: request.photo_reviewed_at,
     photo_reviewed_by: request.photo_reviewed_by,
     fix_approved_via: request.fix_approved_via,
-    ready_to_send_krabi_at: request.ready_to_send_krabi_at,
-    queued_for_dispatch_at: request.queued_for_dispatch_at,
+    is_document_ready: request.is_document_ready,
+    document_prepared_at: request.document_prepared_at,
     planned_dispatch_date: request.planned_dispatch_date,
     dispatched_to_krabi_at: request.dispatched_to_krabi_at,
     dispatched_to_krabi_by: request.dispatched_to_krabi_by,
@@ -856,6 +841,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
               surveyDateCurrent={request.survey_date_current}
               isInvoiceSigned={invoiceSigned}
               isPaid={paid}
+              isDocumentReady={request.is_document_ready}
             />
           ) : null}
           {!isUnifiedWorkflowStatus && isSurveyorFlowStatus ? (

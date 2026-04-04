@@ -6,6 +6,7 @@ import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { getQueueWorkflowActions } from '@/lib/requests/workflow-action-config';
 import {
   getCurrentSurveyDate,
+  getDispatchSubStatus,
   getRequestQueueGroup,
   getRequestStatusLabel,
   REQUEST_TYPE_LABELS,
@@ -107,14 +108,20 @@ export function RequestTable({
                 </td>
                 <td className="px-4 py-3 align-middle">
                   {actionColumnMode === 'workflow' ? (
-                    <WorkflowActionButtons
-                      actions={getQueueWorkflowActions(request)}
-                      compact
-                      currentStatus={request.status}
-                      maxVisibleActions={1}
-                      requestId={request.id}
-                      stayOnQueue
-                    />
+                    <div className="space-y-1.5">
+                      <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(request)}`}>
+                        {getRequestStatusLabel(request.status)}
+                      </span>
+                      {getDispatchSubStatus(request) ? <p className="text-xs text-slate-600">{getDispatchSubStatus(request)}</p> : null}
+                      <WorkflowActionButtons
+                        actions={getQueueWorkflowActions(request)}
+                        compact
+                        currentStatus={request.status}
+                        maxVisibleActions={1}
+                        requestId={request.id}
+                        stayOnQueue
+                      />
+                    </div>
                   ) : (
                     <span className={`inline-flex rounded-full px-3 py-1 text-xs font-medium ${getStatusBadgeClass(request)}`}>
                       {getRequestStatusLabel(request.status)}

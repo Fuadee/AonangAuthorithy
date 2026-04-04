@@ -49,7 +49,7 @@ create table if not exists public.service_requests (
   survey_date_current date,
   previous_survey_date date,
   request_type text not null default 'METER' check (request_type in ('METER', 'EXPANSION')),
-  status text not null default 'NEW' check (status in ('NEW', 'PENDING_SURVEY_REVIEW', 'SURVEY_ACCEPTED', 'SURVEY_DOCS_INCOMPLETE', 'SURVEY_RESCHEDULE_REQUESTED', 'SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING', 'READY_TO_SEND_KRABI', 'QUEUED_FOR_KRABI_DISPATCH', 'SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK', 'KRABI_NEEDS_DOCUMENT_FIX', 'KRABI_IN_PROGRESS', 'KRABI_ESTIMATION_COMPLETED', 'BILL_ISSUED', 'COORDINATED_WITH_CONSTRUCTION', 'WAIT_DOCUMENT_REVIEW', 'WAIT_DOCUMENT_FROM_CUSTOMER', 'READY_FOR_SURVEY', 'IN_SURVEY', 'WAIT_CUSTOMER_FIX', 'WAIT_FIX_REVIEW', 'READY_FOR_RESURVEY', 'WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION', 'WAIT_MANAGER_REVIEW', 'COMPLETED')),
+  status text not null default 'NEW' check (status in ('NEW', 'PENDING_SURVEY_REVIEW', 'SURVEY_ACCEPTED', 'SURVEY_DOCS_INCOMPLETE', 'SURVEY_RESCHEDULE_REQUESTED', 'SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING', 'WAITING_TO_SEND_TO_KRABI', 'SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK', 'KRABI_NEEDS_DOCUMENT_FIX', 'KRABI_IN_PROGRESS', 'KRABI_ESTIMATION_COMPLETED', 'BILL_ISSUED', 'COORDINATED_WITH_CONSTRUCTION', 'WAIT_DOCUMENT_REVIEW', 'WAIT_DOCUMENT_FROM_CUSTOMER', 'READY_FOR_SURVEY', 'IN_SURVEY', 'WAIT_CUSTOMER_FIX', 'WAIT_FIX_REVIEW', 'READY_FOR_RESURVEY', 'WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION', 'WAIT_MANAGER_REVIEW', 'COMPLETED')),
   survey_note text,
   survey_reschedule_date date,
   survey_rescheduled_at timestamptz,
@@ -81,8 +81,8 @@ create table if not exists public.service_requests (
   invoice_signed_by text,
   paid_at timestamptz,
   paid_by text,
-  ready_to_send_krabi_at timestamptz,
-  queued_for_dispatch_at timestamptz,
+  is_document_ready boolean not null default false,
+  document_prepared_at timestamptz,
   planned_dispatch_date date,
   dispatched_to_krabi_at timestamptz,
   dispatched_to_krabi_by text,
@@ -106,4 +106,4 @@ create index if not exists idx_service_requests_surveyor_status on public.servic
 create index if not exists idx_service_requests_wait_billing on public.service_requests (request_type, status) where status = 'WAIT_BILLING';
 create index if not exists idx_service_requests_wait_action_confirmation on public.service_requests (request_type, status) where status = 'WAIT_ACTION_CONFIRMATION';
 create index if not exists idx_service_requests_wait_manager_review on public.service_requests (request_type, status) where status = 'WAIT_MANAGER_REVIEW';
-create index if not exists idx_service_requests_ready_to_send_krabi on public.service_requests (status, planned_dispatch_date) where status in ('READY_TO_SEND_KRABI', 'QUEUED_FOR_KRABI_DISPATCH');
+create index if not exists idx_service_requests_ready_to_send_krabi on public.service_requests (status, planned_dispatch_date, is_document_ready) where status = 'WAITING_TO_SEND_TO_KRABI';
