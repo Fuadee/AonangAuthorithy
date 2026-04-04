@@ -92,7 +92,6 @@ export type QueueWorkflowAction = {
   key: WorkflowActionKey;
   variant: WorkflowActionVariant;
   requiresConfirmation?: string;
-  requiresPrompt?: { message: string; field: string };
   fallbackToDetail?: boolean;
 };
 
@@ -107,16 +106,8 @@ export function getWorkflowActionsForRequest(
   if (status === 'WAIT_DOCUMENT_REVIEW') {
     return [
       { key: 'DOC_COMPLETE', variant: 'primary', requiresConfirmation: 'ยืนยันว่าเอกสารครบถ้วนแล้วใช่หรือไม่?' },
-      {
-        key: 'DOC_INCOMPLETE_COLLECT_ON_SITE',
-        variant: 'secondary',
-        requiresPrompt: { message: 'ระบุหมายเหตุเอกสารขาด (รับเอกสารหน้างาน)', field: 'incomplete_docs_note' }
-      },
-      {
-        key: 'DOC_INCOMPLETE_WAIT_CUSTOMER',
-        variant: 'secondary',
-        requiresPrompt: { message: 'ระบุหมายเหตุเอกสารขาด (รอลูกค้านำมา)', field: 'incomplete_docs_note' }
-      }
+      { key: 'DOC_INCOMPLETE_COLLECT_ON_SITE', variant: 'secondary' },
+      { key: 'DOC_INCOMPLETE_WAIT_CUSTOMER', variant: 'secondary' }
     ];
   }
 
@@ -166,16 +157,8 @@ export function getWorkflowActionsForRequest(
 
   if (status === 'WAIT_FIX_REVIEW' && request.request_type === 'METER') {
     return [
-      {
-        key: 'PHOTO_APPROVE',
-        variant: 'primary',
-        requiresPrompt: { message: 'ชื่อผู้ตรวจรูป', field: 'photo_reviewed_by' }
-      },
-      {
-        key: 'PHOTO_REJECT_TO_RESURVEY',
-        variant: 'secondary',
-        requiresPrompt: { message: 'ชื่อผู้ตรวจรูป', field: 'photo_reviewed_by' }
-      }
+      { key: 'PHOTO_APPROVE', variant: 'primary' },
+      { key: 'PHOTO_REJECT_TO_RESURVEY', variant: 'secondary' }
     ].filter((action) => action.key !== 'PHOTO_APPROVE' || canApproveFixFromPhoto({ status, fix_verification_mode: request.fix_verification_mode }));
   }
 

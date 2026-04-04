@@ -81,7 +81,7 @@ export function QueueRequestCard({
       </div>
 
       <div className="mt-2.5">
-        <RequestCardActionPanel actions={actions} detailHref={detailHref} requestId={requestId} />
+        <RequestCardActionPanel actions={actions} currentStatus={currentStatus} detailHref={detailHref} requestId={requestId} />
       </div>
     </article>
   );
