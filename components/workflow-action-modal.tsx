@@ -54,6 +54,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
     return null;
   }
 
+  const handleSubmit = stayOnQueue ? onClose : undefined;
+
   if (actionKey === 'DOC_COMPLETE') {
     return (
       <ModalShell title="ยืนยันเอกสารครบ" onClose={onClose}>
@@ -63,7 +65,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit">ยืนยัน</button>
+            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -88,7 +90,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           </div>
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit">ยืนยัน</button>
+            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -104,7 +106,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <p className="text-sm text-slate-600">หลังยืนยันเอกสาร งานจะกลับไปสถานะ “พร้อมนัดสำรวจ” และยังไม่เริ่มสำรวจทันที</p>
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit">ยืนยัน</button>
+            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -119,7 +121,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit">ยืนยัน</button>
+            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -138,7 +140,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           </div>
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit">ยืนยัน</button>
+            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -157,7 +159,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           </div>
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit">ยืนยัน</button>
+            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -176,7 +178,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           </div>
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit">ยืนยัน</button>
+            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -191,7 +193,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit">ยืนยัน</button>
+            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -207,7 +209,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <input className="input" name="photo_reviewed_by" placeholder="ผู้ตรวจรูป" required type="text" />
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit">ยืนยัน</button>
+            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -223,7 +225,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <input className="input" name="photo_reviewed_by" placeholder="ผู้ตรวจรูป" required type="text" />
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit">ยืนยัน</button>
+            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -238,7 +240,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit">ยืนยันอนุมัติ</button>
+            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยันอนุมัติ</button>
           </div>
         </form>
       </ModalShell>
