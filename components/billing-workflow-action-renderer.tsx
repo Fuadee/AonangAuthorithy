@@ -1,6 +1,7 @@
 'use client';
 
-import { MouseEvent, ReactNode, useState } from 'react';
+import { MouseEvent, ReactNode, useTransition, useState } from 'react';
+import { useRouter } from 'next/navigation';
 import { confirmBillingSurveyorSignAction, confirmPaymentReceivedAction, issueBillingAction } from '@/app/actions';
 import { getWorkflowActionLabel } from '@/lib/requests/workflow-action-config';
 import { RequestStatus } from '@/lib/requests/types';
@@ -41,6 +42,8 @@ export function BillingWorkflowActionRenderer({
   compact = false
 }: BillingWorkflowActionRendererProps) {
   const [activeAction, setActiveAction] = useState<BillingAction | null>(null);
+  const [isPending, startTransition] = useTransition();
+  const router = useRouter();
   const closeModal = () => setActiveAction(null);
   const compactClass = compact ? 'min-h-9 px-2.5 py-1.5 text-sm' : '';
   const handleActionTriggerClick = (event: MouseEvent<HTMLButtonElement>, action: BillingAction) => {
@@ -112,7 +115,7 @@ export function BillingWorkflowActionRenderer({
             <textarea className="input min-h-24" name="billing_note" placeholder="หมายเหตุ (ถ้ามี)" />
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยันออกใบแจ้งหนี้</button>
+              <button className="btn-primary" disabled={isPending} type="submit">ยืนยันออกใบแจ้งหนี้</button>
             </div>
           </form>
         </Modal>
@@ -132,7 +135,7 @@ export function BillingWorkflowActionRenderer({
             <input className="input" name="invoice_signed_by" placeholder="ผู้เซ็นรับรอง" required type="text" />
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
+              <button className="btn-primary" disabled={isPending} type="submit">ยืนยัน</button>
             </div>
           </form>
         </Modal>
@@ -152,7 +155,7 @@ export function BillingWorkflowActionRenderer({
             <input className="input" name="paid_by" placeholder="รับชำระโดย" required type="text" />
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
+              <button className="btn-primary" disabled={isPending} type="submit">ยืนยัน</button>
             </div>
           </form>
         </Modal>
