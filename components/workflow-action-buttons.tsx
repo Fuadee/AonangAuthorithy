@@ -14,6 +14,7 @@ type WorkflowActionButtonsProps = {
   currentStatus: RequestStatus;
   stayOnQueue?: boolean;
   detailHref?: string;
+  compact?: boolean;
 };
 
 const ACTION_BUTTON_CLASS: Record<'primary' | 'secondary', string> = {
@@ -21,7 +22,7 @@ const ACTION_BUTTON_CLASS: Record<'primary' | 'secondary', string> = {
   secondary: 'btn-secondary'
 };
 
-export function WorkflowActionButtons({ actions, requestId, currentStatus, stayOnQueue = false, detailHref }: WorkflowActionButtonsProps) {
+export function WorkflowActionButtons({ actions, requestId, currentStatus, stayOnQueue = false, detailHref, compact = false }: WorkflowActionButtonsProps) {
   const [activeAction, setActiveAction] = useState<WorkflowActionKey | null>(null);
 
   const handleAction = (event: MouseEvent<HTMLButtonElement>, actionKey: WorkflowActionKey) => {
@@ -31,8 +32,8 @@ export function WorkflowActionButtons({ actions, requestId, currentStatus, stayO
   };
 
   return (
-    <div className="space-y-1.5">
-      <div className="flex flex-wrap items-center gap-2">
+    <div className="space-y-1">
+      <div className="flex flex-wrap items-center gap-1.5">
         {actions.map((action) => {
           const disabled = activeAction !== null;
 
@@ -40,7 +41,7 @@ export function WorkflowActionButtons({ actions, requestId, currentStatus, stayO
             <button
               key={action.key}
               aria-label={`ดำเนินการ ${getWorkflowActionLabel(action.key)}`}
-              className={`${ACTION_BUTTON_CLASS[action.variant]} min-h-10 justify-center whitespace-normal break-words text-left`}
+              className={`${ACTION_BUTTON_CLASS[action.variant]} ${compact ? 'min-h-9 px-2.5 py-1.5 text-sm' : 'min-h-10'} justify-center whitespace-normal break-words text-left`}
               disabled={disabled}
               type="button"
               onClick={(event) => handleAction(event, action.key)}
@@ -50,7 +51,7 @@ export function WorkflowActionButtons({ actions, requestId, currentStatus, stayO
           );
         })}
         {detailHref ? (
-          <Link className="btn-secondary min-h-10 whitespace-nowrap px-3 py-2 text-sm" href={detailHref}>
+          <Link className={`btn-secondary whitespace-nowrap text-sm ${compact ? 'min-h-9 px-2.5 py-1.5' : 'min-h-10 px-3 py-2'}`} href={detailHref}>
             ดูรายละเอียด
           </Link>
         ) : null}
