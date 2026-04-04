@@ -2,6 +2,7 @@ import { getRequestStatusLabel, RequestStatus } from '@/lib/requests/types';
 
 type RequestStatusBadgeProps = {
   status: RequestStatus;
+  className?: string;
 };
 
 const STATUS_TONE: Record<RequestStatus, string> = {
@@ -33,9 +34,11 @@ const STATUS_TONE: Record<RequestStatus, string> = {
   COMPLETED: 'bg-emerald-100 text-emerald-800'
 };
 
-export function RequestStatusBadge({ status }: RequestStatusBadgeProps) {
+export function RequestStatusBadge({ status, className = '' }: RequestStatusBadgeProps) {
   return (
-    <span className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_TONE[status]}`}>
+    <span
+      className={`inline-flex rounded-full px-2.5 py-1 text-xs font-semibold ${STATUS_TONE[status]} ${className}`.trim()}
+    >
       {getRequestStatusLabel(status)}
     </span>
   );
