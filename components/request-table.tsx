@@ -28,42 +28,74 @@ function formatSurveyDate(value: string | null): string {
 }
 
 export function RequestTable({ requests }: RequestTableProps) {
+  const headClass = 'px-3 py-2.5 align-middle font-medium whitespace-nowrap';
+  const compactCellClass = 'px-3 py-2.5 align-middle';
+  const singleLineCellClass = `${compactCellClass} max-w-0`;
+
   return (
     <div className="card mt-6 overflow-hidden">
       <div className="overflow-x-auto">
-        <table className="min-w-full divide-y divide-slate-200 text-sm">
+        <table className="min-w-[1280px] w-full table-fixed divide-y divide-slate-200 text-sm">
+          <colgroup>
+            <col className="w-[10%] min-w-[120px]" />
+            <col className="w-[14%] min-w-[170px]" />
+            <col className="w-[11%] min-w-[130px]" />
+            <col className="w-[10%] min-w-[130px]" />
+            <col className="w-[8%] min-w-[110px]" />
+            <col className="w-[9%] min-w-[120px]" />
+            <col className="w-[9%] min-w-[120px]" />
+            <col className="w-[10%] min-w-[140px]" />
+            <col className="w-[8%] min-w-[110px]" />
+            <col className="w-[21%] min-w-[270px]" />
+          </colgroup>
           <thead className="bg-slate-100 text-left text-slate-600">
             <tr>
-              <th className="px-4 py-3 font-medium">Request No.</th>
-              <th className="px-4 py-3 font-medium">ลูกค้า</th>
-              <th className="px-4 py-3 font-medium">โทรศัพท์</th>
-              <th className="px-4 py-3 font-medium">ประเภทคำร้อง</th>
-              <th className="px-4 py-3 font-medium">พื้นที่</th>
-              <th className="px-4 py-3 font-medium">ผู้รับผิดชอบ</th>
-              <th className="px-4 py-3 font-medium">ผู้สำรวจ</th>
-              <th className="px-4 py-3 font-medium">วันนัดสำรวจล่าสุด</th>
-              <th className="px-4 py-3 font-medium">คิวปัจจุบัน</th>
-              <th className="px-4 py-3 font-medium">สถานะ</th>
+              <th className={headClass}>Request No.</th>
+              <th className={headClass}>ลูกค้า</th>
+              <th className={headClass}>โทรศัพท์</th>
+              <th className={headClass}>ประเภทคำร้อง</th>
+              <th className={headClass}>พื้นที่</th>
+              <th className={headClass}>ผู้รับผิดชอบ</th>
+              <th className={headClass}>ผู้สำรวจ</th>
+              <th className={headClass}>วันนัดสำรวจล่าสุด</th>
+              <th className={headClass}>คิวปัจจุบัน</th>
+              <th className={headClass}>สถานะ</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
             {requests.map((request) => (
               <tr key={request.id} className="hover:bg-slate-50">
-                <td className="px-4 py-3 font-medium text-brand-600">
-                  <Link href={`/requests/${request.id}`} className="hover:underline">
+                <td className={`${singleLineCellClass} font-medium text-brand-600`}>
+                  <Link href={`/requests/${request.id}`} className="block truncate whitespace-nowrap hover:underline" title={request.request_no}>
                     {request.request_no}
                   </Link>
                 </td>
-                <td className="px-4 py-3">{request.customer_name}</td>
-                <td className="px-4 py-3">{request.phone}</td>
-                <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
-                <td className="px-4 py-3">{request.area_name}</td>
-                <td className="px-4 py-3">{request.assignee_name}</td>
-                <td className="px-4 py-3">{request.assigned_surveyor ?? '-'}</td>
-                <td className="px-4 py-3">{formatSurveyDate(getCurrentSurveyDate(request))}</td>
-                <td className="px-4 py-3">{getRequestQueueGroupLabel(getRequestQueueGroup(request.status))}</td>
-                <td className="px-4 py-3">
-                  <div className="flex flex-wrap items-center gap-2">
+                <td className={singleLineCellClass} title={request.customer_name}>
+                  <p className="truncate whitespace-nowrap">{request.customer_name}</p>
+                </td>
+                <td className={singleLineCellClass} title={request.phone}>
+                  <p className="truncate whitespace-nowrap">{request.phone}</p>
+                </td>
+                <td className={singleLineCellClass} title={REQUEST_TYPE_LABELS[request.request_type]}>
+                  <p className="truncate whitespace-nowrap">{REQUEST_TYPE_LABELS[request.request_type]}</p>
+                </td>
+                <td className={singleLineCellClass} title={request.area_name}>
+                  <p className="truncate whitespace-nowrap">{request.area_name}</p>
+                </td>
+                <td className={singleLineCellClass} title={request.assignee_name}>
+                  <p className="truncate whitespace-nowrap">{request.assignee_name}</p>
+                </td>
+                <td className={singleLineCellClass} title={request.assigned_surveyor ?? '-'}>
+                  <p className="truncate whitespace-nowrap">{request.assigned_surveyor ?? '-'}</p>
+                </td>
+                <td className={singleLineCellClass}>
+                  <p className="truncate whitespace-nowrap">{formatSurveyDate(getCurrentSurveyDate(request))}</p>
+                </td>
+                <td className={singleLineCellClass} title={getRequestQueueGroupLabel(getRequestQueueGroup(request.status))}>
+                  <p className="truncate whitespace-nowrap">{getRequestQueueGroupLabel(getRequestQueueGroup(request.status))}</p>
+                </td>
+                <td className={compactCellClass}>
+                  <div className="flex flex-wrap items-center gap-1.5">
                     <span>{getRequestStatusLabel(request.status)}</span>
                     {hasCollectedDocsOnSite(request) ? (
                       <span className="rounded-full bg-amber-100 px-2 py-0.5 text-xs font-medium text-amber-700">
@@ -104,7 +136,7 @@ export function RequestTable({ requests }: RequestTableProps) {
             ))}
             {!requests.length && (
               <tr>
-                <td className="px-4 py-6 text-center text-slate-500" colSpan={10}>
+                <td className="px-3 py-6 text-center text-slate-500" colSpan={10}>
                   ยังไม่มีคำร้อง
                 </td>
               </tr>
