@@ -164,52 +164,57 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
         </article>
       </section>
 
-      <section className="card p-4">
-        <div className="flex flex-col gap-3 md:flex-row md:items-end md:justify-between">
+      <section className="rounded-xl border border-slate-200 bg-white p-4 shadow-sm">
+        <div className="flex flex-col gap-3">
           <div className="space-y-1">
-            <p className="text-sm font-medium text-slate-700">นักสำรวจ</p>
-            <select
-              aria-label="กรองตามนักสำรวจ"
-              className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
-              value={activeSurveyor}
-              onChange={(event) => handleSurveyorChange(event.target.value)}
-            >
-              <option value={ALL_SURVEYORS}>ทั้งหมด</option>
-              {surveyorOptions.map((name) => (
-                <option key={name} value={name}>
-                  {name}
-                </option>
-              ))}
-            </select>
+            <p className="text-sm text-slate-500">นักสำรวจ</p>
+            <div className="flex flex-col gap-2 sm:flex-row sm:items-center sm:justify-between">
+              <select
+                aria-label="กรองตามนักสำรวจ"
+                className="rounded-lg border border-slate-300 bg-white px-3 py-2 text-sm text-slate-700"
+                value={activeSurveyor}
+                onChange={(event) => handleSurveyorChange(event.target.value)}
+              >
+                <option value={ALL_SURVEYORS}>ทั้งหมด</option>
+                {surveyorOptions.map((name) => (
+                  <option key={name} value={name}>
+                    {name}
+                  </option>
+                ))}
+              </select>
+
+              <p className="text-sm text-slate-500">
+                {activeSurveyor === ALL_SURVEYORS ? 'กำลังแสดง: งานนักสำรวจทั้งหมด' : `กำลังกรอง: ${activeSurveyor}`}
+              </p>
+            </div>
           </div>
 
-          <p className="text-sm text-slate-500">
-            {activeSurveyor === ALL_SURVEYORS ? 'กำลังแสดง: งานนักสำรวจทั้งหมด' : `กำลังกรอง: ${activeSurveyor}`}
-          </p>
-        </div>
-      </section>
+          <div className="space-y-1">
+            <p className="text-sm text-slate-500">สถานะ</p>
+            <div className="overflow-x-auto">
+              <div className="flex w-max min-w-full items-center gap-2 pb-1">
+                {FILTER_OPTIONS.map((option) => {
+                  const isActive = activeFilter === option.value;
 
-      <section className="card p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {FILTER_OPTIONS.map((option) => {
-            const isActive = activeFilter === option.value;
-
-            return (
-              <button
-                key={option.value}
-                className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                  isActive
-                    ? 'border-brand-600 bg-brand-50 text-brand-700'
-                    : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
-                }`}
-                type="button"
-                onClick={() => setActiveFilter(option.value)}
-                title={option.label}
-              >
-                <span className="block max-w-full truncate whitespace-nowrap">{option.label}</span>
-              </button>
-            );
-          })}
+                  return (
+                    <button
+                      key={option.value}
+                      className={`rounded-full border px-3 py-1.5 text-sm transition ${
+                        isActive
+                          ? 'border-brand-600 bg-brand-50 text-brand-700'
+                          : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+                      }`}
+                      type="button"
+                      onClick={() => setActiveFilter(option.value)}
+                      title={option.label}
+                    >
+                      <span className="block max-w-full truncate whitespace-nowrap">{option.label}</span>
+                    </button>
+                  );
+                })}
+              </div>
+            </div>
+          </div>
         </div>
       </section>
 
