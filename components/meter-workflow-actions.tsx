@@ -13,12 +13,10 @@ import {
   confirmBillingSurveyorSignAction,
   confirmPaymentReceivedAction,
   issueBillingAction,
-  markSurveyFailedAction,
   queueForKrabiDispatchAction,
 } from '@/app/actions';
-import { SurveyScheduleActionDialog } from '@/components/survey-schedule-action-dialog';
-import { WorkflowActionModal } from '@/components/workflow-action-modal';
-import { getWorkflowActionLabel, getWorkflowActionsForRequest, QueueWorkflowAction, WorkflowActionKey } from '@/lib/requests/workflow-action-config';
+import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
+import { getWorkflowActionLabel, getWorkflowActionsForRequest, WorkflowActionKey } from '@/lib/requests/workflow-action-config';
 import { RequestStatus, RequestType } from '@/lib/requests/types';
 
 type MeterWorkflowActionsProps = {
@@ -62,11 +60,6 @@ export function MeterWorkflowActions({
   isPaid
 }: MeterWorkflowActionsProps) {
   const [activeAction, setActiveAction] = useState<MeterAction | null>(null);
-  const actionClassByVariant: Record<QueueWorkflowAction['variant'], string> = {
-    primary: 'btn-primary',
-    secondary: 'btn-secondary'
-  };
-
   const closeModal = () => setActiveAction(null);
   const resolvedActions = getWorkflowActionsForRequest({
     status: currentStatus,
@@ -108,13 +101,9 @@ export function MeterWorkflowActions({
 
   return (
     <>
-      <div className="flex flex-wrap gap-2">
-        {resolvedActions.map((action) => (
-          <button className={actionClassByVariant[action.variant]} key={action.key} type="button" onClick={() => setActiveAction(action.key)}>
-            {getWorkflowActionLabel(action.key)}
-          </button>
-        ))}
+      <WorkflowActionButtons actions={resolvedActions} currentStatus={currentStatus} requestId={requestId} />
 
+      <div className="flex flex-wrap gap-2">
         {currentStatus === 'WAIT_BILLING' ? (
           <button className="btn-primary" type="button" onClick={() => setActiveAction('ISSUE_BILL')}>
             {getWorkflowActionLabel('ISSUE_BILL')}
@@ -290,47 +279,6 @@ export function MeterWorkflowActions({
           </form>
         </Modal>
       ) : null}
-
-      <SurveyScheduleActionDialog
-        actionKey={activeAction === 'SCHEDULE_SURVEY' || activeAction === 'EDIT_SURVEY_DATE' ? activeAction : null}
-        onClose={closeModal}
-        requestId={requestId}
-      />
-
-      {activeAction === 'SURVEY_FAIL' ? (
-        <Modal title="บันทึกผลสำรวจไม่ผ่าน" onClose={closeModal}>
-          <form action={markSurveyFailedAction} className="space-y-3">
-            <input name="request_id" type="hidden" value={requestId} />
-            <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="customer_fix_note">รายการที่ต้องแก้ (จำเป็น)</label>
-              <textarea className="input min-h-24" id="customer_fix_note" name="customer_fix_note" required />
-            </div>
-            <div>
-              <p className="text-sm font-medium text-slate-700">วิธีตรวจหลังแก้ไข</p>
-              <div className="mt-2 space-y-2 text-sm text-slate-700">
-                <label className="flex items-center gap-2">
-                  <input defaultChecked name="fix_verification_mode" type="radio" value="PHOTO_OR_RESURVEY" />
-                  อนุญาตให้ส่งรูปยืนยัน
-                </label>
-                <label className="flex items-center gap-2">
-                  <input name="fix_verification_mode" type="radio" value="RESURVEY_ONLY" />
-                  ต้องตรวจซ้ำหน้างานเท่านั้น
-                </label>
-              </div>
-            </div>
-            <div>
-              <label className="text-sm font-medium text-slate-700" htmlFor="survey_note_fail">หมายเหตุเพิ่มเติม</label>
-              <textarea className="input min-h-24" id="survey_note_fail" name="survey_note" />
-            </div>
-            <div className="flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" type="submit">ยืนยัน</button>
-            </div>
-          </form>
-        </Modal>
-      ) : null}
-
-      <WorkflowActionModal actionKey={activeAction} currentStatus={currentStatus} onClose={closeModal} requestId={requestId} />
 
       {activeAction === 'ISSUE_BILL' ? (
         <Modal title="ออกใบแจ้งหนี้" onClose={closeModal}>

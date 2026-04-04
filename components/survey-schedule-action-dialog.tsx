@@ -1,12 +1,14 @@
 'use client';
 
 import { MouseEvent, ReactNode } from 'react';
+import { useRouter } from 'next/navigation';
 import { updateSurveyScheduleAction } from '@/app/actions';
 
 type SurveyScheduleActionDialogProps = {
   actionKey: 'SCHEDULE_SURVEY' | 'EDIT_SURVEY_DATE' | null;
   requestId: string;
   onClose: () => void;
+  stayOnQueue?: boolean;
 };
 
 function Modal({ children, title, onClose }: { children: ReactNode; title: string; onClose: () => void }) {
@@ -26,15 +28,29 @@ function Modal({ children, title, onClose }: { children: ReactNode; title: strin
   );
 }
 
-export function SurveyScheduleActionDialog({ actionKey, requestId, onClose }: SurveyScheduleActionDialogProps) {
+export function SurveyScheduleActionDialog({ actionKey, requestId, onClose, stayOnQueue = false }: SurveyScheduleActionDialogProps) {
+  const router = useRouter();
+
   if (!actionKey) {
     return null;
   }
 
+  const handleQueueSubmit = () => {
+    if (!stayOnQueue) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      onClose();
+      router.refresh();
+    }, 0);
+  };
+
   return (
     <Modal title={actionKey === 'SCHEDULE_SURVEY' ? 'กำหนดวันสำรวจ' : 'แก้ไขวันนัดสำรวจ'} onClose={onClose}>
-      <form action={updateSurveyScheduleAction} className="space-y-3">
+      <form action={updateSurveyScheduleAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
         <input name="request_id" type="hidden" value={requestId} />
+        {stayOnQueue ? <input name="stay_on_queue" type="hidden" value="1" /> : null}
         <div>
           <label className="text-sm font-medium text-slate-700" htmlFor="survey_date_current">
             วันนัดสำรวจล่าสุด

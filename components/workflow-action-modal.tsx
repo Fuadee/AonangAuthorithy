@@ -66,7 +66,16 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
     return null;
   }
 
-  const handleSubmit = stayOnQueue && !isDocumentReviewAction ? onClose : undefined;
+  const handleQueueSubmit = () => {
+    if (!stayOnQueue || isDocumentReviewAction) {
+      return;
+    }
+
+    window.setTimeout(() => {
+      onClose();
+      router.refresh();
+    }, 0);
+  };
 
   const mapDocumentReviewError = (message: string): { userMessage: string; shouldRefresh: boolean } => {
     if (message.includes('บันทึกผลตรวจเอกสารได้เฉพาะงานที่อยู่สถานะรอตรวจเอกสาร')) {
@@ -150,13 +159,13 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
   if (actionKey === 'CONFIRM_DOCS_RECEIVED') {
     return (
       <ModalShell title="ยืนยันว่าได้รับเอกสารครบแล้ว" onClose={onClose}>
-        <form action={confirmDocumentsReceivedFromCustomerAction} className="space-y-3">
+        <form action={confirmDocumentsReceivedFromCustomerAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
           <input name="request_id" type="hidden" value={requestId} />
           <QueueStayInput stayOnQueue={stayOnQueue} />
           <p className="text-sm text-slate-600">หลังยืนยันเอกสาร งานจะกลับไปสถานะ “พร้อมนัดสำรวจ” และยังไม่เริ่มสำรวจทันที</p>
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
+            <button className="btn-primary" type="submit">ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -166,12 +175,12 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
   if (actionKey === 'START_SURVEY') {
     return (
       <ModalShell title={currentStatus === 'READY_FOR_RESURVEY' ? 'ยืนยันออกตรวจซ้ำหน้างาน' : 'ยืนยันรับงานและเริ่มสำรวจ'} onClose={onClose}>
-        <form action={startSurveyAction}>
+        <form action={startSurveyAction} onSubmitCapture={handleQueueSubmit}>
           <input name="request_id" type="hidden" value={requestId} />
           <QueueStayInput stayOnQueue={stayOnQueue} />
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
+            <button className="btn-primary" type="submit">ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -181,7 +190,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
   if (actionKey === 'COMPLETE_SURVEY') {
     return (
       <ModalShell title="ยืนยันสำรวจเสร็จ" onClose={onClose}>
-        <form action={completeSurveyAction} className="space-y-3">
+        <form action={completeSurveyAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
           <input name="request_id" type="hidden" value={requestId} />
           <QueueStayInput stayOnQueue={stayOnQueue} />
           <div>
@@ -190,7 +199,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           </div>
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
+            <button className="btn-primary" type="submit">ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -200,7 +209,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
   if (actionKey === 'SURVEY_PASS') {
     return (
       <ModalShell title="ยืนยันสำรวจผ่าน" onClose={onClose}>
-        <form action={markSurveyPassedAction} className="space-y-3">
+        <form action={markSurveyPassedAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
           <input name="request_id" type="hidden" value={requestId} />
           <QueueStayInput stayOnQueue={stayOnQueue} />
           <div>
@@ -209,7 +218,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           </div>
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
+            <button className="btn-primary" type="submit">ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -219,7 +228,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
   if (actionKey === 'REPORT_CUSTOMER_FIX') {
     return (
       <ModalShell title="ผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว" onClose={onClose}>
-        <form action={reportCustomerFixAction} className="space-y-3">
+        <form action={reportCustomerFixAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
           <input name="request_id" type="hidden" value={requestId} />
           <QueueStayInput stayOnQueue={stayOnQueue} />
           <div>
@@ -228,7 +237,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           </div>
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
+            <button className="btn-primary" type="submit">ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -238,12 +247,12 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
   if (actionKey === 'SCHEDULE_RESURVEY') {
     return (
       <ModalShell title="ยืนยันนัดตรวจซ้ำ" onClose={onClose}>
-        <form action={moveToResurveyAction}>
+        <form action={moveToResurveyAction} onSubmitCapture={handleQueueSubmit}>
           <input name="request_id" type="hidden" value={requestId} />
           <QueueStayInput stayOnQueue={stayOnQueue} />
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
+            <button className="btn-primary" type="submit">ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -253,13 +262,13 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
   if (actionKey === 'PHOTO_APPROVE') {
     return (
       <ModalShell title="อนุมัติผ่านจากรูป" onClose={onClose}>
-        <form action={approveFixFromPhotoAction} className="space-y-3">
+        <form action={approveFixFromPhotoAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
           <input name="request_id" type="hidden" value={requestId} />
           <QueueStayInput stayOnQueue={stayOnQueue} />
           <input className="input" name="photo_reviewed_by" placeholder="ผู้ตรวจรูป" required type="text" />
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
+            <button className="btn-primary" type="submit">ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -269,13 +278,13 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
   if (actionKey === 'PHOTO_REJECT_TO_RESURVEY') {
     return (
       <ModalShell title="รูปยังไม่พอ ต้องตรวจซ้ำ" onClose={onClose}>
-        <form action={rejectFixPhotoAndRequireResurveyAction} className="space-y-3">
+        <form action={rejectFixPhotoAndRequireResurveyAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
           <input name="request_id" type="hidden" value={requestId} />
           <QueueStayInput stayOnQueue={stayOnQueue} />
           <input className="input" name="photo_reviewed_by" placeholder="ผู้ตรวจรูป" required type="text" />
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยัน</button>
+            <button className="btn-primary" type="submit">ยืนยัน</button>
           </div>
         </form>
       </ModalShell>
@@ -285,12 +294,12 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
   if (actionKey === 'MANAGER_APPROVE') {
     return (
       <ModalShell title="ผู้จัดการอนุมัติปิดงาน" onClose={onClose}>
-        <form action={approveManagerReviewAction}>
+        <form action={approveManagerReviewAction} onSubmitCapture={handleQueueSubmit}>
           <input name="request_id" type="hidden" value={requestId} />
           <QueueStayInput stayOnQueue={stayOnQueue} />
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" type="submit" onClick={handleSubmit}>ยืนยันอนุมัติ</button>
+            <button className="btn-primary" type="submit">ยืนยันอนุมัติ</button>
           </div>
         </form>
       </ModalShell>
