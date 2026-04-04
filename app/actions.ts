@@ -1330,8 +1330,7 @@ export async function confirmBillingSurveyorSignAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function updateRequestAssigneeAction(formData: FormData) {
@@ -1419,8 +1418,7 @@ export async function confirmPaymentReceivedAction(formData: FormData) {
     throw new Error(error.message);
   }
 
-  revalidateRequestPaths(requestId);
-  redirect(`/requests/${requestId}`);
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function approveManagerReviewAction(formData: FormData) {
