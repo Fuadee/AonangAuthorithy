@@ -15,7 +15,7 @@ import {
   startSurveyAction,
   updateDocumentReviewDecisionAction
 } from '@/app/actions';
-import { QueueWorkflowAction, WORKFLOW_ACTION_LABELS, WorkflowActionKey } from '@/lib/requests/workflow-action-config';
+import { QueueWorkflowAction, getWorkflowActionLabel, WorkflowActionKey } from '@/lib/requests/workflow-action-config';
 
 type RequestCardActionPanelProps = {
   requestId: string;
@@ -39,7 +39,7 @@ async function executeAction(actionKey: WorkflowActionKey, formData: FormData): 
   if (actionKey === 'COMPLETE_SURVEY') return completeSurveyAction(formData);
   if (actionKey === 'SURVEY_PASS') return markSurveyPassedAction(formData);
   if (actionKey === 'REPORT_CUSTOMER_FIX') return reportCustomerFixAction(formData);
-  if (actionKey === 'MOVE_TO_RESURVEY') return moveToResurveyAction(formData);
+  if (actionKey === 'SCHEDULE_RESURVEY') return moveToResurveyAction(formData);
   if (actionKey === 'PHOTO_APPROVE') return approveFixFromPhotoAction(formData);
   if (actionKey === 'PHOTO_REJECT_TO_RESURVEY') return rejectFixPhotoAndRequireResurveyAction(formData);
   if (actionKey === 'MANAGER_APPROVE') return approveManagerReviewAction(formData);
@@ -115,13 +115,13 @@ export function RequestCardActionPanel({ requestId, detailHref, actions }: Reque
             return (
               <button
                 key={action.key}
-                aria-label={`ดำเนินการ ${WORKFLOW_ACTION_LABELS[action.key]}`}
+                aria-label={`ดำเนินการ ${getWorkflowActionLabel(action.key)}`}
                 className={`${ACTION_BUTTON_CLASS[action.variant]} min-h-10 justify-center whitespace-normal break-words text-left`}
                 disabled={disabled}
                 type="button"
                 onClick={() => handleAction(action)}
               >
-                {isCurrentPending ? 'กำลังบันทึก...' : WORKFLOW_ACTION_LABELS[action.key]}
+                {isCurrentPending ? 'กำลังบันทึก...' : getWorkflowActionLabel(action.key)}
               </button>
             );
           })}

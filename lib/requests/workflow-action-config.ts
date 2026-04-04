@@ -14,13 +14,28 @@ export type WorkflowActionKey =
   | 'DOC_INCOMPLETE_WAIT_CUSTOMER'
   | 'CONFIRM_DOCS_RECEIVED'
   | 'START_SURVEY'
+  | 'SCHEDULE_SURVEY'
+  | 'EDIT_SURVEY_DATE'
   | 'COMPLETE_SURVEY'
   | 'SURVEY_PASS'
+  | 'SURVEY_FAIL'
   | 'REPORT_CUSTOMER_FIX'
+  | 'SCHEDULE_RESURVEY'
   | 'PHOTO_APPROVE'
   | 'PHOTO_REJECT_TO_RESURVEY'
-  | 'MOVE_TO_RESURVEY'
-  | 'MANAGER_APPROVE';
+  | 'ISSUE_BILL'
+  | 'SURVEYOR_SIGN'
+  | 'CONFIRM_PAYMENT'
+  | 'MANAGER_APPROVE'
+  | 'LAYOUT_DRAWING_DONE'
+  | 'QUEUE_KRABI_DISPATCH'
+  | 'DISPATCHED_TO_KRABI'
+  | 'KRABI_ACCEPT_AND_START'
+  | 'KRABI_RETURN_FOR_FIX'
+  | 'KRABI_FIX_COMPLETED'
+  | 'KRABI_ESTIMATION_COMPLETED'
+  | 'KRABI_BILL_ISSUED'
+  | 'COORDINATED_WITH_CONSTRUCTION';
 
 export type WorkflowActionVariant = 'primary' | 'secondary';
 
@@ -30,14 +45,33 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   DOC_INCOMPLETE_WAIT_CUSTOMER: 'เอกสารไม่ครบ (รอลูกค้านำมา)',
   CONFIRM_DOCS_RECEIVED: 'ได้รับเอกสารแล้ว',
   START_SURVEY: 'รับงาน / ไปสำรวจ',
+  SCHEDULE_SURVEY: 'กำหนดวันสำรวจ',
+  EDIT_SURVEY_DATE: 'แก้ไขวันนัด',
   COMPLETE_SURVEY: 'สำรวจเสร็จ',
   SURVEY_PASS: 'สำรวจผ่าน',
+  SURVEY_FAIL: 'สำรวจไม่ผ่าน / ให้ผู้ใช้ไฟแก้ไข',
   REPORT_CUSTOMER_FIX: 'ผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว',
+  SCHEDULE_RESURVEY: 'นัดตรวจซ้ำ',
   PHOTO_APPROVE: 'อนุมัติผ่านจากรูป',
   PHOTO_REJECT_TO_RESURVEY: 'รูปยังไม่พอ ต้องตรวจซ้ำ',
-  MOVE_TO_RESURVEY: 'นัดตรวจซ้ำ',
-  MANAGER_APPROVE: 'อนุมัติแล้ว'
+  ISSUE_BILL: 'ออกใบแจ้งหนี้',
+  SURVEYOR_SIGN: 'เซ็นใบแจ้งหนี้แล้ว',
+  CONFIRM_PAYMENT: 'ชำระเงินแล้ว',
+  MANAGER_APPROVE: 'อนุมัติแล้ว',
+  LAYOUT_DRAWING_DONE: 'วาดผังเสร็จ',
+  QUEUE_KRABI_DISPATCH: 'เข้าคิวส่งกระบี่',
+  DISPATCHED_TO_KRABI: 'ส่งเอกสารแล้ว',
+  KRABI_ACCEPT_AND_START: 'เอกสารครบ รับดำเนินการ',
+  KRABI_RETURN_FOR_FIX: 'เอกสารไม่พร้อม ส่งกลับแก้ไข',
+  KRABI_FIX_COMPLETED: 'แก้ไขเอกสารแล้ว / พร้อมส่งใหม่',
+  KRABI_ESTIMATION_COMPLETED: 'ประมาณการเสร็จ',
+  KRABI_BILL_ISSUED: 'ออกใบแจ้งหนี้แล้ว',
+  COORDINATED_WITH_CONSTRUCTION: 'ประสานงานแผนกก่อสร้างแล้ว'
 };
+
+export function getWorkflowActionLabel(actionKey: WorkflowActionKey): string {
+  return WORKFLOW_ACTION_LABELS[actionKey];
+}
 
 const STATUS_INSTRUCTION: Partial<Record<RequestStatus, string>> = {
   WAIT_DOCUMENT_REVIEW: 'กรุณาเลือกผลการตรวจเอกสาร',
@@ -116,7 +150,7 @@ export function getQueueWorkflowActions(
   if (status === 'WAIT_CUSTOMER_FIX' && request.request_type === 'METER') {
     return [
       { key: 'REPORT_CUSTOMER_FIX', variant: 'primary', requiresConfirmation: 'ยืนยันว่าลูกค้าแจ้งแก้ไขแล้ว?' },
-      { key: 'MOVE_TO_RESURVEY', variant: 'secondary', requiresConfirmation: 'นัดตรวจซ้ำทันทีใช่หรือไม่?' }
+      { key: 'SCHEDULE_RESURVEY', variant: 'secondary', requiresConfirmation: 'นัดตรวจซ้ำทันทีใช่หรือไม่?' }
     ];
   }
 
