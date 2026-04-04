@@ -17,13 +17,13 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
         <table className="min-w-full divide-y divide-slate-200 text-sm">
           <thead className="bg-slate-100 text-left text-slate-600">
             <tr>
-              <th className="px-4 py-3 font-medium">เลขคำร้อง</th>
-              <th className="px-4 py-3 font-medium">ลูกค้า</th>
-              <th className="px-4 py-3 font-medium">ประเภทคำร้อง</th>
-              <th className="px-4 py-3 font-medium">พื้นที่</th>
-              <th className="px-4 py-3 font-medium">สถานะ</th>
-              <th className="px-4 py-3 font-medium">อัปเดตล่าสุด</th>
-              <th className="px-4 py-3 font-medium">จัดการ</th>
+              <th className="whitespace-nowrap px-4 py-3 font-medium">เลขคำร้อง</th>
+              <th className="whitespace-nowrap px-4 py-3 font-medium">ลูกค้า</th>
+              <th className="whitespace-nowrap px-4 py-3 font-medium">ประเภทคำร้อง</th>
+              <th className="whitespace-nowrap px-4 py-3 font-medium">พื้นที่</th>
+              <th className="whitespace-nowrap px-4 py-3 font-medium">สถานะ</th>
+              <th className="whitespace-nowrap px-4 py-3 font-medium">อัปเดตล่าสุด</th>
+              <th className="whitespace-nowrap px-4 py-3 font-medium">จัดการ</th>
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white text-slate-700">

@@ -1,5 +1,5 @@
 import { ManagerRequestsPanel } from '@/components/manager-requests-panel';
-import { getStatusesByQueueGroup, ServiceRequest } from '@/lib/requests/types';
+import { getStatusesByQueueGroup, REQUEST_QUEUE_GROUP_META, ServiceRequest } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -25,7 +25,7 @@ export default async function ManagerPage() {
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold">คิวผู้จัดการ</h2>
+        <h2 className="text-2xl font-semibold">{REQUEST_QUEUE_GROUP_META.MANAGER.label}</h2>
         <p className="mt-1 text-sm text-slate-500">แสดงงานที่รอผู้จัดการตรวจเพื่ออนุมัติปิดงาน</p>
       </div>
 

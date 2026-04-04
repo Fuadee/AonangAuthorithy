@@ -1,6 +1,6 @@
 import { RequestTable } from '@/components/request-table';
 import Link from 'next/link';
-import { getRequestStatusLabel, getStatusesByQueueGroup, RequestStatus, ServiceRequest } from '@/lib/requests/types';
+import { getRequestStatusLabel, getStatusesByQueueGroup, REQUEST_QUEUE_GROUP_META, RequestStatus, ServiceRequest } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -38,24 +38,30 @@ export default async function KrabiQueuePage({ searchParams }: KrabiQueuePagePro
   return (
     <div className="space-y-6">
       <div>
-        <h2 className="text-2xl font-semibold">คิวกระบี่</h2>
-        <p className="mt-1 text-sm text-slate-500">แสดงงานย่อยในคิวกระบี่ พร้อมกรองตามสถานะย่อยได้</p>
+        <h2 className="text-2xl font-semibold">{REQUEST_QUEUE_GROUP_META.KRABI.label}</h2>
+        <p className="mt-1 text-sm text-slate-500">แสดงงานย่อยในงานดำเนินการ พร้อมกรองตามสถานะย่อยได้</p>
       </div>
 
       <section className="card p-4">
         <div className="flex flex-wrap gap-2">
-          <Link className={`rounded-full border px-3 py-1.5 text-sm ${selectedStatus === 'ALL' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 bg-white text-slate-600'}`} href="/krabi">
+          <Link
+            className={`inline-flex max-w-full items-center rounded-full border px-3 py-1.5 text-sm whitespace-nowrap ${
+              selectedStatus === 'ALL' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 bg-white text-slate-600'
+            }`}
+            href="/krabi"
+          >
             ทั้งหมด ({typedRequests.length})
           </Link>
           {statusCounts.map((item) => (
             <Link
               key={item.status}
-              className={`rounded-full border px-3 py-1.5 text-sm ${
+              className={`inline-flex max-w-full items-center rounded-full border px-3 py-1.5 text-sm whitespace-nowrap ${
                 selectedStatus === item.status ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 bg-white text-slate-600'
               }`}
               href={`/krabi?status=${item.status}`}
+              title={`${item.label} (${item.count})`}
             >
-              {item.label} ({item.count})
+              <span className="truncate">{item.label} ({item.count})</span>
             </Link>
           ))}
         </div>

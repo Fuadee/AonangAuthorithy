@@ -59,17 +59,17 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
   return (
     <div className="space-y-4">
       <section className="grid gap-4 md:grid-cols-3">
-        <article className="card p-4">
-          <p className="text-sm text-slate-500">รอออกใบแจ้งหนี้</p>
-          <p className="mt-2 text-2xl font-semibold text-purple-700">{summary.waitBilling}</p>
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รอออกใบแจ้งหนี้</p>
+          <p className="mt-2 text-3xl font-semibold text-purple-700">{summary.waitBilling}</p>
         </article>
-        <article className="card p-4">
-          <p className="text-sm text-slate-500">รอดำเนินการหลังแจ้งหนี้</p>
-          <p className="mt-2 text-2xl font-semibold text-emerald-700">{summary.waitActionConfirmation}</p>
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รอดำเนินการ</p>
+          <p className="mt-2 text-3xl font-semibold text-emerald-700">{summary.waitActionConfirmation}</p>
         </article>
-        <article className="card p-4">
-          <p className="text-sm text-slate-500">รวมงานการเงินทั้งหมด</p>
-          <p className="mt-2 text-2xl font-semibold text-brand-700">{summary.totalBillingQueue}</p>
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รวมทั้งหมด</p>
+          <p className="mt-2 text-3xl font-semibold text-brand-700">{summary.totalBillingQueue}</p>
         </article>
       </section>
 
@@ -88,8 +88,9 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                 }`}
                 type="button"
                 onClick={() => setActiveFilter(option.value)}
+                title={option.label}
               >
-                {option.label}
+                <span className="block max-w-full truncate whitespace-nowrap">{option.label}</span>
               </button>
             );
           })}
@@ -101,15 +102,15 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-100 text-left text-slate-600">
               <tr>
-                <th className="px-4 py-3 font-medium">เลขคำร้อง</th>
-                <th className="px-4 py-3 font-medium">ชื่อลูกค้า</th>
-                <th className="px-4 py-3 font-medium">ประเภทคำร้อง</th>
-                <th className="px-4 py-3 font-medium">พื้นที่</th>
-                <th className="px-4 py-3 font-medium">นักสำรวจ</th>
-                <th className="px-4 py-3 font-medium">จำนวนเงินใบแจ้งหนี้</th>
-                <th className="px-4 py-3 font-medium">วันนัดล่าสุด</th>
-                <th className="px-4 py-3 font-medium">สถานะ</th>
-                <th className="px-4 py-3 font-medium">จัดการ</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">เลขคำร้อง</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">ชื่อลูกค้า</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">ประเภทคำร้อง</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">พื้นที่</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">นักสำรวจ</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">จำนวนเงินใบแจ้งหนี้</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">วันนัดล่าสุด</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">สถานะ</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">จัดการ</th>
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
