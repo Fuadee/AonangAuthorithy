@@ -20,14 +20,88 @@ type DashboardRequestsPanelProps = {
   defaultQueue?: string | null;
 };
 
-const FILTER_OPTIONS: Array<{ value: RequestTypeFilter; label: string }> = [
+type FilterChipProps = {
+  label: string;
+  isActive: boolean;
+  onClick: () => void;
+  activeClassName?: string;
+};
+
+type FilterGroupOption<T extends string> = {
+  value: T;
+  label: string;
+  activeClassName?: string;
+};
+
+type FilterGroupProps<T extends string> = {
+  label: string;
+  options: FilterGroupOption<T>[];
+  activeValue: T;
+  onChange: (value: T) => void;
+};
+
+const FILTER_OPTIONS: Array<FilterGroupOption<RequestTypeFilter>> = [
   { value: 'ALL', label: 'ทั้งหมด' },
-  { value: 'METER', label: 'ขอมิเตอร์' },
-  { value: 'EXPANSION', label: 'ขอขยายเขต' }
+  { value: 'METER', label: 'ขอมีเตอร์' },
+  { value: 'EXPANSION', label: 'ขยายเขต' }
 ];
 
-const FILTER_BUTTON_BASE =
-  'inline-flex min-w-0 items-center rounded-full border border-slate-200 bg-white px-4 py-2 text-sm font-medium whitespace-nowrap transition';
+const STATUS_STYLES = {
+  survey: 'bg-blue-600',
+  finance: 'bg-amber-500',
+  manager: 'bg-indigo-600',
+  document: 'bg-slate-500',
+  operation: 'bg-purple-600',
+  done: 'bg-green-600'
+} as const;
+
+const QUEUE_STYLE_KEY: Record<RequestQueueGroup, keyof typeof STATUS_STYLES | null> = {
+  SURVEY: 'survey',
+  BILLING: 'finance',
+  MANAGER: 'manager',
+  DISPATCH: 'document',
+  KRABI: 'operation',
+  DONE: 'done',
+  OTHER: null
+};
+
+const FILTER_CHIP_BASE = 'rounded-full px-3 py-1.5 text-sm whitespace-nowrap transition-all';
+const FILTER_CHIP_INACTIVE = 'bg-slate-100 text-slate-600 hover:bg-slate-200';
+const FILTER_CHIP_ACTIVE = 'bg-[#1E3A8A] text-white';
+
+function FilterChip({ label, isActive, onClick, activeClassName }: FilterChipProps) {
+  return (
+    <button
+      className={`${FILTER_CHIP_BASE} ${isActive ? activeClassName ?? FILTER_CHIP_ACTIVE : FILTER_CHIP_INACTIVE}`}
+      type="button"
+      onClick={onClick}
+      title={label}
+    >
+      {label}
+    </button>
+  );
+}
+
+function FilterGroup<T extends string>({ label, options, activeValue, onChange }: FilterGroupProps<T>) {
+  return (
+    <div className="grid grid-cols-[72px_minmax(0,1fr)] items-center gap-3">
+      <p className="text-sm font-medium text-slate-600 whitespace-nowrap">{label}</p>
+      <div className="overflow-x-auto">
+        <div className="flex min-w-max items-center gap-2">
+          {options.map((option) => (
+            <FilterChip
+              key={option.value}
+              label={option.label}
+              isActive={activeValue === option.value}
+              activeClassName={option.activeClassName}
+              onClick={() => onChange(option.value)}
+            />
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
 
 export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequestsPanelProps) {
   const [activeFilter, setActiveFilter] = useState<RequestTypeFilter>('ALL');
@@ -66,70 +140,32 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
     [requests]
   );
 
+  const queueFilterOptions: Array<FilterGroupOption<QueueFilter>> = useMemo(
+    () => [
+      { value: 'ALL', label: 'ทั้งหมด' },
+      ...queueItems.map((item) => ({
+        value: item.queue,
+        label: item.label,
+        activeClassName: QUEUE_STYLE_KEY[item.queue] ? STATUS_STYLES[QUEUE_STYLE_KEY[item.queue]] : undefined
+      }))
+    ],
+    [queueItems]
+  );
+
   return (
     <>
       <DashboardSummary queueItems={queueItems} />
 
-      <section className="card space-y-4 p-5">
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="pr-2 text-sm font-medium text-[#64748B] whitespace-nowrap">ประเภทคำร้อง</p>
-          {FILTER_OPTIONS.map((option) => {
-            const isActive = activeFilter === option.value;
-
-            return (
-              <button
-                key={option.value}
-                className={`${FILTER_BUTTON_BASE} ${
-                  isActive
-                    ? 'border-[#1E3A8A] bg-[#1E3A8A] text-white hover:bg-[#1D4ED8]'
-                    : 'text-slate-700 hover:bg-slate-50'
-                }`}
-                type="button"
-                onClick={() => setActiveFilter(option.value)}
-                title={option.label}
-              >
-                <span className="max-w-full truncate">{option.label}</span>
-              </button>
-            );
-          })}
+      <section className="space-y-4">
+        <div className="rounded-xl border border-slate-200 bg-white p-4">
+          <div className="space-y-3">
+            <FilterGroup label="ประเภท:" options={FILTER_OPTIONS} activeValue={activeFilter} onChange={setActiveFilter} />
+            <FilterGroup label="สถานะ:" options={queueFilterOptions} activeValue={queueFilter} onChange={setQueueFilter} />
+          </div>
         </div>
 
-        <div className="flex flex-wrap items-center gap-2">
-          <p className="pr-2 text-sm font-medium text-[#64748B] whitespace-nowrap">ขั้นตอนหลัก</p>
-          <button
-            className={`${FILTER_BUTTON_BASE} ${
-              queueFilter === 'ALL'
-                ? 'border-[#1E3A8A] bg-[#1E3A8A] text-white hover:bg-[#1D4ED8]'
-                : 'text-slate-700 hover:bg-slate-50'
-            }`}
-            type="button"
-            onClick={() => setQueueFilter('ALL')}
-          >
-            ทั้งหมด
-          </button>
-          {queueItems.map((item) => {
-            const isActive = queueFilter === item.queue;
-
-            return (
-              <button
-                key={item.queue}
-                className={`${FILTER_BUTTON_BASE} ${
-                  isActive
-                    ? 'border-[#1E3A8A] bg-[#1E3A8A] text-white hover:bg-[#1D4ED8]'
-                    : 'text-slate-700 hover:bg-slate-50'
-                }`}
-                type="button"
-                onClick={() => setQueueFilter(item.queue)}
-                title={item.label}
-              >
-                <span className="max-w-full truncate">{item.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        <RequestTable requests={filteredRequests} />
       </section>
-
-      <RequestTable requests={filteredRequests} />
     </>
   );
 }
