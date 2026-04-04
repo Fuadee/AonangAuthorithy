@@ -92,7 +92,6 @@ export type QueueWorkflowAction = {
   key: WorkflowActionKey;
   variant: WorkflowActionVariant;
   requiresConfirmation?: string;
-  fallbackToDetail?: boolean;
 };
 
 export function getWorkflowActionsForRequest(
@@ -141,7 +140,7 @@ export function getWorkflowActionsForRequest(
     if (request.request_type === 'METER' && canMarkSurveyPassed({ status, request_type: request.request_type })) {
       return [
         { key: 'SURVEY_PASS', variant: 'primary', requiresConfirmation: 'ยืนยันผลสำรวจผ่าน?' },
-        { key: 'SURVEY_FAIL', variant: 'secondary', fallbackToDetail: true }
+        { key: 'SURVEY_FAIL', variant: 'secondary' }
       ];
     }
 
