@@ -1,6 +1,6 @@
 'use client';
 
-import { MouseEvent, ReactNode, useTransition, useState } from 'react';
+import { FormEvent, MouseEvent, ReactNode, useTransition, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { confirmBillingSurveyorSignAction, confirmPaymentReceivedAction, issueBillingAction } from '@/app/actions';
 import { getWorkflowActionLabel } from '@/lib/requests/workflow-action-config';
@@ -42,13 +42,20 @@ export function BillingWorkflowActionRenderer({
   compact = false
 }: BillingWorkflowActionRendererProps) {
   const [activeAction, setActiveAction] = useState<BillingAction | null>(null);
+  const [pendingAction, setPendingAction] = useState<BillingAction | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
   const [isPending, startTransition] = useTransition();
   const router = useRouter();
-  const closeModal = () => setActiveAction(null);
+  const closeModal = () => {
+    setActiveAction(null);
+    setPendingAction(null);
+    setActionError(null);
+  };
   const compactClass = compact ? 'min-h-9 px-2.5 py-1.5 text-sm' : '';
   const handleActionTriggerClick = (event: MouseEvent<HTMLButtonElement>, action: BillingAction) => {
     event.preventDefault();
     event.stopPropagation();
+    setActionError(null);
     setActiveAction(action);
   };
   const debugSubmit = (action: BillingAction, formData: FormData) => {
@@ -57,6 +64,36 @@ export function BillingWorkflowActionRenderer({
       requestId,
       stay_on_queue: formData.get('stay_on_queue'),
       return_to: formData.get('return_to')
+    });
+  };
+
+  const handleSubmit = (event: FormEvent<HTMLFormElement>, action: BillingAction) => {
+    event.preventDefault();
+    event.stopPropagation();
+
+    const formData = new FormData(event.currentTarget);
+    debugSubmit(action, formData);
+    setActionError(null);
+    setPendingAction(action);
+
+    const actionFn =
+      action === 'ISSUE_BILL'
+        ? issueBillingAction
+        : action === 'SURVEYOR_SIGN'
+          ? confirmBillingSurveyorSignAction
+          : confirmPaymentReceivedAction;
+
+    startTransition(async () => {
+      try {
+        await actionFn(formData);
+        closeModal();
+        router.refresh();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'เกิดข้อผิดพลาด กรุณาลองใหม่อีกครั้ง';
+        setActionError(message);
+      } finally {
+        setPendingAction(null);
+      }
     });
   };
 
@@ -102,10 +139,9 @@ export function BillingWorkflowActionRenderer({
       {activeAction === 'ISSUE_BILL' ? (
         <Modal title="ออกใบแจ้งหนี้" onClose={closeModal}>
           <form
-            action={issueBillingAction}
             className="space-y-3"
             onClick={(event) => event.stopPropagation()}
-            onSubmit={(event) => debugSubmit('ISSUE_BILL', new FormData(event.currentTarget))}
+            onSubmit={(event) => handleSubmit(event, 'ISSUE_BILL')}
           >
             <input name="request_id" type="hidden" value={requestId} />
             <input name="stay_on_queue" type="hidden" value="1" />
@@ -113,9 +149,10 @@ export function BillingWorkflowActionRenderer({
             <input className="input" min="0.01" name="billing_amount" placeholder="จำนวนเงิน" required step="0.01" type="number" />
             <input className="input" name="billed_by" placeholder="ออกโดย" required type="text" />
             <textarea className="input min-h-24" name="billing_note" placeholder="หมายเหตุ (ถ้ามี)" />
+            {actionError ? <p className="text-sm text-rose-600">{actionError}</p> : null}
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" disabled={isPending} type="submit">ยืนยันออกใบแจ้งหนี้</button>
+              <button className="btn-primary" disabled={isPending || pendingAction === 'ISSUE_BILL'} type="submit">ยืนยันออกใบแจ้งหนี้</button>
             </div>
           </form>
         </Modal>
@@ -124,18 +161,18 @@ export function BillingWorkflowActionRenderer({
       {activeAction === 'SURVEYOR_SIGN' ? (
         <Modal title="เซ็นรับรองใบแจ้งหนี้" onClose={closeModal}>
           <form
-            action={confirmBillingSurveyorSignAction}
             className="space-y-3"
             onClick={(event) => event.stopPropagation()}
-            onSubmit={(event) => debugSubmit('SURVEYOR_SIGN', new FormData(event.currentTarget))}
+            onSubmit={(event) => handleSubmit(event, 'SURVEYOR_SIGN')}
           >
             <input name="request_id" type="hidden" value={requestId} />
             <input name="stay_on_queue" type="hidden" value="1" />
             <input name="return_to" type="hidden" value="/billing" />
             <input className="input" name="invoice_signed_by" placeholder="ผู้เซ็นรับรอง" required type="text" />
+            {actionError ? <p className="text-sm text-rose-600">{actionError}</p> : null}
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" disabled={isPending} type="submit">ยืนยัน</button>
+              <button className="btn-primary" disabled={isPending || pendingAction === 'SURVEYOR_SIGN'} type="submit">ยืนยัน</button>
             </div>
           </form>
         </Modal>
@@ -144,18 +181,18 @@ export function BillingWorkflowActionRenderer({
       {activeAction === 'CONFIRM_PAYMENT' ? (
         <Modal title="ยืนยันรับชำระเงิน" onClose={closeModal}>
           <form
-            action={confirmPaymentReceivedAction}
             className="space-y-3"
             onClick={(event) => event.stopPropagation()}
-            onSubmit={(event) => debugSubmit('CONFIRM_PAYMENT', new FormData(event.currentTarget))}
+            onSubmit={(event) => handleSubmit(event, 'CONFIRM_PAYMENT')}
           >
             <input name="request_id" type="hidden" value={requestId} />
             <input name="stay_on_queue" type="hidden" value="1" />
             <input name="return_to" type="hidden" value="/billing" />
             <input className="input" name="paid_by" placeholder="รับชำระโดย" required type="text" />
+            {actionError ? <p className="text-sm text-rose-600">{actionError}</p> : null}
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" disabled={isPending} type="submit">ยืนยัน</button>
+              <button className="btn-primary" disabled={isPending || pendingAction === 'CONFIRM_PAYMENT'} type="submit">ยืนยัน</button>
             </div>
           </form>
         </Modal>
