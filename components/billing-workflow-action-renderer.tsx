@@ -9,6 +9,7 @@ import { RequestStatus } from '@/lib/requests/types';
 type BillingWorkflowActionRendererProps = {
   requestId: string;
   currentStatus: RequestStatus;
+  billingAmount: number | null;
   isInvoiceSigned: boolean;
   isPaid: boolean;
   compact?: boolean;
@@ -37,6 +38,7 @@ function Modal({ children, title, onClose }: { children: ReactNode; title: strin
 export function BillingWorkflowActionRenderer({
   requestId,
   currentStatus,
+  billingAmount,
   isInvoiceSigned,
   isPaid,
   compact = false
@@ -176,13 +178,31 @@ export function BillingWorkflowActionRenderer({
             <input name="request_id" type="hidden" value={requestId} />
             <input name="stay_on_queue" type="hidden" value="1" />
             <input name="return_to" type="hidden" value="/billing" />
-            <input className="input" min="0.01" name="billing_amount" placeholder="จำนวนเงิน" required step="0.01" type="number" />
+            <div className="rounded-lg border border-slate-200 bg-slate-50 px-3 py-2">
+              <p className="text-xs text-slate-500">จำนวนเงินจากระบบ</p>
+              <p className="text-sm font-semibold text-slate-900">
+                {billingAmount === null
+                  ? '-'
+                  : new Intl.NumberFormat('th-TH', {
+                      style: 'currency',
+                      currency: 'THB',
+                      maximumFractionDigits: 2
+                    }).format(billingAmount)}
+              </p>
+            </div>
             <input className="input" name="billed_by" placeholder="ออกโดย" required type="text" />
             <textarea className="input min-h-24" name="billing_note" placeholder="หมายเหตุ (ถ้ามี)" />
+            {billingAmount === null ? <p className="text-sm text-amber-600">ยังไม่มีจำนวนเงินจากระบบ</p> : null}
             {actionError ? <p className="text-sm text-rose-600">{actionError}</p> : null}
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
-              <button className="btn-primary" disabled={isSubmitting || isPending || pendingAction === 'ISSUE_BILL'} type="submit">ยืนยันออกใบแจ้งหนี้</button>
+              <button
+                className="btn-primary"
+                disabled={billingAmount === null || isSubmitting || isPending || pendingAction === 'ISSUE_BILL'}
+                type="submit"
+              >
+                ยืนยันออกใบแจ้งหนี้
+              </button>
             </div>
           </form>
         </Modal>

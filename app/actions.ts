@@ -63,15 +63,6 @@ function isValidRequestStatus(status: string): status is RequestStatus {
   return REQUEST_STATUSES.includes(status as RequestStatus);
 }
 
-function parseBillingAmount(value: string): number {
-  const amount = Number(value);
-  if (!Number.isFinite(amount) || amount <= 0) {
-    throw new Error('จำนวนเงินใบแจ้งหนี้ต้องมากกว่า 0');
-  }
-
-  return Number(amount.toFixed(2));
-}
-
 function assertMeterLoopAllowed(requestType: RequestType): void {
   if (requestType !== 'METER') {
     throw new Error('รองรับ workflow ออกใบแจ้งหนี้เฉพาะคำร้องขอมิเตอร์เท่านั้น');
@@ -1242,7 +1233,6 @@ export async function confirmOnSiteDocumentsCompleteAction(formData: FormData) {
 export async function issueBillingAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
   const billedBy = requiredField(formData, 'billed_by');
-  const billingAmount = parseBillingAmount(requiredField(formData, 'billing_amount'));
   const billingNote = optionalField(formData, 'billing_note');
 
   const supabase = createServerSupabaseClient();
@@ -1256,7 +1246,7 @@ export async function issueBillingAction(formData: FormData) {
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status,request_type')
+    .select('id,status,request_type,billing_amount')
     .eq('id', requestId)
     .single();
 
@@ -1274,11 +1264,14 @@ export async function issueBillingAction(formData: FormData) {
     throw new Error('ออกใบแจ้งหนี้ได้เฉพาะงานที่อยู่สถานะรอออกใบแจ้งหนี้');
   }
 
+  if (typeof request.billing_amount !== 'number' || !Number.isFinite(request.billing_amount) || request.billing_amount <= 0) {
+    throw new Error('ไม่สามารถออกใบแจ้งหนี้ได้ เพราะยังไม่พบจำนวนเงินจากระบบ');
+  }
+
   const { error } = await supabase
     .from('service_requests')
     .update({
       status: 'WAIT_ACTION_CONFIRMATION',
-      billing_amount: billingAmount,
       billing_note: billingNote,
       billed_at: nowIso,
       billed_by: billedBy,

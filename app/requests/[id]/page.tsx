@@ -871,6 +871,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
               fixVerificationMode={request.fix_verification_mode}
               scheduledSurveyDate={request.scheduled_survey_date}
               surveyDateCurrent={request.survey_date_current}
+              billingAmount={request.billing_amount}
               isInvoiceSigned={invoiceSigned}
               isPaid={paid}
             />
