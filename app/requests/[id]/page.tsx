@@ -1,8 +1,6 @@
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { MeterWorkflowActions } from '@/components/meter-workflow-actions';
 import { LocationPreview } from '@/components/location-preview';
-import { SurveyorActionWorkflow } from '@/components/surveyor-action-workflow';
 import {
   canMoveToBilling,
   canMoveToManagerReview,
@@ -425,49 +423,6 @@ function getTimeline(request: {
   return items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
 }
 
-function getActionTitle(status: RequestStatus, requestType: RequestType): string {
-  if (
-    requestType === 'METER' &&
-    [
-      'WAIT_DOCUMENT_REVIEW',
-      'WAIT_DOCUMENT_FROM_CUSTOMER',
-      'READY_FOR_SURVEY',
-      'READY_FOR_RESURVEY',
-      'IN_SURVEY',
-      'WAIT_CUSTOMER_FIX',
-      'WAIT_FIX_REVIEW',
-      'WAIT_BILLING',
-      'WAIT_ACTION_CONFIRMATION',
-      'WAIT_MANAGER_REVIEW'
-    ].includes(status)
-  ) {
-    return 'การดำเนินการงานขอมิเตอร์หลังสำรวจ';
-  }
-
-  switch (status) {
-    case 'PENDING_SURVEY_REVIEW':
-      return 'ขั้นตอนสำหรับนักสำรวจ';
-    case 'SURVEY_ACCEPTED':
-      return 'งานที่ทำได้ตอนนี้';
-    case 'SURVEY_DOCS_INCOMPLETE':
-    case 'WAIT_DOCUMENT_FROM_CUSTOMER':
-    case 'SURVEY_COMPLETED':
-    case 'WAIT_LAYOUT_DRAWING':
-    case 'WAITING_TO_SEND_TO_KRABI':
-    case 'SENT_TO_KRABI':
-    case 'WAIT_KRABI_DOCUMENT_CHECK':
-    case 'KRABI_NEEDS_DOCUMENT_FIX':
-    case 'KRABI_IN_PROGRESS':
-    case 'KRABI_ESTIMATION_COMPLETED':
-    case 'BILL_ISSUED':
-    case 'COORDINATED_WITH_CONSTRUCTION':
-    case 'WAIT_DOCUMENT_REVIEW':
-      return 'สถานะงาน';
-    default:
-      return 'การดำเนินการ';
-  }
-}
-
 export default async function RequestDetailPage({ params }: RequestDetailPageProps) {
   const { id } = await params;
   const supabase = createServerSupabaseClient();
@@ -489,33 +444,8 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   }
 
   const requestStatus = request.status as RequestStatus;
-  const normalizedRequestStatus = normalizeSurveyWorkflowStatus(requestStatus);
   const requestType = request.request_type as RequestType;
   const currentQueue = getRequestQueueGroup(requestStatus);
-  const isSurveyorFlowStatus = currentQueue === 'SURVEY';
-  const isUnifiedWorkflowStatus =
-    [
-      'SURVEY_COMPLETED',
-      'WAIT_DOCUMENT_REVIEW',
-      'WAIT_DOCUMENT_FROM_CUSTOMER',
-      'READY_FOR_SURVEY',
-      'READY_FOR_RESURVEY',
-      'IN_SURVEY',
-      'WAIT_CUSTOMER_FIX',
-      'WAIT_FIX_REVIEW',
-      'WAIT_BILLING',
-      'WAIT_ACTION_CONFIRMATION',
-      'WAIT_MANAGER_REVIEW',
-      'WAIT_LAYOUT_DRAWING',
-      'WAITING_TO_SEND_TO_KRABI',
-      'SENT_TO_KRABI',
-      'WAIT_KRABI_DOCUMENT_CHECK',
-      'KRABI_NEEDS_DOCUMENT_FIX',
-      'KRABI_IN_PROGRESS',
-      'KRABI_ESTIMATION_COMPLETED',
-      'BILL_ISSUED',
-      'COORDINATED_WITH_CONSTRUCTION'
-    ].includes(normalizedRequestStatus);
   const documentSummary = getDocumentStatusSummary(request);
   const postSurveyFixSummary = getPostSurveyFixSummary(request);
   const invoiceSigned = isInvoiceSigned(request);
@@ -857,32 +787,6 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           <p className="mt-2 text-sm text-slate-500">ยังไม่มีการปักหมุด</p>
         )}
       </section>
-
-      <article className="card p-6">
-        <h3 className="text-lg font-semibold">{getActionTitle(requestStatus, requestType)}</h3>
-        <p className="mt-1 text-sm text-slate-500">ใช้ปุ่มตามหน้าที่ เพื่อกันการเปลี่ยนสถานะข้ามขั้นตอน</p>
-        <div className="mt-4">
-          {isUnifiedWorkflowStatus ? (
-            <MeterWorkflowActions
-              requestId={request.id}
-              requestType={requestType}
-              currentStatus={normalizedRequestStatus}
-              fixVerificationMode={request.fix_verification_mode}
-              scheduledSurveyDate={request.scheduled_survey_date}
-              surveyDateCurrent={request.survey_date_current}
-              isInvoiceSigned={invoiceSigned}
-              isPaid={paid}
-              isDocumentReady={request.is_document_ready}
-            />
-          ) : null}
-          {!isUnifiedWorkflowStatus && isSurveyorFlowStatus ? (
-            <SurveyorActionWorkflow requestId={request.id} currentStatus={requestStatus} />
-          ) : null}
-          {!isUnifiedWorkflowStatus && !isSurveyorFlowStatus ? (
-            <p className="rounded-lg bg-slate-50 p-3 text-sm text-slate-600">สถานะนี้ยังไม่มี action เพิ่มเติม</p>
-          ) : null}
-        </div>
-      </article>
 
       <section className="card p-6">
         <h3 className="text-lg font-semibold">ประวัติการดำเนินงาน</h3>
