@@ -1,12 +1,19 @@
 import { RequestTable } from '@/components/request-table';
-import { getStatusesByQueueGroup, ServiceRequest } from '@/lib/requests/types';
+import Link from 'next/link';
+import { getRequestStatusLabel, getStatusesByQueueGroup, RequestStatus, ServiceRequest } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-export default async function KrabiQueuePage() {
+type KrabiQueuePageProps = {
+  searchParams?: Promise<{ status?: string }>;
+};
+
+export default async function KrabiQueuePage({ searchParams }: KrabiQueuePageProps) {
+  const params = searchParams ? await searchParams : undefined;
   const supabase = createServerSupabaseClient();
   const krabiQueueStatuses = getStatusesByQueueGroup('KRABI');
+  const selectedStatus = params?.status && krabiQueueStatuses.includes(params.status as RequestStatus) ? (params.status as RequestStatus) : 'ALL';
 
   const { data: requests, error } = await supabase
     .from('service_requests')
@@ -21,15 +28,40 @@ export default async function KrabiQueuePage() {
   }
 
   const typedRequests = (requests ?? []) as ServiceRequest[];
+  const filteredRequests = selectedStatus === 'ALL' ? typedRequests : typedRequests.filter((request) => request.status === selectedStatus);
+  const statusCounts = krabiQueueStatuses.map((status) => ({
+    status,
+    label: getRequestStatusLabel(status),
+    count: typedRequests.filter((request) => request.status === status).length
+  }));
 
   return (
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold">คิวกระบี่</h2>
-        <p className="mt-1 text-sm text-slate-500">แสดงงานที่ส่งไปกระบี่แล้ว งานที่กำลังดำเนินการ งานประมาณการเสร็จ และงานออกใบแจ้งหนี้แล้ว</p>
+        <p className="mt-1 text-sm text-slate-500">แสดงงานย่อยในคิวกระบี่ พร้อมกรองตามสถานะย่อยได้</p>
       </div>
 
-      <RequestTable requests={typedRequests} />
+      <section className="card p-4">
+        <div className="flex flex-wrap gap-2">
+          <Link className={`rounded-full border px-3 py-1.5 text-sm ${selectedStatus === 'ALL' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 bg-white text-slate-600'}`} href="/krabi">
+            ทั้งหมด ({typedRequests.length})
+          </Link>
+          {statusCounts.map((item) => (
+            <Link
+              key={item.status}
+              className={`rounded-full border px-3 py-1.5 text-sm ${
+                selectedStatus === item.status ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 bg-white text-slate-600'
+              }`}
+              href={`/krabi?status=${item.status}`}
+            >
+              {item.label} ({item.count})
+            </Link>
+          ))}
+        </div>
+      </section>
+
+      <RequestTable requests={filteredRequests} />
     </div>
   );
 }

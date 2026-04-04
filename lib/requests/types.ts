@@ -88,8 +88,65 @@ export const REQUEST_QUEUE_GROUP_LABELS: Record<RequestQueueGroup, string> = {
   KRABI: 'คิวกระบี่',
   BILLING: 'คิวการเงิน',
   MANAGER: 'คิวผู้จัดการ',
-  DONE: 'เสร็จสิ้น',
+  DONE: 'งานเสร็จแล้ว',
   OTHER: 'อื่น ๆ'
+};
+
+export const DASHBOARD_QUEUE_GROUPS: RequestQueueGroup[] = ['SURVEY', 'BILLING', 'MANAGER', 'DISPATCH', 'KRABI', 'DONE'];
+
+export const REQUEST_QUEUE_GROUP_META: Record<
+  RequestQueueGroup,
+  { label: string; href: string; order: number; toneClass: string; showOnDashboard: boolean }
+> = {
+  SURVEY: {
+    label: REQUEST_QUEUE_GROUP_LABELS.SURVEY,
+    href: '/surveyor',
+    order: 1,
+    toneClass: 'text-sky-700',
+    showOnDashboard: true
+  },
+  BILLING: {
+    label: REQUEST_QUEUE_GROUP_LABELS.BILLING,
+    href: '/billing',
+    order: 2,
+    toneClass: 'text-purple-700',
+    showOnDashboard: true
+  },
+  MANAGER: {
+    label: REQUEST_QUEUE_GROUP_LABELS.MANAGER,
+    href: '/manager',
+    order: 3,
+    toneClass: 'text-indigo-700',
+    showOnDashboard: true
+  },
+  DISPATCH: {
+    label: REQUEST_QUEUE_GROUP_LABELS.DISPATCH,
+    href: '/document',
+    order: 4,
+    toneClass: 'text-amber-700',
+    showOnDashboard: true
+  },
+  KRABI: {
+    label: REQUEST_QUEUE_GROUP_LABELS.KRABI,
+    href: '/krabi',
+    order: 5,
+    toneClass: 'text-violet-700',
+    showOnDashboard: true
+  },
+  DONE: {
+    label: REQUEST_QUEUE_GROUP_LABELS.DONE,
+    href: '/dashboard?queue=DONE',
+    order: 6,
+    toneClass: 'text-emerald-700',
+    showOnDashboard: true
+  },
+  OTHER: {
+    label: REQUEST_QUEUE_GROUP_LABELS.OTHER,
+    href: '/dashboard',
+    order: 7,
+    toneClass: 'text-slate-700',
+    showOnDashboard: false
+  }
 };
 
 export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup> = {
@@ -99,12 +156,12 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   SURVEY_DOCS_INCOMPLETE: 'SURVEY',
   SURVEY_RESCHEDULE_REQUESTED: 'SURVEY',
   SURVEY_COMPLETED: 'SURVEY',
-  WAIT_LAYOUT_DRAWING: 'SURVEY',
+  WAIT_LAYOUT_DRAWING: 'KRABI',
   READY_TO_SEND_KRABI: 'DISPATCH',
   QUEUED_FOR_KRABI_DISPATCH: 'DISPATCH',
-  SENT_TO_KRABI: 'KRABI',
-  WAIT_KRABI_DOCUMENT_CHECK: 'KRABI',
-  KRABI_NEEDS_DOCUMENT_FIX: 'DISPATCH',
+  SENT_TO_KRABI: 'DISPATCH',
+  WAIT_KRABI_DOCUMENT_CHECK: 'DISPATCH',
+  KRABI_NEEDS_DOCUMENT_FIX: 'KRABI',
   KRABI_IN_PROGRESS: 'KRABI',
   KRABI_ESTIMATION_COMPLETED: 'KRABI',
   BILL_ISSUED: 'KRABI',
@@ -128,6 +185,10 @@ export function getRequestQueueGroup(status: RequestStatus): RequestQueueGroup {
 
 export function getRequestQueueGroupLabel(queue: RequestQueueGroup): string {
   return REQUEST_QUEUE_GROUP_LABELS[queue];
+}
+
+export function getDashboardQueueGroups(): RequestQueueGroup[] {
+  return DASHBOARD_QUEUE_GROUPS;
 }
 
 export function getStatusesByQueueGroup(queue: RequestQueueGroup): RequestStatus[] {

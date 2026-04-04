@@ -5,7 +5,13 @@ import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
 
-export default async function DashboardPage() {
+type DashboardPageProps = {
+  searchParams?: Promise<{ queue?: string }>;
+};
+
+export default async function DashboardPage({ searchParams }: DashboardPageProps) {
+  const params = searchParams ? await searchParams : undefined;
+  const defaultQueue = params?.queue ?? null;
   const supabase = createServerSupabaseClient();
 
   const { data: requests, error } = await supabase
@@ -38,7 +44,7 @@ export default async function DashboardPage() {
         </div>
       </div>
 
-      <DashboardRequestsPanel requests={typedRequests} />
+      <DashboardRequestsPanel requests={typedRequests} defaultQueue={defaultQueue} />
     </div>
   );
 }
