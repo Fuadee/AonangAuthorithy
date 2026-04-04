@@ -720,6 +720,9 @@ export async function markSentToKrabiAction(formData: FormData) {
       dispatched_to_krabi_at: nowIso,
       dispatched_to_krabi_by: dispatcherName,
       krabi_received_at: nowIso,
+      reject_reason: null,
+      rejected_by: null,
+      rejected_at: null,
       updated_at: nowIso
     })
     .eq('id', requestId);
@@ -748,7 +751,14 @@ export async function markKrabiInProgressAction(formData: FormData) {
 
   const { error } = await supabase
     .from('service_requests')
-    .update({ status: 'KRABI_IN_PROGRESS', krabi_in_progress_at: nowIso, updated_at: nowIso })
+    .update({
+      status: 'KRABI_IN_PROGRESS',
+      krabi_in_progress_at: nowIso,
+      reject_reason: null,
+      rejected_by: null,
+      rejected_at: null,
+      updated_at: nowIso
+    })
     .eq('id', requestId);
   if (error) {
     throw new Error(error.message);
@@ -758,7 +768,7 @@ export async function markKrabiInProgressAction(formData: FormData) {
 
 export async function markKrabiNeedsDocumentFixAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
-  const reason = requiredField(formData, 'incomplete_docs_note');
+  const reason = requiredField(formData, 'reject_reason');
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
@@ -775,7 +785,14 @@ export async function markKrabiNeedsDocumentFixAction(formData: FormData) {
 
   const { error } = await supabase
     .from('service_requests')
-    .update({ status: 'KRABI_NEEDS_DOCUMENT_FIX', incomplete_docs_note: reason, updated_at: nowIso })
+    .update({
+      status: 'KRABI_NEEDS_DOCUMENT_FIX',
+      incomplete_docs_note: reason,
+      reject_reason: reason,
+      rejected_by: 'กระบี่',
+      rejected_at: nowIso,
+      updated_at: nowIso
+    })
     .eq('id', requestId);
   if (error) {
     throw new Error(error.message);
@@ -809,6 +826,9 @@ export async function markKrabiDocumentFixCompletedAction(formData: FormData) {
       dispatched_to_krabi_at: null,
       dispatched_to_krabi_by: null,
       krabi_received_at: null,
+      reject_reason: null,
+      rejected_by: null,
+      rejected_at: null,
       updated_at: nowIso
     })
     .eq('id', requestId);

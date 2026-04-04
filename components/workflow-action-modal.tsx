@@ -421,8 +421,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div>
-            <label className="text-sm font-medium text-slate-700" htmlFor="krabi_incomplete_docs_note">เหตุผลที่ส่งกลับ</label>
-            <textarea className="input min-h-24" disabled={isPending} id="krabi_incomplete_docs_note" name="incomplete_docs_note" required />
+            <label className="text-sm font-medium text-slate-700" htmlFor="krabi_reject_reason">เหตุผลที่ตีกลับ</label>
+            <textarea className="input min-h-24" disabled={isPending} id="krabi_reject_reason" name="reject_reason" required />
           </div>
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>

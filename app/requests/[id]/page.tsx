@@ -236,6 +236,9 @@ function getTimeline(request: {
   dispatched_to_krabi_by: string | null;
   krabi_in_progress_at: string | null;
   krabi_completed_at: string | null;
+  reject_reason: string | null;
+  rejected_by: string | null;
+  rejected_at: string | null;
 }): TimelineItem[] {
   const items: TimelineItem[] = [
     {
@@ -321,6 +324,15 @@ function getTimeline(request: {
       title: 'ส่งเอกสารไปกระบี่แล้ว',
       description: request.dispatched_to_krabi_by ? `ผู้ส่ง: ${request.dispatched_to_krabi_by}` : undefined,
       at: request.dispatched_to_krabi_at
+    });
+  }
+
+  if (request.rejected_at) {
+    items.push({
+      key: 'krabi-returned-for-fix',
+      title: 'กระบี่ตีกลับให้แก้ไขเอกสาร',
+      description: request.reject_reason ? `เหตุผล: ${request.reject_reason}` : undefined,
+      at: request.rejected_at
     });
   }
 
@@ -463,7 +475,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,latitude,longitude,location_note,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,latitude,longitude,location_note,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -558,7 +570,10 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     dispatched_to_krabi_at: request.dispatched_to_krabi_at,
     dispatched_to_krabi_by: request.dispatched_to_krabi_by,
     krabi_in_progress_at: request.krabi_in_progress_at,
-    krabi_completed_at: request.krabi_completed_at
+    krabi_completed_at: request.krabi_completed_at,
+    reject_reason: request.reject_reason,
+    rejected_by: request.rejected_by,
+    rejected_at: request.rejected_at
   });
   const krabiDispatchWarning = getKrabiDispatchWarning(request);
 
@@ -594,6 +609,22 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
             <dd className="mt-1 font-medium">{REQUEST_TYPE_LABELS[requestType]}</dd>
           </div>
         </dl>
+        {requestStatus === 'KRABI_NEEDS_DOCUMENT_FIX' ? (
+          <div className="mt-4 rounded-lg border border-rose-200 bg-rose-50 p-4">
+            <p className="text-sm font-semibold text-rose-800">เหตุผลที่ตีกลับ</p>
+            <p className="mt-2 whitespace-pre-wrap text-sm text-rose-900">{request.reject_reason ?? '-'}</p>
+            <dl className="mt-3 grid gap-3 sm:grid-cols-2">
+              <div>
+                <dt className="text-xs text-rose-700">ผู้ตีกลับ</dt>
+                <dd className="mt-1 text-sm font-medium text-rose-900">{request.rejected_by ?? '-'}</dd>
+              </div>
+              <div>
+                <dt className="text-xs text-rose-700">เวลาที่ตีกลับ</dt>
+                <dd className="mt-1 text-sm font-medium text-rose-900">{formatDateTime(request.rejected_at)}</dd>
+              </div>
+            </dl>
+          </div>
+        ) : null}
       </section>
 
       <section className="card p-6">
