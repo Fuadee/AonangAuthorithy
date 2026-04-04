@@ -17,7 +17,7 @@ type DocumentSummaryCardsProps = {
 
 export function DocumentSummaryCards({ items }: DocumentSummaryCardsProps) {
   return (
-    <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+    <section className="grid grid-cols-1 gap-3 sm:grid-cols-2 lg:grid-cols-4">
       {items.map((item) => {
         const toneClass =
           item.emphasis === 'warning'
@@ -31,12 +31,12 @@ export function DocumentSummaryCards({ items }: DocumentSummaryCardsProps) {
         return (
           <Link
             key={item.key}
-            className={`rounded-xl border p-4 shadow-sm transition hover:shadow ${toneClass}`}
+            className={`rounded-xl border px-4 py-3 shadow-sm transition hover:shadow ${toneClass}`}
             href={item.href}
             title={item.statusHint}
           >
-            <p className="text-xs font-medium text-slate-500">{item.label}</p>
-            <p className="mt-2 text-3xl font-semibold text-slate-900">{item.count}</p>
+            <p className="truncate text-xs font-medium text-slate-500">{item.label}</p>
+            <p className="mt-1 text-2xl font-semibold text-slate-900">{item.count}</p>
           </Link>
         );
       })}
