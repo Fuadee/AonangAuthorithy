@@ -28,6 +28,8 @@ type WorkflowFilter =
   | 'WAIT_LAYOUT_DRAWING_ONLY'
   | 'READY_TO_SEND_KRABI_ONLY'
   | 'QUEUED_FOR_KRABI_DISPATCH_ONLY'
+  | 'WAIT_KRABI_DOCUMENT_CHECK_ONLY'
+  | 'KRABI_NEEDS_DOCUMENT_FIX_ONLY'
   | 'KRABI_IN_PROGRESS_ONLY'
   | 'KRABI_ESTIMATION_COMPLETED_ONLY'
   | 'BILL_ISSUED_ONLY'
@@ -58,7 +60,9 @@ const WORKFLOW_FILTER_OPTIONS: Array<{ value: WorkflowFilter; label: string }> =
   { value: 'WAIT_LAYOUT_DRAWING_ONLY', label: 'รอวาดผัง (ขยายเขต)' },
   { value: 'READY_TO_SEND_KRABI_ONLY', label: 'เตรียมส่งเอกสารให้กระบี่ (ขยายเขต)' },
   { value: 'QUEUED_FOR_KRABI_DISPATCH_ONLY', label: 'เข้าคิวส่งกระบี่' },
-  { value: 'KRABI_IN_PROGRESS_ONLY', label: 'กระบี่กำลังดำเนินการ' },
+  { value: 'WAIT_KRABI_DOCUMENT_CHECK_ONLY', label: 'รอกระบี่ตรวจรับเอกสาร' },
+  { value: 'KRABI_NEEDS_DOCUMENT_FIX_ONLY', label: 'กระบี่ตีกลับให้แก้ไขเอกสาร' },
+  { value: 'KRABI_IN_PROGRESS_ONLY', label: 'กระบี่กำลังประมาณการ' },
   { value: 'KRABI_ESTIMATION_COMPLETED_ONLY', label: 'กระบี่ประมาณการเสร็จ' },
   { value: 'BILL_ISSUED_ONLY', label: 'ออกใบแจ้งหนี้แล้ว (ขยายเขต)' },
   { value: 'WAIT_BILLING_ONLY', label: 'รอออกใบแจ้งหนี้' },
@@ -116,7 +120,13 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
       result = result.filter((request) => request.status === 'QUEUED_FOR_KRABI_DISPATCH');
     }
     if (workflowFilter === 'KRABI_IN_PROGRESS_ONLY') {
-      result = result.filter((request) => ['SENT_TO_KRABI', 'KRABI_IN_PROGRESS'].includes(request.status));
+      result = result.filter((request) => request.status === 'KRABI_IN_PROGRESS');
+    }
+    if (workflowFilter === 'WAIT_KRABI_DOCUMENT_CHECK_ONLY') {
+      result = result.filter((request) => ['SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK'].includes(request.status));
+    }
+    if (workflowFilter === 'KRABI_NEEDS_DOCUMENT_FIX_ONLY') {
+      result = result.filter((request) => request.status === 'KRABI_NEEDS_DOCUMENT_FIX');
     }
     if (workflowFilter === 'KRABI_ESTIMATION_COMPLETED_ONLY') {
       result = result.filter((request) => request.status === 'KRABI_ESTIMATION_COMPLETED');
@@ -195,7 +205,15 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
     [requests]
   );
   const krabiInProgressCount = useMemo(
-    () => requests.filter((request) => ['SENT_TO_KRABI', 'KRABI_IN_PROGRESS'].includes(request.status)).length,
+    () => requests.filter((request) => request.status === 'KRABI_IN_PROGRESS').length,
+    [requests]
+  );
+  const waitKrabiDocumentCheckCount = useMemo(
+    () => requests.filter((request) => ['SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK'].includes(request.status)).length,
+    [requests]
+  );
+  const krabiNeedsDocumentFixCount = useMemo(
+    () => requests.filter((request) => request.status === 'KRABI_NEEDS_DOCUMENT_FIX').length,
     [requests]
   );
   const krabiCompletedCount = useMemo(
@@ -245,6 +263,8 @@ export function DashboardRequestsPanel({ requests }: DashboardRequestsPanelProps
         waitLayoutDrawingCount={waitLayoutDrawingCount}
         readyToSendKrabiCount={readyToSendKrabiCount}
         queuedForKrabiDispatchCount={queuedForKrabiDispatchCount}
+        waitKrabiDocumentCheckCount={waitKrabiDocumentCheckCount}
+        krabiNeedsDocumentFixCount={krabiNeedsDocumentFixCount}
         krabiInProgressCount={krabiInProgressCount}
         krabiCompletedCount={krabiCompletedCount}
         waitBillingCount={waitBillingCount}

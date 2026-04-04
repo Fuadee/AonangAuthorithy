@@ -90,7 +90,9 @@ const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>
   WAIT_LAYOUT_DRAWING: ['READY_TO_SEND_KRABI'],
   READY_TO_SEND_KRABI: ['QUEUED_FOR_KRABI_DISPATCH'],
   QUEUED_FOR_KRABI_DISPATCH: ['SENT_TO_KRABI'],
-  SENT_TO_KRABI: ['KRABI_IN_PROGRESS'],
+  SENT_TO_KRABI: ['WAIT_KRABI_DOCUMENT_CHECK'],
+  WAIT_KRABI_DOCUMENT_CHECK: ['KRABI_IN_PROGRESS', 'KRABI_NEEDS_DOCUMENT_FIX'],
+  KRABI_NEEDS_DOCUMENT_FIX: ['READY_TO_SEND_KRABI'],
   KRABI_IN_PROGRESS: ['KRABI_ESTIMATION_COMPLETED'],
   KRABI_ESTIMATION_COMPLETED: ['BILL_ISSUED'],
   BILL_ISSUED: ['COORDINATED_WITH_CONSTRUCTION'],
@@ -258,6 +260,8 @@ export async function updateRequestStatusAction(formData: FormData) {
       'READY_TO_SEND_KRABI',
       'QUEUED_FOR_KRABI_DISPATCH',
       'SENT_TO_KRABI',
+      'WAIT_KRABI_DOCUMENT_CHECK',
+      'KRABI_NEEDS_DOCUMENT_FIX',
       'KRABI_IN_PROGRESS',
       'KRABI_ESTIMATION_COMPLETED',
       'BILL_ISSUED',
@@ -703,7 +707,7 @@ export async function markSentToKrabiAction(formData: FormData) {
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: 'SENT_TO_KRABI',
+      status: 'WAIT_KRABI_DOCUMENT_CHECK',
       dispatched_to_krabi_at: nowIso,
       dispatched_to_krabi_by: dispatcherName,
       krabi_received_at: nowIso,
@@ -730,13 +734,77 @@ export async function markKrabiInProgressAction(formData: FormData) {
   if ((request.request_type as RequestType) !== 'EXPANSION') {
     throw new Error('สถานะกระบี่รองรับเฉพาะงานขยายเขต');
   }
-  if (request.status !== 'SENT_TO_KRABI') {
-    throw new Error('ต้องส่งเอกสารไปกระบี่ก่อน');
+  if (!['WAIT_KRABI_DOCUMENT_CHECK', 'SENT_TO_KRABI'].includes(request.status)) {
+    throw new Error('ต้องอยู่ขั้นรอกระบี่ตรวจรับเอกสารก่อน');
   }
 
   const { error } = await supabase
     .from('service_requests')
     .update({ status: 'KRABI_IN_PROGRESS', krabi_in_progress_at: nowIso, updated_at: nowIso })
+    .eq('id', requestId);
+  if (error) {
+    throw new Error(error.message);
+  }
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function markKrabiNeedsDocumentFixAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const reason = requiredField(formData, 'incomplete_docs_note');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+  if ((request.request_type as RequestType) !== 'EXPANSION') {
+    throw new Error('สถานะกระบี่รองรับเฉพาะงานขยายเขต');
+  }
+  if (!['WAIT_KRABI_DOCUMENT_CHECK', 'SENT_TO_KRABI'].includes(request.status)) {
+    throw new Error('ต้องอยู่ขั้นรอกระบี่ตรวจรับเอกสารก่อน');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({ status: 'KRABI_NEEDS_DOCUMENT_FIX', incomplete_docs_note: reason, updated_at: nowIso })
+    .eq('id', requestId);
+  if (error) {
+    throw new Error(error.message);
+  }
+  revalidateRequestPaths(requestId);
+  redirect(`/requests/${requestId}`);
+}
+
+export async function markKrabiDocumentFixCompletedAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+  if ((request.request_type as RequestType) !== 'EXPANSION') {
+    throw new Error('สถานะกระบี่รองรับเฉพาะงานขยายเขต');
+  }
+  if (request.status !== 'KRABI_NEEDS_DOCUMENT_FIX') {
+    throw new Error('ต้องอยู่สถานะกระบี่ตีกลับให้แก้ไขเอกสารก่อน');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: 'READY_TO_SEND_KRABI',
+      ready_to_send_krabi_at: nowIso,
+      planned_dispatch_date: calculateNextPlannedDispatchDate(new Date()),
+      queued_for_dispatch_at: null,
+      dispatched_to_krabi_at: null,
+      dispatched_to_krabi_by: null,
+      krabi_received_at: null,
+      updated_at: nowIso
+    })
     .eq('id', requestId);
   if (error) {
     throw new Error(error.message);
