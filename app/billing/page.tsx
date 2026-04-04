@@ -26,7 +26,7 @@ export default async function BillingPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold">{REQUEST_QUEUE_GROUP_META.BILLING.label}</h2>
-        <p className="mt-1 text-sm text-slate-500">แสดงงานที่รอออกใบแจ้งหนี้และงานรอดำเนินการหลังแจ้งหนี้สำหรับทีมการเงิน</p>
+        <p className="mt-1 text-sm text-slate-500">แสดงงานที่รอออกใบแจ้งหนี้และงานรอชำระเงินหลังแจ้งหนี้สำหรับทีมการเงิน</p>
       </div>
 
       <BillingRequestsPanel requests={typedRequests} />

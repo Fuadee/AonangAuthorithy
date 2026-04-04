@@ -58,8 +58,11 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
           <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รอออกใบแจ้งหนี้</p>
           <p className="mt-2 text-3xl font-semibold text-purple-700">{summary.waitBilling}</p>
         </article>
-        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
-          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รอดำเนินการ</p>
+        <article
+          className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm"
+          title="รอลูกค้าชำระเงินตามใบแจ้งหนี้"
+        >
+          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รอชำระเงิน</p>
           <p className="mt-2 text-3xl font-semibold text-emerald-700">{summary.waitActionConfirmation}</p>
         </article>
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
