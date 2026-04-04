@@ -101,6 +101,10 @@ export type AvailableRequestAction = {
 
 export type QueueWorkflowAction = AvailableRequestAction;
 
+function dedupeWorkflowActions(actions: AvailableRequestAction[]): AvailableRequestAction[] {
+  return Array.from(new Map(actions.map((action) => [action.key, action])).values());
+}
+
 function toAction(
   key: WorkflowActionKey,
   options: {
@@ -236,7 +240,7 @@ export function getQueueWorkflowActions(
     'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at'
   >
 ): QueueWorkflowAction[] {
-  return getAvailableRequestActions(request);
+  return dedupeWorkflowActions(getAvailableRequestActions(request));
 }
 
 export function getWorkflowActionsForRequest(
@@ -245,5 +249,5 @@ export function getWorkflowActionsForRequest(
     'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at'
   >
 ): AvailableRequestAction[] {
-  return getAvailableRequestActions(request);
+  return dedupeWorkflowActions(getAvailableRequestActions(request));
 }
