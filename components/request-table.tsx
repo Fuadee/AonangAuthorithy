@@ -126,26 +126,26 @@ export function RequestTable({
 
   return (
     <div className="card mt-6 overflow-hidden">
-      <div className="overflow-x-auto">
+      <div className="overflow-x-auto lg:overflow-x-visible">
         <table className="w-full table-fixed border-separate border-spacing-0 text-sm">
           <colgroup>
-            <col className={hasSeparateStatusColumn ? 'w-[14%]' : 'w-[16%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[16%]'} />
             <col className={hasSeparateStatusColumn ? 'w-[22%]' : 'w-[31%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[14%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[15%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[14%]' : 'w-[13%]'} />
-            {hasSeparateStatusColumn ? <col className="w-[16%]" /> : null}
-            <col className="w-[10%]" />
+            <col className={hasSeparateStatusColumn ? 'w-[11%]' : 'w-[14%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[11%]' : 'w-[15%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[13%]' : 'w-[13%]'} />
+            {hasSeparateStatusColumn ? <col className="w-[17%]" /> : null}
+            <col className={hasSeparateStatusColumn ? 'w-[14%]' : 'w-[11%]'} />
           </colgroup>
           <thead className="bg-slate-50 text-left">
             <tr>
-              <th className="whitespace-nowrap px-4 py-3 align-middle text-sm font-medium text-[#64748B]">Request No.</th>
-              <th className="px-4 py-3 align-middle text-sm font-medium text-[#64748B]">ลูกค้า</th>
-              <th className="whitespace-nowrap px-4 py-3 align-middle text-sm font-medium text-[#64748B]">ประเภท</th>
-              <th className="whitespace-nowrap px-4 py-3 align-middle text-sm font-medium text-[#64748B]">ผู้รับผิดชอบ</th>
-              <th className="whitespace-nowrap px-4 py-3 align-middle text-sm font-medium text-[#64748B]">วันนัดสำรวจ</th>
-              {hasSeparateStatusColumn ? <th className="whitespace-nowrap px-4 py-3 align-middle text-sm font-medium text-[#64748B]">สถานะ</th> : null}
-              <th className="min-w-[160px] whitespace-nowrap px-4 py-3 align-middle text-center text-sm font-medium text-[#64748B]">{resolvedActionColumnLabel}</th>
+              <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">Request No.</th>
+              <th className="px-3 py-3 align-middle text-sm font-medium text-[#64748B]">ลูกค้า</th>
+              <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">ประเภท</th>
+              <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">ผู้รับผิดชอบ</th>
+              <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">วันนัดสำรวจ</th>
+              {hasSeparateStatusColumn ? <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">สถานะ</th> : null}
+              <th className="whitespace-nowrap px-3 py-3 align-middle text-center text-sm font-medium text-[#64748B]">{resolvedActionColumnLabel}</th>
             </tr>
           </thead>
           <tbody className="bg-white text-[#0F172A]">
@@ -154,41 +154,41 @@ export function RequestTable({
 
               return (
                 <tr key={request.id} className="border-b border-[#E2E8F0] hover:bg-slate-50">
-                  <td className="max-w-0 px-4 py-3 align-middle" title={request.request_no}>
+                  <td className="max-w-0 px-3 py-3 align-middle" title={request.request_no}>
                     <Link
                       href={`/requests/${request.id}`}
-                      className="block truncate whitespace-nowrap font-semibold text-[#1E3A8A] hover:underline"
+                      className="block truncate whitespace-nowrap pr-1 font-semibold text-[#1E3A8A] hover:underline"
                     >
                       {request.request_no}
                     </Link>
                   </td>
-                  <td className="max-w-0 px-4 py-3 align-middle" title={request.customer_name}>
+                  <td className="max-w-0 px-3 py-3 align-middle" title={request.customer_name}>
                     <p className="truncate text-[#0F172A]">{request.customer_name}</p>
                   </td>
-                  <td className="max-w-0 px-4 py-3 align-middle" title={REQUEST_TYPE_LABELS[request.request_type]}>
+                  <td className="max-w-0 px-3 py-3 align-middle" title={REQUEST_TYPE_LABELS[request.request_type]}>
                     <p className="truncate whitespace-nowrap text-[#64748B]">{REQUEST_TYPE_LABELS[request.request_type]}</p>
                   </td>
-                  <td className="max-w-0 px-4 py-3 align-middle" title={request.assignee_name}>
+                  <td className="max-w-0 px-3 py-3 align-middle" title={request.assignee_name}>
                     <p className="truncate whitespace-nowrap text-[#64748B]">{request.assignee_name}</p>
                   </td>
-                  <td className="max-w-0 px-4 py-3 align-middle">
+                  <td className="max-w-0 px-3 py-3 align-middle">
                     <p className="truncate whitespace-nowrap text-[#64748B]">{formatSurveyDate(getCurrentSurveyDate(request))}</p>
                   </td>
                   {hasSeparateStatusColumn ? (
-                    <td className="max-w-0 px-4 py-3 align-middle">
-                      <div className="space-y-1">
+                    <td className="max-w-0 px-3 py-3 align-middle">
+                      <div className="space-y-1 pr-1">
                         <RequestStatusBadge status={request.status} />
                         {dispatchSubStatus ? (
-                          <p className="truncate text-xs text-slate-600" title={dispatchSubStatus}>
+                          <p className="truncate text-xs leading-4 text-slate-600" title={dispatchSubStatus}>
                             {dispatchSubStatus}
                           </p>
                         ) : null}
                       </div>
                     </td>
                   ) : null}
-                  <td className="min-w-[160px] px-4 py-3 align-middle text-center">
+                  <td className="px-3 py-3 align-middle text-center">
                     {actionColumnMode === 'workflow' ? (
-                      <div className="flex min-h-10 min-w-[160px] items-center justify-center [&_button]:min-w-[160px] [&_details>summary]:min-w-[160px] [&_summary]:min-w-[160px]">
+                      <div className="flex min-h-10 items-center justify-center [&_button]:min-w-[124px] [&_button]:px-2.5 [&_details>summary]:min-w-[124px] [&_details>summary]:px-2.5 [&_summary]:min-w-[124px] [&_summary]:px-2.5">
                         <WorkflowActionButtons
                           actions={getQueueWorkflowActions(request)}
                           compact
@@ -207,7 +207,7 @@ export function RequestTable({
             })}
             {!requests.length && (
               <tr>
-                <td className="px-4 py-8 text-center text-sm text-[#64748B]" colSpan={totalColumns}>
+                <td className="px-3 py-8 text-center text-sm text-[#64748B]" colSpan={totalColumns}>
                   {emptyMessage}
                 </td>
               </tr>
