@@ -1313,7 +1313,7 @@ export async function confirmBillingSurveyorSignAction(formData: FormData) {
   assertMeterLoopAllowed(request.request_type as RequestType);
 
   if (request.status !== 'WAIT_ACTION_CONFIRMATION') {
-    throw new Error('เซ็นรับรองได้เฉพาะงานที่อยู่ช่วงรอดำเนินการหลังแจ้งหนี้');
+    throw new Error('เซ็นรับรองได้เฉพาะงานที่อยู่ช่วงรอชำระเงินหลังแจ้งหนี้');
   }
 
   if (!request.billed_at) {
@@ -1411,7 +1411,7 @@ export async function confirmPaymentReceivedAction(formData: FormData) {
   assertMeterLoopAllowed(request.request_type as RequestType);
 
   if (request.status !== 'WAIT_ACTION_CONFIRMATION') {
-    throw new Error('ยืนยันชำระเงินได้เฉพาะงานที่อยู่ช่วงรอดำเนินการหลังแจ้งหนี้');
+    throw new Error('ยืนยันชำระเงินได้เฉพาะงานที่อยู่ช่วงรอชำระเงินหลังแจ้งหนี้');
   }
 
   if (request.paid_at) {
