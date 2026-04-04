@@ -33,7 +33,7 @@ function requiredField(formData: FormData, key: string): string {
 }
 
 function getEffectiveSurveyDate(request: { survey_date_current?: string | null; scheduled_survey_date?: string | null }): string | null {
-  return request.survey_date_current ?? request.scheduled_survey_date ?? null;
+  return request.scheduled_survey_date ?? null;
 }
 
 function optionalField(formData: FormData, key: string): string | null {
@@ -366,6 +366,8 @@ export async function updateSurveyorAction(formData: FormData) {
 
   const payload: {
     status: RequestStatus;
+    scheduled_survey_date?: string | null;
+    survey_date_current?: string | null;
     survey_note?: string | null;
     survey_reschedule_date?: string | null;
     survey_reviewed_at?: string | null;
@@ -396,6 +398,8 @@ export async function updateSurveyorAction(formData: FormData) {
   if (action === 'REQUEST_RESCHEDULE') {
     payload.status = 'SURVEY_RESCHEDULE_REQUESTED';
     payload.survey_note = note;
+    payload.scheduled_survey_date = proposedDate;
+    payload.survey_date_current = proposedDate;
     payload.survey_reschedule_date = proposedDate;
     payload.survey_reviewed_at = nowIso;
     payload.survey_completed_at = null;
@@ -478,6 +482,7 @@ export async function updateDocumentReviewDecisionAction(formData: FormData) {
       incomplete_docs_note: resolved.documentStatus === 'INCOMPLETE' ? note : null,
       awaiting_customer_documents_since: decision === 'INCOMPLETE_WAIT_CUSTOMER' ? nowIso : null,
       previous_survey_date: decision === 'INCOMPLETE_WAIT_CUSTOMER' ? effectiveSurveyDate : null,
+      scheduled_survey_date: decision === 'INCOMPLETE_WAIT_CUSTOMER' ? null : request.scheduled_survey_date,
       survey_date_current: decision === 'INCOMPLETE_WAIT_CUSTOMER' ? null : request.survey_date_current,
       survey_rescheduled_at: decision === 'INCOMPLETE_WAIT_CUSTOMER' && effectiveSurveyDate ? nowIso : null,
       survey_reschedule_reason:

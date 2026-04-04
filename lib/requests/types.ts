@@ -319,7 +319,81 @@ export function hasPinnedLocation(request: Pick<ServiceRequest, 'latitude' | 'lo
 export function getCurrentSurveyDate(
   request: Pick<ServiceRequest, 'survey_date_current' | 'scheduled_survey_date'>
 ): string | null {
-  return request.survey_date_current ?? request.scheduled_survey_date;
+  return request.scheduled_survey_date;
+}
+
+export const SURVEYOR_PRIMARY_STATUS_MAP: Record<'WAITING_REVIEW' | 'READY' | 'IN_PROGRESS' | 'DONE', RequestStatus[]> = {
+  WAITING_REVIEW: ['WAIT_DOCUMENT_REVIEW', 'PENDING_SURVEY_REVIEW'],
+  READY: ['READY_FOR_SURVEY', 'SURVEY_ACCEPTED', 'SURVEY_RESCHEDULE_REQUESTED'],
+  IN_PROGRESS: ['IN_SURVEY'],
+  DONE: ['SURVEY_COMPLETED']
+};
+
+function parseDateOnlyFromIsoLike(value: string): string | null {
+  const trimmed = value.trim();
+  if (!trimmed) {
+    return null;
+  }
+
+  const directDateOnlyMatch = /^(\d{4}-\d{2}-\d{2})/.exec(trimmed);
+  if (directDateOnlyMatch?.[1]) {
+    return directDateOnlyMatch[1];
+  }
+
+  const parsedDate = new Date(trimmed);
+  if (Number.isNaN(parsedDate.valueOf())) {
+    return null;
+  }
+
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(parsedDate);
+}
+
+function getTodayDateOnlyInBangkok(now: Date = new Date()): string {
+  return new Intl.DateTimeFormat('en-CA', {
+    timeZone: 'Asia/Bangkok',
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  }).format(now);
+}
+
+export function isSurveyScheduledTodayInBangkok(
+  request: Pick<ServiceRequest, 'scheduled_survey_date' | 'survey_date_current'>,
+  now: Date = new Date()
+): boolean {
+  const scheduledDate = getCurrentSurveyDate(request);
+  if (!scheduledDate) {
+    return false;
+  }
+
+  const dateOnly = parseDateOnlyFromIsoLike(scheduledDate);
+  if (!dateOnly) {
+    return false;
+  }
+
+  return dateOnly === getTodayDateOnlyInBangkok(now);
+}
+
+export function formatThaiSurveyDate(value: string | null): string {
+  if (!value) {
+    return '-';
+  }
+
+  const dateOnly = parseDateOnlyFromIsoLike(value);
+  if (!dateOnly) {
+    return '-';
+  }
+
+  return new Date(`${dateOnly}T00:00:00`).toLocaleDateString('th-TH', {
+    day: '2-digit',
+    month: '2-digit',
+    year: 'numeric'
+  });
 }
 
 export function hasSurveyBeenRescheduled(
