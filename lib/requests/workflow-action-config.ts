@@ -66,7 +66,7 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   KRABI_FIX_COMPLETED: 'แก้ไขเอกสารแล้ว / พร้อมส่งใหม่',
   KRABI_ESTIMATION_COMPLETED: 'ประมาณการเสร็จ',
   KRABI_BILL_ISSUED: 'ออกใบแจ้งหนี้แล้ว',
-  COORDINATED_WITH_CONSTRUCTION: 'ประสานงานแผนกก่อสร้างแล้ว'
+  COORDINATED_WITH_CONSTRUCTION: 'ผกส.รับเรื่องแล้ว'
 };
 
 export function getWorkflowActionLabel(actionKey: WorkflowActionKey): string {

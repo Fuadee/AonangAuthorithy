@@ -1,3 +1,7 @@
 node_modules/
 data/app.db
 __pycache__/
+.env.local
+.env
+.next
+node_modules

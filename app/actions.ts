@@ -911,7 +911,7 @@ export async function markCoordinatedWithConstructionAction(formData: FormData) 
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
   if ((request.request_type as RequestType) !== 'EXPANSION') {
-    throw new Error('สถานะประสานงานก่อสร้างรองรับเฉพาะงานขยายเขต');
+    throw new Error('สถานะ ผกส.รับเรื่อง รองรับเฉพาะงานขยายเขต');
   }
   if (request.status !== 'BILL_ISSUED') {
     throw new Error('ต้องบันทึกว่าออกใบแจ้งหนี้แล้วก่อน');

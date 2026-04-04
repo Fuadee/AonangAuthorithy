@@ -42,7 +42,7 @@ type FilterGroupProps<T extends string> = {
 
 const FILTER_OPTIONS: Array<FilterGroupOption<RequestTypeFilter>> = [
   { value: 'ALL', label: 'ทั้งหมด' },
-  { value: 'METER', label: 'ขอมีเตอร์' },
+  { value: 'METER', label: 'ขอมิเตอร์' },
   { value: 'EXPANSION', label: 'ขยายเขต' }
 ];
 
