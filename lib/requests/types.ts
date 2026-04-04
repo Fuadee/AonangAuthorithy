@@ -661,6 +661,9 @@ export type ServiceRequest = {
   document_status: DocumentStatus | null;
   collect_docs_on_site: boolean;
   incomplete_docs_note: string | null;
+  reject_reason: string | null;
+  rejected_by: string | null;
+  rejected_at: string | null;
   billing_amount: number | null;
   billing_note: string | null;
   billed_at: string | null;
