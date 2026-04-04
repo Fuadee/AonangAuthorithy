@@ -30,17 +30,6 @@ function formatSurveyDate(value: string | null): string {
   return new Date(`${value}T00:00:00`).toLocaleDateString('th-TH', { dateStyle: 'medium' });
 }
 
-function formatCurrency(value: number | null): string {
-  if (value === null) {
-    return '-';
-  }
-
-  return new Intl.NumberFormat('th-TH', {
-    style: 'currency',
-    currency: 'THB',
-    maximumFractionDigits: 2
-  }).format(value);
-}
 
 export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
   const [activeFilter, setActiveFilter] = useState<BillingFilter>('ALL');
@@ -113,8 +102,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                 <th className="whitespace-nowrap px-4 py-3 font-medium">ประเภทคำร้อง</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">พื้นที่</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">นักสำรวจ</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">จำนวนเงินใบแจ้งหนี้</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">วันนัดล่าสุด</th>
+                                <th className="whitespace-nowrap px-4 py-3 font-medium">วันนัดล่าสุด</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">สถานะ</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">จัดการ</th>
               </tr>
@@ -131,7 +119,6 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                   <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
                   <td className="px-4 py-3">{request.area_name}</td>
                   <td className="px-4 py-3">{request.assigned_surveyor ?? '-'}</td>
-                  <td className="px-4 py-3">{formatCurrency(request.billing_amount)}</td>
                   <td className="px-4 py-3">{formatSurveyDate(getCurrentSurveyDate(request))}</td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
@@ -147,7 +134,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
               ))}
               {!filteredRequests.length && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-slate-500" colSpan={9}>
+                  <td className="px-4 py-6 text-center text-slate-500" colSpan={8}>
                     ไม่พบรายการตามตัวกรองนี้
                   </td>
                 </tr>
