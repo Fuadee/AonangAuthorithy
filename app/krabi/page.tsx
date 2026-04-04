@@ -67,7 +67,7 @@ export default async function KrabiQueuePage({ searchParams }: KrabiQueuePagePro
         </div>
       </section>
 
-      <RequestTable requests={filteredRequests} />
+      <RequestTable actionColumnMode="workflow" requests={filteredRequests} />
     </div>
   );
 }
