@@ -77,15 +77,31 @@ function getWeekCalendarCells(anchorDate: Date): CalendarDayCell[] {
 function getDensityClass(density: DayPlanningSummary['density']): string {
   switch (density) {
     case 'high':
-      return 'border-[#93C5FD] bg-[#EFF6FF]';
+      return 'border-[#C7D2FE] bg-[#F8FAFF]';
     case 'medium':
-      return 'border-[#BFDBFE] bg-[#F8FAFF]';
+      return 'border-[#DBEAFE] bg-[#FBFDFF]';
     case 'low':
-      return 'border-[#DBEAFE] bg-[#FCFDFF]';
+      return 'border-[#E2E8F0] bg-[#FEFEFF]';
     case 'none':
     default:
       return 'border-[#E2E8F0] bg-white';
   }
+}
+
+function getStatusBadgeClass(status: string): string {
+  if (status.includes('เลื่อน')) {
+    return 'border-[#FDE68A] bg-[#FFFBEB] text-[#92400E]';
+  }
+
+  if (status.includes('รอ') || status.includes('คิว')) {
+    return 'border-[#BFDBFE] bg-[#EFF6FF] text-[#1E40AF]';
+  }
+
+  if (status.includes('เสร็จ') || status.includes('สำเร็จ')) {
+    return 'border-[#BBF7D0] bg-[#F0FDF4] text-[#166534]';
+  }
+
+  return 'border-[#CBD5E1] bg-[#F8FAFC] text-[#334155]';
 }
 
 function summarizeMonth(
@@ -151,30 +167,38 @@ function MonthCell({
   selected: boolean;
   onSelect: (dateKey: string) => void;
 }) {
-  const totalLabel = summary ? `${summary.total} งาน` : 'ไม่มีงาน';
+  const hasTask = Boolean(summary && summary.total > 0);
 
   return (
     <button
-      className={`h-32 rounded-xl border p-2 text-left transition ${getDensityClass(summary?.density ?? 'none')} ${selected ? 'ring-2 ring-[#1E3A8A]/35' : 'hover:border-[#93C5FD]'}`}
+      className={`group h-32 rounded-2xl border px-2.5 py-2 text-left transition-all duration-150 ${getDensityClass(summary?.density ?? 'none')} ${
+        selected
+          ? 'border-[#93C5FD] bg-[#EFF6FF] shadow-[0_6px_16px_-12px_rgba(30,58,138,0.55)] ring-1 ring-[#1E3A8A]/20'
+          : 'hover:border-[#BFDBFE] hover:shadow-[0_8px_18px_-16px_rgba(15,23,42,0.35)]'
+      }`}
       onClick={() => onSelect(cell.dateKey)}
       type="button"
     >
       <div className="flex items-center justify-between">
-        <span className={`text-sm font-semibold ${cell.inCurrentMonth ? 'text-[#0F172A]' : 'text-[#94A3B8]'}`}>
+        <span className={`text-sm font-semibold leading-none ${cell.inCurrentMonth ? 'text-[#0F172A]' : 'text-[#94A3B8]'}`}>
           {cell.date.getUTCDate()}
         </span>
-        <span className="text-[11px] font-medium text-[#475569]">{totalLabel}</span>
+        {hasTask ? (
+          <span className="rounded-full border border-[#DBEAFE] bg-[#F8FAFF] px-2 py-0.5 text-[10px] font-medium text-[#1E3A8A]">
+            {summary?.total} งาน
+          </span>
+        ) : null}
       </div>
 
-      <div className="mt-2 space-y-1">
+      <div className="mt-2.5 space-y-1">
         {summary?.byAssignee.slice(0, 2).map((assignee) => (
-          <p key={assignee.name} className="truncate text-[11px] text-[#334155]">
-            {assignee.shortName}: {assignee.total}
+          <p key={assignee.name} className="truncate text-[11px] font-medium text-[#334155]">
+            {assignee.shortName} <span className="font-semibold text-[#0F172A]">{assignee.total}</span>
           </p>
         ))}
 
         {summary && summary.byAssignee.length > 2 ? (
-          <p className="text-[11px] text-[#64748B]">+{summary.byAssignee.length - 2} คน</p>
+          <p className="text-[10px] text-[#64748B]">+{summary.byAssignee.length - 2} คน</p>
         ) : null}
       </div>
     </button>
@@ -235,34 +259,54 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
   };
 
   return (
-    <div className="space-y-4">
-      <section className="card p-4">
-        <div className="flex flex-wrap items-center justify-between gap-3">
+    <div className="space-y-5">
+      <section className="card border-[#E2E8F0] bg-white/95 p-4">
+        <div className="flex flex-wrap items-start justify-between gap-3">
           <div>
-            <h2 className="text-xl font-semibold text-[#0F172A]">แผนงานสำรวจรายเดือน</h2>
-            <p className="text-sm text-[#64748B]">ภาพรวมงานนัดสำรวจของทีม พร้อมตรวจสอบภาระงานรายวัน</p>
+            <h2 className="text-lg font-semibold leading-tight text-[#0F172A]">แผนงานสำรวจรายเดือน</h2>
+            <p className="mt-1 text-sm leading-relaxed text-[#64748B]">ภาพรวมงานนัดสำรวจของทีม พร้อมตรวจสอบภาระงานรายวัน</p>
           </div>
 
-          <div className="flex flex-wrap items-center gap-2">
-            <button className="btn-secondary" onClick={goToPrevious} type="button">
+          <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-1.5">
+            <button
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-[#D6DFEA] bg-white px-3 text-sm font-medium text-[#334155] transition hover:border-[#BFDBFE] hover:text-[#1E3A8A]"
+              onClick={goToPrevious}
+              type="button"
+            >
               เดือนก่อนหน้า
             </button>
-            <button className="btn-secondary" onClick={goToToday} type="button">
+            <button
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-[#D6DFEA] bg-white px-3 text-sm font-medium text-[#334155] transition hover:border-[#BFDBFE] hover:text-[#1E3A8A]"
+              onClick={goToToday}
+              type="button"
+            >
               วันนี้
             </button>
-            <button className="btn-secondary" onClick={goToNext} type="button">
+            <button
+              className="inline-flex h-9 items-center justify-center rounded-lg border border-[#D6DFEA] bg-white px-3 text-sm font-medium text-[#334155] transition hover:border-[#BFDBFE] hover:text-[#1E3A8A]"
+              onClick={goToNext}
+              type="button"
+            >
               เดือนถัดไป
             </button>
-            <div className="ml-2 inline-flex rounded-lg border border-[#CBD5E1] p-1 text-sm">
+            <div className="inline-flex h-9 items-center rounded-lg border border-[#D6DFEA] bg-white p-0.5 text-sm">
               <button
-                className={`rounded-md px-3 py-1 ${viewMode === 'month' ? 'bg-[#1E3A8A] text-white' : 'text-[#475569]'}`}
+                className={`rounded-md px-3 py-1.5 font-medium transition ${
+                  viewMode === 'month'
+                    ? 'border border-[#BFDBFE] bg-[#EFF6FF] text-[#1E3A8A] shadow-[0_1px_2px_rgba(30,58,138,0.15)]'
+                    : 'text-[#64748B] hover:text-[#334155]'
+                }`}
                 onClick={() => setViewMode('month')}
                 type="button"
               >
                 เดือน
               </button>
               <button
-                className={`rounded-md px-3 py-1 ${viewMode === 'week' ? 'bg-[#1E3A8A] text-white' : 'text-[#475569]'}`}
+                className={`rounded-md px-3 py-1.5 font-medium transition ${
+                  viewMode === 'week'
+                    ? 'border border-[#BFDBFE] bg-[#EFF6FF] text-[#1E3A8A] shadow-[0_1px_2px_rgba(30,58,138,0.15)]'
+                    : 'text-[#64748B] hover:text-[#334155]'
+                }`}
                 onClick={() => setViewMode('week')}
                 type="button"
               >
@@ -272,37 +316,45 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
           </div>
         </div>
 
-        <div className="mt-3 flex items-center justify-between border-t border-[#E2E8F0] pt-3">
-          <p className="text-sm font-medium text-[#334155]">{monthLabel}</p>
-          <p className="text-xs text-[#64748B]">คลิกวันที่เพื่อดูรายละเอียดงานรายวัน</p>
+        <div className="mt-3 flex items-center justify-between border-t border-[#EEF2F7] pt-2.5">
+          <p className="text-base font-semibold text-[#1E293B]">{monthLabel}</p>
+          <p className="text-[11px] text-[#94A3B8]">คลิกวันที่เพื่อดูรายละเอียดงานรายวัน</p>
         </div>
       </section>
 
       <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
-        <article className="card p-3">
-          <p className="text-xs text-[#64748B]">งานนัดสำรวจทั้งหมด (เดือน)</p>
-          <p className="mt-1 text-2xl font-semibold text-[#0F172A]">{summaryStats.totalTasks}</p>
+        <article className="card h-full border-[#E5EAF1] p-3.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">งานนัดสำรวจทั้งหมด (เดือน)</p>
+          <p className="mt-2 text-3xl font-semibold leading-none text-[#0F172A]">{summaryStats.totalTasks}</p>
         </article>
-        <article className="card p-3">
-          <p className="text-xs text-[#64748B]">จำนวนวันทำงานที่มีนัด</p>
-          <p className="mt-1 text-2xl font-semibold text-[#0F172A]">{summaryStats.activeDays}</p>
+        <article className="card h-full border-[#E5EAF1] p-3.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">จำนวนวันทำงานที่มีนัด</p>
+          <p className="mt-2 text-3xl font-semibold leading-none text-[#0F172A]">{summaryStats.activeDays}</p>
         </article>
-        <article className="card p-3">
-          <p className="text-xs text-[#64748B]">วันแน่นที่สุด</p>
-          <p className="mt-1 text-sm font-semibold text-[#0F172A]">
-            {summaryStats.busiestDay ? `${formatDateKeyThai(summaryStats.busiestDay.dateKey)} (${summaryStats.busiestDay.total} งาน)` : 'ยังไม่มีงานนัด'}
+        <article className="card h-full border-[#E5EAF1] bg-[#FCFDFF] p-3.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">วันแน่นที่สุด</p>
+          <p className="mt-2 text-sm font-semibold leading-relaxed text-[#0F172A]">
+            {summaryStats.busiestDay ? (
+              <>
+                {formatDateKeyThai(summaryStats.busiestDay.dateKey)}
+                <span className="ml-1 text-[#1E3A8A]">({summaryStats.busiestDay.total} งาน)</span>
+              </>
+            ) : (
+              'ยังไม่มีงานนัด'
+            )}
           </p>
         </article>
-        <article className="card p-3">
-          <p className="text-xs text-[#64748B]">จำนวนงานที่เลื่อนนัด</p>
-          <p className="mt-1 text-2xl font-semibold text-[#0F172A]">{summaryStats.rescheduledCount}</p>
+        <article className="card h-full border-[#E5EAF1] p-3.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">จำนวนงานที่เลื่อนนัด</p>
+          <p className="mt-2 text-3xl font-semibold leading-none text-[#0F172A]">{summaryStats.rescheduledCount}</p>
         </article>
-        <article className="card p-3">
-          <p className="text-xs text-[#64748B]">งานรวมแยกตามผู้สำรวจ</p>
-          <div className="mt-1 space-y-1 text-sm text-[#334155]">
+        <article className="card h-full border-[#E5EAF1] bg-[#FCFDFF] p-3.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">งานรวมแยกตามผู้สำรวจ</p>
+          <div className="mt-2 space-y-1.5 text-sm leading-relaxed text-[#334155]">
             {summaryStats.byAssignee.slice(0, 3).map((assignee) => (
               <p key={assignee.name} className="truncate">
-                {assignee.name}: {assignee.total}
+                <span className="text-[#64748B]">{assignee.name}:</span>{' '}
+                <span className="font-semibold text-[#0F172A]">{assignee.total}</span>
               </p>
             ))}
             {summaryStats.byAssignee.length === 0 ? <p className="text-[#94A3B8]">ยังไม่มีงานนัด</p> : null}
@@ -312,17 +364,17 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
       </section>
 
       <section className="grid gap-4 lg:grid-cols-[2.1fr,1fr]">
-        <article className="card p-3">
-          <div className="grid grid-cols-7 gap-2 pb-2">
+        <article className="card border-[#E5EAF1] p-3.5">
+          <div className="grid grid-cols-7 gap-2 pb-3">
             {WEEKDAY_LABELS.map((label) => (
-              <p key={label} className="text-center text-xs font-semibold text-[#64748B]">
+              <p key={label} className="text-center text-xs font-semibold tracking-wide text-[#94A3B8]">
                 {label}
               </p>
             ))}
           </div>
 
           {viewMode === 'month' ? (
-            <div className="grid grid-cols-7 gap-2">
+            <div className="grid grid-cols-7 gap-2.5">
               {monthCells.map((cell) => (
                 <MonthCell
                   key={cell.dateKey}
@@ -334,7 +386,7 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
               ))}
             </div>
           ) : (
-            <div className="grid grid-cols-1 gap-2 md:grid-cols-7">
+            <div className="grid grid-cols-1 gap-2.5 md:grid-cols-7">
               {weekCells.map((cell) => (
                 <MonthCell
                   key={cell.dateKey}
@@ -354,30 +406,49 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
           ) : null}
         </article>
 
-        <aside className="card p-4">
-          <h3 className="text-base font-semibold text-[#0F172A]">รายละเอียดวันที่เลือก</h3>
-          <p className="mt-1 text-sm text-[#475569]">{formatDateKeyThai(selectedDateKey)}</p>
-          <p className="mt-3 text-sm text-[#334155]">รวม {selectedSummary?.total ?? 0} งาน</p>
-
-          <div className="mt-3 space-y-1 text-sm">
-            {selectedSummary?.byAssignee.map((assignee) => (
-              <p key={assignee.name} className="text-[#334155]">
-                {assignee.name}: {assignee.total}
-              </p>
-            ))}
-            {!selectedSummary ? <p className="text-[#94A3B8]">ไม่มีงานนัดสำรวจในวันนี้</p> : null}
+        <aside className="card border-[#E5EAF1] bg-[#FCFDFE] p-4">
+          <div className="border-b border-[#EEF2F7] pb-3">
+            <p className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">Inspector</p>
+            <h3 className="mt-1 text-base font-semibold text-[#0F172A]">รายละเอียดวันที่เลือก</h3>
+            <p className="mt-1 text-sm font-medium text-[#334155]">{formatDateKeyThai(selectedDateKey)}</p>
           </div>
 
-          <div className="mt-4 space-y-2 border-t border-[#E2E8F0] pt-3">
+          <div className="mt-3 flex flex-wrap gap-1.5">
+            <span className="rounded-full border border-[#DBEAFE] bg-[#EFF6FF] px-2.5 py-1 text-xs font-medium text-[#1E3A8A]">
+              รวม {selectedSummary?.total ?? 0} งาน
+            </span>
+            {selectedSummary?.byAssignee.slice(0, 2).map((assignee) => (
+              <span
+                key={assignee.name}
+                className="rounded-full border border-[#E2E8F0] bg-white px-2.5 py-1 text-xs font-medium text-[#475569]"
+              >
+                {assignee.shortName} {assignee.total}
+              </span>
+            ))}
+            {(selectedSummary?.byAssignee.length ?? 0) > 2 ? (
+              <span className="rounded-full border border-[#E2E8F0] bg-white px-2.5 py-1 text-xs font-medium text-[#64748B]">
+                +{(selectedSummary?.byAssignee.length ?? 0) - 2} คน
+              </span>
+            ) : null}
+          </div>
+
+          <div className="mt-4 space-y-2.5 border-t border-[#EEF2F7] pt-3">
             {selectedSummary?.tasks.map((task) => (
-              <div key={task.id} className="rounded-lg border border-[#E2E8F0] bg-[#F8FAFC] p-2 text-xs text-[#334155]">
-                <p className="font-semibold text-[#0F172A]">{task.requestNo}</p>
-                <p className="truncate">ลูกค้า: {task.customerName}</p>
-                <p>ประเภท: {task.requestTypeLabel}</p>
-                <p>ผู้รับผิดชอบ: {task.assigneeName}</p>
-                <p>สถานะ: {task.statusLabel}</p>
+              <div key={task.id} className="rounded-xl border border-[#E2E8F0] bg-white p-3 text-xs leading-relaxed text-[#334155] shadow-[0_4px_12px_-12px_rgba(15,23,42,0.5)]">
+                <div className="flex items-start justify-between gap-2">
+                  <p className="text-sm font-semibold text-[#0F172A]">{task.requestNo}</p>
+                  <span className={`rounded-full border px-2 py-0.5 text-[10px] font-semibold ${getStatusBadgeClass(task.statusLabel)}`}>
+                    {task.statusLabel}
+                  </span>
+                </div>
+                <div className="mt-2 space-y-1 text-[12px]">
+                  <p className="truncate text-[#475569]">ลูกค้า: {task.customerName}</p>
+                  <p className="text-[#64748B]">ประเภท: {task.requestTypeLabel}</p>
+                  <p className="text-[#64748B]">ผู้รับผิดชอบ: {task.assigneeName}</p>
+                </div>
               </div>
             ))}
+            {!selectedSummary ? <p className="text-sm text-[#94A3B8]">ไม่มีงานนัดสำรวจในวันนี้</p> : null}
           </div>
         </aside>
       </section>
