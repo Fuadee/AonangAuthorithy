@@ -21,6 +21,7 @@ export type LeafletPopup = {
 
 export type LeafletMarker = {
   addTo: (map: LeafletMap) => LeafletMarker;
+  setLatLng: (latLng: [number, number]) => void;
   remove: () => void;
   bindPopup: (content: string) => LeafletMarker;
   openPopup: () => void;
