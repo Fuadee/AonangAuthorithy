@@ -29,24 +29,40 @@ function formatSurveyDate(value: string | null): string {
   return new Date(`${value}T00:00:00`).toLocaleDateString('th-TH', { dateStyle: 'medium' });
 }
 
-function formatThaiDispatchDate(value: string | null): string {
+type DispatchDateMeta = {
+  thaiDate: string;
+  ageInDays: number | null;
+};
+
+function getDispatchDateMeta(value: string | null): DispatchDateMeta | null {
   if (!value) {
-    return '-';
+    return null;
   }
 
   const sentAt = new Date(value);
   if (Number.isNaN(sentAt.valueOf())) {
-    return '-';
+    return null;
   }
 
   const thaiDate = sentAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
   const ageInDays = Math.floor((Date.now() - sentAt.getTime()) / (24 * 60 * 60 * 1000));
 
-  if (ageInDays < 0) {
-    return thaiDate;
+  return {
+    thaiDate,
+    ageInDays: ageInDays >= 0 ? ageInDays : null
+  };
+}
+
+function getDispatchAgeBadgeClass(ageInDays: number): string {
+  if (ageInDays <= 2) {
+    return 'bg-green-100 text-green-700';
   }
 
-  return `${thaiDate} (ค้าง ${ageInDays} วัน)`;
+  if (ageInDays <= 5) {
+    return 'bg-yellow-100 text-yellow-700';
+  }
+
+  return `bg-red-100 text-red-700${ageInDays > 5 ? ' font-semibold' : ''}`;
 }
 
 const EMPHASIZED_ROW_STATUSES: RequestStatus[] = ['KRABI_NEEDS_DOCUMENT_FIX', 'WAIT_CUSTOMER_FIX'];
@@ -81,6 +97,7 @@ export function RequestTable({
           const dispatchSubStatus = getDispatchSubStatus(request);
           const workflowActions = getQueueWorkflowActions(request);
           const hasAction = workflowActions.length > 0;
+          const dispatchDateMeta = getDispatchDateMeta(request.dispatched_to_krabi_at);
 
           return (
             <article
@@ -111,11 +128,24 @@ export function RequestTable({
 
               <div className="min-h-14 space-y-1">
                 <p className="text-[11px] font-medium tracking-wide text-slate-500 uppercase lg:hidden">{dateColumnLabel}</p>
-                <p className="text-sm text-slate-700">
-                  {dateColumnVariant === 'krabi_dispatch_date'
-                    ? formatThaiDispatchDate(request.dispatched_to_krabi_at)
-                    : formatSurveyDate(getCurrentSurveyDate(request))}
-                </p>
+                {dateColumnVariant === 'krabi_dispatch_date' ? (
+                  dispatchDateMeta ? (
+                    <div className="flex flex-col gap-1">
+                      <p className="text-sm text-gray-900">{dispatchDateMeta.thaiDate}</p>
+                      {dispatchDateMeta.ageInDays !== null ? (
+                        <span
+                          className={`inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-medium ${getDispatchAgeBadgeClass(dispatchDateMeta.ageInDays)}`}
+                        >
+                          ค้าง {dispatchDateMeta.ageInDays} วัน
+                        </span>
+                      ) : null}
+                    </div>
+                  ) : (
+                    <p className="text-sm text-gray-900">-</p>
+                  )
+                ) : (
+                  <p className="text-sm text-slate-700">{formatSurveyDate(getCurrentSurveyDate(request))}</p>
+                )}
               </div>
 
               <div className="flex min-h-14 flex-col justify-center">
@@ -184,6 +214,7 @@ export function RequestTable({
             {requests.map((request) => {
               const dispatchSubStatus = getDispatchSubStatus(request);
               const isEmphasizedRow = EMPHASIZED_ROW_STATUSES.includes(request.status);
+              const dispatchDateMeta = getDispatchDateMeta(request.dispatched_to_krabi_at);
 
               return (
                 <tr
@@ -208,11 +239,24 @@ export function RequestTable({
                     <p className="truncate whitespace-nowrap text-[#64748B]">{request.assignee_name}</p>
                   </td>
                   <td className="max-w-0 px-3 py-3 align-middle">
-                    <p className="truncate whitespace-nowrap text-[#64748B]">
-                      {dateColumnVariant === 'krabi_dispatch_date'
-                        ? formatThaiDispatchDate(request.dispatched_to_krabi_at)
-                        : formatSurveyDate(getCurrentSurveyDate(request))}
-                    </p>
+                    {dateColumnVariant === 'krabi_dispatch_date' ? (
+                      dispatchDateMeta ? (
+                        <div className="flex flex-col gap-1">
+                          <p className="truncate text-sm text-gray-900" title={dispatchDateMeta.thaiDate}>{dispatchDateMeta.thaiDate}</p>
+                          {dispatchDateMeta.ageInDays !== null ? (
+                            <span
+                              className={`inline-flex w-fit rounded-full px-2 py-0.5 text-xs font-medium ${getDispatchAgeBadgeClass(dispatchDateMeta.ageInDays)}`}
+                            >
+                              ค้าง {dispatchDateMeta.ageInDays} วัน
+                            </span>
+                          ) : null}
+                        </div>
+                      ) : (
+                        <p className="text-sm text-gray-900">-</p>
+                      )
+                    ) : (
+                      <p className="truncate whitespace-nowrap text-[#64748B]">{formatSurveyDate(getCurrentSurveyDate(request))}</p>
+                    )}
                   </td>
                   {hasSeparateStatusColumn ? (
                     <td className="max-w-0 px-3 py-3 align-middle">
