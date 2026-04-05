@@ -86,6 +86,7 @@ function revalidateRequestPaths(requestId: string): void {
   revalidatePath('/surveyor');
   revalidatePath('/billing');
   revalidatePath('/manager');
+  revalidatePath('/analytics');
   revalidatePath(`/requests/${requestId}`);
 }
 
@@ -216,6 +217,7 @@ export async function createRequestAction(formData: FormData) {
 
   revalidatePath('/dashboard');
   revalidatePath('/surveyor');
+  revalidatePath('/analytics');
   redirect('/dashboard');
 }
 

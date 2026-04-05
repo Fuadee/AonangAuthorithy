@@ -8,6 +8,18 @@ import {
 } from '@/lib/requests/types';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
+const BUSINESS_TIME_ZONE = 'Asia/Bangkok';
+const BUSINESS_DAY_KEY_FORMATTER = new Intl.DateTimeFormat('en-CA', {
+  timeZone: BUSINESS_TIME_ZONE,
+  year: 'numeric',
+  month: '2-digit',
+  day: '2-digit'
+});
+const BUSINESS_DAY_LABEL_FORMATTER = new Intl.DateTimeFormat('th-TH', {
+  timeZone: BUSINESS_TIME_ZONE,
+  day: '2-digit',
+  month: 'short'
+});
 
 export const EXECUTIVE_TIME_RANGES = ['7D', '30D', 'THIS_MONTH', '90D'] as const;
 export type ExecutiveTimeRange = (typeof EXECUTIVE_TIME_RANGES)[number];
@@ -202,6 +214,29 @@ export function computeExecutiveKpis(requests: ServiceRequest[], now: Date = new
 }
 
 function getDateKey(date: Date): string {
+  const parts = BUSINESS_DAY_KEY_FORMATTER.formatToParts(date);
+  const year = parts.find((part) => part.type === 'year')?.value;
+  const month = parts.find((part) => part.type === 'month')?.value;
+  const day = parts.find((part) => part.type === 'day')?.value;
+
+  if (!year || !month || !day) {
+    throw new Error('ไม่สามารถคำนวณวันที่ตามโซนเวลา Asia/Bangkok ได้');
+  }
+
+  return `${year}-${month}-${day}`;
+}
+
+function parseDateKey(dateKey: string): Date {
+  return new Date(`${dateKey}T00:00:00.000Z`);
+}
+
+function formatDateLabel(dateKey: string): string {
+  return BUSINESS_DAY_LABEL_FORMATTER.format(parseDateKey(dateKey));
+}
+
+function addDaysToDateKey(dateKey: string, days: number): string {
+  const date = parseDateKey(dateKey);
+  date.setUTCDate(date.getUTCDate() + days);
   return date.toISOString().slice(0, 10);
 }
 
@@ -218,20 +253,36 @@ export function computeTrend(
   bucket: 'DAY' | 'WEEK'
 ): TrendPoint[] {
   if (bucket === 'DAY') {
+    const incomingByDay = new Map<string, number>();
+    const completedByDay = new Map<string, number>();
+
+    requests.forEach((request) => {
+      const createdAt = parseDate(request.created_at);
+      if (createdAt) {
+        const createdDateKey = getDateKey(createdAt);
+        incomingByDay.set(createdDateKey, (incomingByDay.get(createdDateKey) ?? 0) + 1);
+      }
+
+      if (!isCompleted(request)) {
+        return;
+      }
+
+      const completedAt = getCompletedAt(request);
+      if (!completedAt) {
+        return;
+      }
+      const completedDateKey = getDateKey(completedAt);
+      completedByDay.set(completedDateKey, (completedByDay.get(completedDateKey) ?? 0) + 1);
+    });
+
     const points: TrendPoint[] = [];
-    for (let cursor = new Date(range.from); cursor <= range.to; cursor = new Date(cursor.getTime() + DAY_IN_MS)) {
-      const key = getDateKey(cursor);
-      const incoming = requests.filter((request) => getDateKey(new Date(request.created_at)) === key).length;
-      const completed = requests.filter((request) => {
-        if (!isCompleted(request)) {
-          return false;
-        }
-        const completedAt = getCompletedAt(request);
-        return completedAt ? getDateKey(completedAt) === key : false;
-      }).length;
+    const lastDateKey = getDateKey(range.to);
+    for (let key = getDateKey(range.from); key <= lastDateKey; key = addDaysToDateKey(key, 1)) {
+      const incoming = incomingByDay.get(key) ?? 0;
+      const completed = completedByDay.get(key) ?? 0;
 
       points.push({
-        label: new Date(key).toLocaleDateString('th-TH', { day: '2-digit', month: 'short' }),
+        label: formatDateLabel(key),
         incoming,
         completed
       });
