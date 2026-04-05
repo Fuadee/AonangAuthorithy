@@ -35,8 +35,8 @@ export default async function DashboardPage({ searchParams }: DashboardPageProps
           <p className="mt-1 text-sm text-[#64748B]">ดูภาพรวมและจัดการงานคำร้องแบบรวดเร็ว</p>
         </div>
         <div className="flex items-center gap-2">
-          <Link className="btn-primary" href="/requests/new">
-            สร้างคำร้องใหม่
+          <Link className="btn-primary" href="/survey/planning">
+            ดูแผนสำรวจ
           </Link>
         </div>
       </div>
