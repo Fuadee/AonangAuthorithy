@@ -12,6 +12,7 @@ type NavigationItem = {
 
 const NAV_ITEMS: NavigationItem[] = [
   { href: '/dashboard', label: 'แดชบอร์ด' },
+  { href: '/analytics', label: 'วิเคราะห์' },
   { href: '/surveyor', label: REQUEST_QUEUE_GROUP_META.SURVEY.label },
   { href: '/billing', label: REQUEST_QUEUE_GROUP_META.BILLING.label },
   { href: '/manager', label: REQUEST_QUEUE_GROUP_META.MANAGER.label },
