@@ -53,6 +53,33 @@ export type TrendPoint = {
   completed: number;
 };
 
+export type AnalyticsDebugSnapshot = {
+  nowIso: string;
+  timeRange: ExecutiveTimeRange;
+  trendBucket: 'DAY' | 'WEEK';
+  queryTotal: number;
+  range: { fromIso: string; toIso: string };
+  scopedTotal: number;
+  latestRequest: {
+    id: string;
+    requestNo: string;
+    createdAt: string;
+    updatedAt: string;
+    status: string;
+    queueGroup: RequestQueueGroup;
+    queueLabel: string;
+  } | null;
+  latestInQueryResult: boolean;
+  latestInRangeFilter: boolean;
+  latestCreatedDateKey: string | null;
+  latestMappedBucketLabel: string | null;
+  trendHasLatestBucket: boolean;
+  trendLatestBucketIncoming: number | null;
+  trendLatestBucketCompleted: number | null;
+  kpiTotal: number;
+  trendPoints: TrendPoint[];
+};
+
 export type BottleneckPoint = {
   queue: RequestQueueGroup;
   label: string;
@@ -427,4 +454,62 @@ export function filterRequestsByRange(requests: ServiceRequest[], range: { from:
     const createdAt = parseDate(request.created_at);
     return createdAt ? createdAt >= range.from && createdAt <= range.to : false;
   });
+}
+
+export function buildAnalyticsDebugSnapshot(
+  requests: ServiceRequest[],
+  timeRange: ExecutiveTimeRange,
+  now: Date = new Date(),
+  latestRequestId?: string
+): AnalyticsDebugSnapshot {
+  const trendBucket = pickTrendBucket(timeRange);
+  const range = resolveDateRange(timeRange, now);
+  const scopedRequests = filterRequestsByRange(requests, range);
+  const kpis = computeExecutiveKpis(scopedRequests, now);
+  const trendPoints = computeTrend(scopedRequests, range, trendBucket);
+
+  const latestRequest =
+    requests.find((request) => request.id === latestRequestId) ??
+    [...requests]
+      .sort((a, b) => {
+        const aTime = parseDate(a.created_at)?.getTime() ?? 0;
+        const bTime = parseDate(b.created_at)?.getTime() ?? 0;
+        return bTime - aTime;
+      })
+      .at(0) ??
+    null;
+
+  const latestCreatedAt = latestRequest ? parseDate(latestRequest.created_at) : null;
+  const latestCreatedDateKey = latestCreatedAt ? getDateKey(latestCreatedAt) : null;
+  const latestMappedBucketLabel = latestCreatedDateKey ? formatDateLabel(latestCreatedDateKey) : null;
+  const latestTrendBucket = latestMappedBucketLabel ? trendPoints.find((point) => point.label === latestMappedBucketLabel) : null;
+
+  return {
+    nowIso: now.toISOString(),
+    timeRange,
+    trendBucket,
+    queryTotal: requests.length,
+    range: { fromIso: range.from.toISOString(), toIso: range.to.toISOString() },
+    scopedTotal: scopedRequests.length,
+    latestRequest: latestRequest
+      ? {
+          id: latestRequest.id,
+          requestNo: latestRequest.request_no,
+          createdAt: latestRequest.created_at,
+          updatedAt: latestRequest.updated_at,
+          status: latestRequest.status,
+          queueGroup: getRequestQueueGroup(latestRequest.status),
+          queueLabel: getRequestQueueGroupLabel(getRequestQueueGroup(latestRequest.status))
+        }
+      : null,
+    latestInQueryResult: latestRequest ? requests.some((request) => request.id === latestRequest.id) : false,
+    latestInRangeFilter: latestRequest ? scopedRequests.some((request) => request.id === latestRequest.id) : false,
+    latestCreatedDateKey,
+    latestMappedBucketLabel,
+    trendHasLatestBucket: Boolean(latestTrendBucket),
+    trendLatestBucketIncoming: latestTrendBucket?.incoming ?? null,
+    trendLatestBucketCompleted: latestTrendBucket?.completed ?? null,
+    kpiTotal: kpis.total,
+    trendPoints
+  };
 }

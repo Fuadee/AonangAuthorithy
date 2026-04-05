@@ -215,6 +215,26 @@ export async function createRequestAction(formData: FormData) {
     throw new Error(insertError.message);
   }
 
+  const { data: insertedRequest, error: insertedLookupError } = await supabase
+    .from('service_requests')
+    .select('id,request_no,created_at,updated_at,status')
+    .eq('request_no', requestNo)
+    .maybeSingle();
+
+  if (insertedLookupError) {
+    console.warn('[createRequestAction] insert succeeded but failed to fetch inserted row', {
+      requestNo,
+      error: insertedLookupError.message
+    });
+  } else {
+    console.info('[createRequestAction] inserted request confirmed in DB', insertedRequest);
+  }
+
+  console.info('[createRequestAction] revalidate analytics after create', {
+    requestNo,
+    paths: ['/dashboard', '/surveyor', '/analytics']
+  });
+
   revalidatePath('/dashboard');
   revalidatePath('/surveyor');
   revalidatePath('/analytics');
