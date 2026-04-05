@@ -69,7 +69,7 @@ function formatDateRange(from: Date, to: Date): string {
 
 export function ExecutiveDashboard({ requests, debugMode = false, serverDebugSnapshot = null }: ExecutiveDashboardProps) {
   const [timeRange, setTimeRange] = useState<ExecutiveTimeRange>('30D');
-  const [drilldownFilter, setDrilldownFilter] = useState<DrilldownFilter>('PROBLEM');
+  const [drilldownFilter, setDrilldownFilter] = useState<DrilldownFilter>('RECENT');
 
   const now = useMemo(() => new Date(), []);
 
