@@ -1,5 +1,9 @@
 import { ExecutiveDashboard } from '@/components/executive-dashboard';
-import { buildAnalyticsDebugSnapshot } from '@/lib/analytics/executive-dashboard';
+import {
+  buildAnalyticsDebugSnapshot,
+  EXECUTIVE_TIME_RANGES,
+  ExecutiveTimeRange
+} from '@/lib/analytics/executive-dashboard';
 import { ServiceRequest } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -12,6 +16,8 @@ export default async function AnalyticsPage({
 }) {
   const params = (await searchParams) ?? {};
   const debugMode = params.debug === '1';
+  const requestedRange = params.range?.toUpperCase() as ExecutiveTimeRange | undefined;
+  const initialTimeRange = requestedRange && EXECUTIVE_TIME_RANGES.includes(requestedRange) ? requestedRange : 'THIS_MONTH';
   const supabase = createServerSupabaseClient();
 
   const { data, error } = await supabase
@@ -27,8 +33,15 @@ export default async function AnalyticsPage({
 
   const requests = (data ?? []) as ServiceRequest[];
   const debugSnapshot = debugMode
-    ? buildAnalyticsDebugSnapshot(requests, '30D', new Date(), params.latest_request_id)
+    ? buildAnalyticsDebugSnapshot(requests, initialTimeRange, new Date(), params.latest_request_id)
     : null;
 
-  return <ExecutiveDashboard requests={requests} debugMode={debugMode} serverDebugSnapshot={debugSnapshot} />;
+  return (
+    <ExecutiveDashboard
+      requests={requests}
+      debugMode={debugMode}
+      serverDebugSnapshot={debugSnapshot}
+      initialTimeRange={initialTimeRange}
+    />
+  );
 }
