@@ -18,6 +18,7 @@ type RequestTableProps = {
   actionColumnMode?: 'status' | 'workflow';
   actionColumnLabel?: string;
   presentation?: 'table' | 'grid';
+  dateColumnVariant?: 'survey_date' | 'krabi_dispatch_date';
 };
 
 function formatSurveyDate(value: string | null): string {
@@ -28,6 +29,26 @@ function formatSurveyDate(value: string | null): string {
   return new Date(`${value}T00:00:00`).toLocaleDateString('th-TH', { dateStyle: 'medium' });
 }
 
+function formatThaiDispatchDate(value: string | null): string {
+  if (!value) {
+    return '-';
+  }
+
+  const sentAt = new Date(value);
+  if (Number.isNaN(sentAt.valueOf())) {
+    return '-';
+  }
+
+  const thaiDate = sentAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+  const ageInDays = Math.floor((Date.now() - sentAt.getTime()) / (24 * 60 * 60 * 1000));
+
+  if (ageInDays < 0) {
+    return thaiDate;
+  }
+
+  return `${thaiDate} (ค้าง ${ageInDays} วัน)`;
+}
+
 const EMPHASIZED_ROW_STATUSES: RequestStatus[] = ['KRABI_NEEDS_DOCUMENT_FIX', 'WAIT_CUSTOMER_FIX'];
 
 export function RequestTable({
@@ -35,11 +56,13 @@ export function RequestTable({
   emptyMessage = 'ยังไม่มีคำร้อง',
   actionColumnMode = 'status',
   actionColumnLabel,
-  presentation = 'table'
+  presentation = 'table',
+  dateColumnVariant = 'survey_date'
 }: RequestTableProps) {
   const resolvedActionColumnLabel = actionColumnLabel ?? (actionColumnMode === 'workflow' ? 'จัดการ' : 'สถานะ');
   const hasSeparateStatusColumn = actionColumnMode === 'workflow';
   const totalColumns = hasSeparateStatusColumn ? 7 : 6;
+  const dateColumnLabel = dateColumnVariant === 'krabi_dispatch_date' ? 'วันที่ส่งเอกสาร' : 'วันนัดสำรวจ';
 
 
   if (presentation === 'grid' && hasSeparateStatusColumn) {
@@ -49,7 +72,7 @@ export function RequestTable({
           <p>Request / ลูกค้า</p>
           <p>ประเภท</p>
           <p>ผู้รับผิดชอบ</p>
-          <p>วันนัดสำรวจ</p>
+          <p>{dateColumnLabel}</p>
           <p>สถานะ</p>
           <p className="text-right">{resolvedActionColumnLabel}</p>
         </div>
@@ -87,8 +110,12 @@ export function RequestTable({
               </div>
 
               <div className="min-h-14 space-y-1">
-                <p className="text-[11px] font-medium tracking-wide text-slate-500 uppercase lg:hidden">วันนัดสำรวจ</p>
-                <p className="text-sm text-slate-700">{formatSurveyDate(getCurrentSurveyDate(request))}</p>
+                <p className="text-[11px] font-medium tracking-wide text-slate-500 uppercase lg:hidden">{dateColumnLabel}</p>
+                <p className="text-sm text-slate-700">
+                  {dateColumnVariant === 'krabi_dispatch_date'
+                    ? formatThaiDispatchDate(request.dispatched_to_krabi_at)
+                    : formatSurveyDate(getCurrentSurveyDate(request))}
+                </p>
               </div>
 
               <div className="flex min-h-14 flex-col justify-center">
@@ -146,7 +173,7 @@ export function RequestTable({
               <th className="px-3 py-3 align-middle text-sm font-medium text-[#64748B]">ลูกค้า</th>
               <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">ประเภท</th>
               <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">ผู้รับผิดชอบ</th>
-              <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">วันนัดสำรวจ</th>
+              <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">{dateColumnLabel}</th>
               {hasSeparateStatusColumn ? <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">สถานะ</th> : null}
               <th className="whitespace-nowrap px-3 py-3 align-middle text-center text-sm font-semibold text-slate-700">
                 {resolvedActionColumnLabel}
@@ -181,7 +208,11 @@ export function RequestTable({
                     <p className="truncate whitespace-nowrap text-[#64748B]">{request.assignee_name}</p>
                   </td>
                   <td className="max-w-0 px-3 py-3 align-middle">
-                    <p className="truncate whitespace-nowrap text-[#64748B]">{formatSurveyDate(getCurrentSurveyDate(request))}</p>
+                    <p className="truncate whitespace-nowrap text-[#64748B]">
+                      {dateColumnVariant === 'krabi_dispatch_date'
+                        ? formatThaiDispatchDate(request.dispatched_to_krabi_at)
+                        : formatSurveyDate(getCurrentSurveyDate(request))}
+                    </p>
                   </td>
                   {hasSeparateStatusColumn ? (
                     <td className="max-w-0 px-3 py-3 align-middle">
