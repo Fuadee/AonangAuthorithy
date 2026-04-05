@@ -17,7 +17,7 @@ import {
   pickTrendBucket,
   resolveDateRange
 } from '@/lib/analytics/executive-dashboard';
-import { ServiceRequest } from '@/lib/requests/types';
+import { getRequestQueueGroup, ServiceRequest } from '@/lib/requests/types';
 
 type ExecutiveDashboardProps = {
   requests: ServiceRequest[];
@@ -97,10 +97,123 @@ export function ExecutiveDashboard({ requests, debugMode = false, serverDebugSna
     };
   }, [drilldownFilter, now, requests, timeRange]);
 
+  const latestRequestFromQuery = useMemo(() => {
+    const sorted = [...requests].sort((a, b) => {
+      const aTime = new Date(a.created_at).getTime();
+      const bTime = new Date(b.created_at).getTime();
+      return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
+    });
+    return sorted[0] ?? null;
+  }, [requests]);
+
+  const latestInRangeFilter = latestRequestFromQuery
+    ? computed.scopedRequests.some((request) => request.id === latestRequestFromQuery.id)
+    : false;
+  const latestInQueryResult = latestRequestFromQuery ? requests.some((request) => request.id === latestRequestFromQuery.id) : false;
+
+  const recentRows = useMemo(() => filterDrilldownRows(computed.requestViews, 'RECENT'), [computed.requestViews]);
+  const latestInRecentList = latestRequestFromQuery ? recentRows.some((row) => row.id === latestRequestFromQuery.id) : false;
+  const latestInCurrentDrilldown = latestRequestFromQuery
+    ? computed.drilldownRows.some((row) => row.id === latestRequestFromQuery.id)
+    : false;
+
+  const rawLatestRequests = useMemo(() => {
+    return [...requests]
+      .sort((a, b) => {
+        const aTime = new Date(a.created_at).getTime();
+        const bTime = new Date(b.created_at).getTime();
+        return (Number.isNaN(bTime) ? 0 : bTime) - (Number.isNaN(aTime) ? 0 : aTime);
+      })
+      .slice(0, 5);
+  }, [requests]);
+
   const busiestQueue = computed.bottlenecks[0];
 
   return (
     <div className="space-y-6">
+      <section className="rounded-2xl border border-dashed border-rose-400 bg-rose-50 p-4">
+        <h2 className="text-sm font-semibold text-rose-900">Temporary Proof Panel (/analytics runtime)</h2>
+        <p className="mt-1 text-xs text-rose-800">
+          แยกหลักฐาน 3 ชั้น: query result layer → range-filtered layer → drilldown-render layer
+        </p>
+
+        {latestRequestFromQuery ? (
+          <div className="mt-3 grid gap-2 text-xs text-slate-800 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <span className="font-semibold">queryTotal:</span> {requests.length}
+            </div>
+            <div>
+              <span className="font-semibold">scopedTotal:</span> {computed.scopedRequests.length}
+            </div>
+            <div>
+              <span className="font-semibold">kpiTotal:</span> {computed.kpis.total}
+            </div>
+            <div>
+              <span className="font-semibold">latestRequestId:</span> {latestRequestFromQuery.id}
+            </div>
+            <div>
+              <span className="font-semibold">latestRequestNo:</span> {latestRequestFromQuery.request_no || '-'}
+            </div>
+            <div>
+              <span className="font-semibold">latestRequestCreatedAt:</span> {latestRequestFromQuery.created_at || '-'}
+            </div>
+            <div>
+              <span className="font-semibold">latestInQueryResult:</span> {String(latestInQueryResult)}
+            </div>
+            <div>
+              <span className="font-semibold">latestInRangeFilter:</span> {String(latestInRangeFilter)}
+            </div>
+            <div>
+              <span className="font-semibold">latestInRecentList:</span> {String(latestInRecentList)}
+            </div>
+            <div>
+              <span className="font-semibold">latestInCurrentDrilldown:</span> {String(latestInCurrentDrilldown)}
+            </div>
+            <div>
+              <span className="font-semibold">currentRange:</span> {timeRange}
+            </div>
+            <div>
+              <span className="font-semibold">currentDrilldownFilter:</span> {drilldownFilter}
+            </div>
+          </div>
+        ) : (
+          <p className="mt-3 rounded-lg border border-rose-200 bg-white p-3 text-xs text-rose-900">
+            Empty query result: analytics query ไม่พบคำร้อง (queryTotal = 0)
+          </p>
+        )}
+
+        <div className="mt-4 rounded-xl border border-rose-200 bg-white p-3">
+          <h3 className="text-xs font-semibold text-rose-900">Raw latest requests (top 5 from query result, no drilldown transform)</h3>
+          {rawLatestRequests.length === 0 ? (
+            <p className="mt-2 text-xs text-slate-600">ไม่มีข้อมูลจาก query</p>
+          ) : (
+            <div className="mt-2 overflow-x-auto">
+              <table className="min-w-full text-xs">
+                <thead>
+                  <tr className="border-b border-slate-200 text-left text-slate-500">
+                    <th className="px-2 py-2 font-medium">Request No.</th>
+                    <th className="px-2 py-2 font-medium">Created At</th>
+                    <th className="px-2 py-2 font-medium">Status</th>
+                    <th className="px-2 py-2 font-medium">Queue Group</th>
+                    <th className="px-2 py-2 font-medium">Customer</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {rawLatestRequests.map((request) => (
+                    <tr key={request.id} className="border-b border-slate-100 text-slate-700">
+                      <td className="px-2 py-2">{request.request_no || '-'}</td>
+                      <td className="px-2 py-2">{request.created_at || '-'}</td>
+                      <td className="px-2 py-2">{request.status}</td>
+                      <td className="px-2 py-2">{getRequestQueueGroup(request.status)}</td>
+                      <td className="px-2 py-2">{request.customer_name || '-'}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            </div>
+          )}
+        </div>
+      </section>
       {debugMode && (
         <section className="rounded-2xl border border-dashed border-amber-400 bg-amber-50 p-4 text-xs text-slate-700">
           <p className="font-semibold text-amber-800">Debug mode: analytics pipeline snapshot</p>
