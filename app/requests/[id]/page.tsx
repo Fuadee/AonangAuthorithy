@@ -1,4 +1,5 @@
 import Link from 'next/link';
+import RequestPhoneAction from '@/components/request-phone-action';
 import { notFound } from 'next/navigation';
 import { LocationPreview } from '@/components/location-preview';
 import {
@@ -528,7 +529,9 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           </div>
           <div>
             <dt className="text-sm text-slate-500">โทรศัพท์</dt>
-            <dd className="mt-1 font-medium">{request.phone || '-'}</dd>
+            <dd className="mt-1">
+              <RequestPhoneAction phone={request.phone} />
+            </dd>
           </div>
           <div>
             <dt className="text-sm text-slate-500">พื้นที่</dt>
