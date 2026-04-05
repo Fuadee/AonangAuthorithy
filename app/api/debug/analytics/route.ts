@@ -1,19 +1,25 @@
-import { ExecutiveDashboard } from '@/components/executive-dashboard';
-import { buildAnalyticsDebugSnapshot } from '@/lib/analytics/executive-dashboard';
+import { NextRequest, NextResponse } from 'next/server';
+import { buildAnalyticsDebugSnapshot, ExecutiveTimeRange, EXECUTIVE_TIME_RANGES } from '@/lib/analytics/executive-dashboard';
 import { ServiceRequest } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
-export const dynamic = 'force-dynamic';
+function parseTimeRange(value: string | null): ExecutiveTimeRange {
+  if (!value) {
+    return '30D';
+  }
 
-export default async function AnalyticsPage({
-  searchParams
-}: {
-  searchParams?: Promise<{ debug?: string; range?: string; latest_request_id?: string }>;
-}) {
-  const params = (await searchParams) ?? {};
-  const debugMode = params.debug === '1';
+  return (EXECUTIVE_TIME_RANGES as readonly string[]).includes(value) ? (value as ExecutiveTimeRange) : '30D';
+}
+
+export async function GET(request: NextRequest) {
+  if (process.env.NODE_ENV === 'production') {
+    return NextResponse.json({ error: 'debug route is disabled in production' }, { status: 404 });
+  }
+
+  const timeRange = parseTimeRange(request.nextUrl.searchParams.get('range'));
+  const latestRequestId = request.nextUrl.searchParams.get('latest_request_id') ?? undefined;
+
   const supabase = createServerSupabaseClient();
-
   const { data, error } = await supabase
     .from('service_requests')
     .select(
@@ -22,13 +28,11 @@ export default async function AnalyticsPage({
     .order('created_at', { ascending: false });
 
   if (error) {
-    throw new Error(error.message);
+    return NextResponse.json({ error: error.message }, { status: 500 });
   }
 
   const requests = (data ?? []) as ServiceRequest[];
-  const debugSnapshot = debugMode
-    ? buildAnalyticsDebugSnapshot(requests, '30D', new Date(), params.latest_request_id)
-    : null;
+  const snapshot = buildAnalyticsDebugSnapshot(requests, timeRange, new Date(), latestRequestId);
 
-  return <ExecutiveDashboard requests={requests} debugMode={debugMode} serverDebugSnapshot={debugSnapshot} />;
+  return NextResponse.json(snapshot);
 }

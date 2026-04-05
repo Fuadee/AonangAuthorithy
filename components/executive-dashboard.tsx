@@ -2,6 +2,7 @@
 
 import { useMemo, useState } from 'react';
 import {
+  AnalyticsDebugSnapshot,
   computeAgingBuckets,
   computeBottlenecks,
   computeExecutiveKpis,
@@ -20,6 +21,8 @@ import { ServiceRequest } from '@/lib/requests/types';
 
 type ExecutiveDashboardProps = {
   requests: ServiceRequest[];
+  debugMode?: boolean;
+  serverDebugSnapshot?: AnalyticsDebugSnapshot | null;
 };
 
 const DRILLDOWN_TABS: Array<{ key: DrilldownFilter; label: string }> = [
@@ -64,7 +67,7 @@ function formatDateRange(from: Date, to: Date): string {
   return `${fromText} - ${toText}`;
 }
 
-export function ExecutiveDashboard({ requests }: ExecutiveDashboardProps) {
+export function ExecutiveDashboard({ requests, debugMode = false, serverDebugSnapshot = null }: ExecutiveDashboardProps) {
   const [timeRange, setTimeRange] = useState<ExecutiveTimeRange>('30D');
   const [drilldownFilter, setDrilldownFilter] = useState<DrilldownFilter>('PROBLEM');
 
@@ -98,6 +101,26 @@ export function ExecutiveDashboard({ requests }: ExecutiveDashboardProps) {
 
   return (
     <div className="space-y-6">
+      {debugMode && (
+        <section className="rounded-2xl border border-dashed border-amber-400 bg-amber-50 p-4 text-xs text-slate-700">
+          <p className="font-semibold text-amber-800">Debug mode: analytics pipeline snapshot</p>
+          <pre className="mt-3 overflow-x-auto whitespace-pre-wrap rounded-lg bg-white p-3">
+            {JSON.stringify(
+              {
+                serverDebugSnapshot,
+                client: {
+                  queryTotal: requests.length,
+                  scopedTotal: computed.scopedRequests.length,
+                  kpiTotal: computed.kpis.total,
+                  trendPoints: computed.trend.slice(-5)
+                }
+              },
+              null,
+              2
+            )}
+          </pre>
+        </section>
+      )}
       <section className="rounded-2xl border border-slate-200 bg-white p-6 shadow-sm">
         <div className="flex flex-col gap-4 lg:flex-row lg:items-start lg:justify-between">
           <div>
