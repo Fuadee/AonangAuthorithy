@@ -32,35 +32,6 @@ const DRILLDOWN_TABS: Array<{ key: DrilldownFilter; label: string }> = [
   { key: 'RECENT', label: 'งานล่าสุด' }
 ];
 
-function LineMiniChart({
-  points,
-  getValue,
-  colorClass
-}: {
-  points: { label: string }[];
-  getValue: (index: number) => number;
-  colorClass: string;
-}) {
-  const values = points.map((_, index) => getValue(index));
-  const max = Math.max(...values, 1);
-
-  return (
-    <div className="h-40 rounded-xl border border-slate-200 bg-white p-3">
-      <div className="flex h-full items-end gap-1">
-        {values.map((value, index) => (
-          <div key={`${points[index].label}-${index}`} className="group flex flex-1 flex-col items-center justify-end">
-            <div
-              className={`w-full rounded-t-md ${colorClass}`}
-              style={{ height: `${Math.max((value / max) * 100, value > 0 ? 8 : 2)}%` }}
-              title={`${points[index].label}: ${value}`}
-            />
-          </div>
-        ))}
-      </div>
-    </div>
-  );
-}
-
 function formatDateRange(from: Date, to: Date): string {
   const fromText = from.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' });
   const toText = to.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' });
@@ -297,17 +268,65 @@ export function ExecutiveDashboard({ requests, debugMode = false, serverDebugSna
             <h3 className="text-base font-semibold text-slate-900">แนวโน้มปริมาณงาน (งานเข้า vs งานปิด)</h3>
             <span className="text-xs text-slate-500">{pickTrendBucket(timeRange) === 'DAY' ? 'รายวัน' : 'รายสัปดาห์'}</span>
           </div>
+          {computed.trend.length > 0 && (
+            <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3">
+              <p className="text-xs text-blue-700">วันนี้</p>
+              <p className="mt-1 text-sm font-semibold text-slate-900">
+                เข้า <span className="text-lg font-bold text-blue-700">{computed.trend[computed.trend.length - 1].incoming}</span> งาน | ปิด{' '}
+                <span className="font-bold text-emerald-700">{computed.trend[computed.trend.length - 1].completed}</span> งาน
+              </p>
+              <p className="mt-1 text-xs text-slate-500">อัปเดตจากช่วงล่าสุด: {computed.trend[computed.trend.length - 1].label}</p>
+            </div>
+          )}
           {computed.trend.length === 0 ? (
-            <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">ไม่มีข้อมูลในช่วงเวลานี้</p>
+            <p className="rounded-xl bg-slate-50 p-4 text-sm text-slate-500">ยังไม่มีข้อมูลในช่วงเวลานี้</p>
           ) : (
-            <div className="grid gap-3 md:grid-cols-2">
-              <div>
-                <p className="mb-2 text-sm text-slate-600">คำร้องเข้า</p>
-                <LineMiniChart points={computed.trend} getValue={(index) => computed.trend[index].incoming} colorClass="bg-blue-400" />
-              </div>
-              <div>
-                <p className="mb-2 text-sm text-slate-600">งานปิด</p>
-                <LineMiniChart points={computed.trend} getValue={(index) => computed.trend[index].completed} colorClass="bg-emerald-400" />
+            <div className="space-y-2">
+              {computed.trend.map((point, index) => {
+                const latestIndex = computed.trend.length - 1;
+                const maxIncoming = Math.max(...computed.trend.map((entry) => entry.incoming), 1);
+                const maxCompleted = Math.max(...computed.trend.map((entry) => entry.completed), 1);
+                const isLatest = index === latestIndex;
+
+                return (
+                  <div
+                    key={`${point.label}-${index}`}
+                    className={`rounded-lg border p-3 ${
+                      isLatest ? 'border-blue-200 bg-blue-50/60' : 'border-slate-200 bg-white'
+                    }`}
+                  >
+                    <div className="flex flex-wrap items-center justify-between gap-2">
+                      <p className={`text-sm ${isLatest ? 'font-semibold text-blue-900' : 'text-slate-700'}`}>{point.label}</p>
+                      <p className="text-sm text-slate-700">
+                        เข้า <span className="font-bold text-blue-700">{point.incoming}</span> | ปิด{' '}
+                        <span className="font-semibold text-emerald-700">{point.completed}</span>
+                      </p>
+                    </div>
+                    <div className="mt-2 grid gap-2 sm:grid-cols-2">
+                      <div className="space-y-1">
+                        <p className="text-[11px] text-slate-500">คำร้องเข้า</p>
+                        <div className="h-2 rounded-full bg-blue-100">
+                          <div
+                            className="h-2 rounded-full bg-blue-500"
+                            style={{ width: `${Math.max((point.incoming / maxIncoming) * 100, point.incoming > 0 ? 8 : 0)}%` }}
+                          />
+                        </div>
+                      </div>
+                      <div className="space-y-1">
+                        <p className="text-[11px] text-slate-500">งานปิด</p>
+                        <div className="h-2 rounded-full bg-emerald-100">
+                          <div
+                            className="h-2 rounded-full bg-emerald-500"
+                            style={{ width: `${Math.max((point.completed / maxCompleted) * 100, point.completed > 0 ? 8 : 0)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                );
+              })}
+              <div className="rounded-lg bg-slate-50 p-3 text-xs text-slate-500">
+                แสดงข้อมูลแนวโน้มทั้งหมด {computed.trend.length} ช่วงเวลา
               </div>
             </div>
           )}
