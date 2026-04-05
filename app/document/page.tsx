@@ -112,7 +112,13 @@ export default async function DocumentQueuePage({ searchParams }: DocumentQueueP
         </div>
       </section>
 
-      <RequestTable actionColumnLabel="จัดการ*" actionColumnMode="workflow" presentation="table" requests={filteredRequests} />
+      <RequestTable
+        actionColumnLabel="จัดการ*"
+        actionColumnMode="workflow"
+        dateColumnVariant="krabi_dispatch_date"
+        presentation="table"
+        requests={filteredRequests}
+      />
     </div>
   );
 }
