@@ -5,6 +5,7 @@ import { redirect } from 'next/navigation';
 import { generateRequestNo } from '@/lib/requests/generateRequestNo';
 import { isAreaCode } from '@/lib/requests/areas';
 import { isResponsibleForArea } from '@/lib/requests/area-responsible';
+import { isDateAllowedForArea } from '@/lib/requests/fixed-survey-schedule';
 import {
   canApproveFixFromPhoto,
   canMarkSurveyFailed,
@@ -188,6 +189,10 @@ export async function createRequestAction(formData: FormData) {
 
   if (!isResponsibleForArea(area.code, assignee.name)) {
     throw new Error('ผู้รับผิดชอบไม่ตรงตามกติกาพื้นที่');
+  }
+
+  if (!isDateAllowedForArea(area.code, scheduledSurveyDate)) {
+    throw new Error('วันสำรวจไม่ตรงตาม fixed schedule ของพื้นที่');
   }
 
   const requestNo = await generateRequestNo();

@@ -1,8 +1,11 @@
 import { isAreaCode, type AreaCode } from '@/lib/requests/areas';
-import { getResponsibleByAreaCode } from '@/lib/requests/area-responsible';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
-
-const WEEKDAY_ORDER = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
+import {
+  WEEKDAY_ORDER,
+  type Weekday,
+  formatDateOnlyUtc,
+  getFixedSurveyScheduleByAreaCode
+} from '@/lib/requests/fixed-survey-schedule';
 
 export type SurveySchedule = {
   id: string;
@@ -13,8 +16,6 @@ export type SurveySchedule = {
   max_jobs_per_day: number;
   active: boolean;
 };
-
-export type Weekday = (typeof WEEKDAY_ORDER)[number];
 
 export type SuggestionMissReason = 'INVALID_AREA_CODE' | 'AREA_NOT_FOUND' | 'NO_SCHEDULE_FOR_AREA' | 'ONLY_INACTIVE_SCHEDULE';
 
@@ -52,17 +53,6 @@ function addDays(date: Date, days: number): Date {
   const next = new Date(date);
   next.setUTCDate(next.getUTCDate() + days);
   return next;
-}
-
-function getNextDateForWeekday(baseDate: Date, weekday: Weekday): Date {
-  const target = WEEKDAY_ORDER.indexOf(weekday);
-  const current = baseDate.getUTCDay();
-  const offset = (target - current + 7) % 7;
-  return addDays(baseDate, offset);
-}
-
-function formatDateOnly(date: Date): string {
-  return date.toISOString().slice(0, 10);
 }
 
 export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{ result: SurveySuggestionResult; debug: SurveySuggestionDebug }> {
@@ -129,9 +119,11 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
 
   const typedSchedules = (allSchedules ?? []) as SurveySchedule[];
   const activeSchedules = typedSchedules.filter((item) => item.active);
-  const mappedResponsible = getResponsibleByAreaCode(areaCode);
+  const fixedSchedule = getFixedSurveyScheduleByAreaCode(areaCode);
   const mappedSchedules =
-    mappedResponsible === null ? [] : activeSchedules.filter((item) => item.surveyor_name === mappedResponsible);
+    fixedSchedule === null
+      ? []
+      : activeSchedules.filter((item) => item.surveyor_name === fixedSchedule.surveyorName && fixedSchedule.weekdays.includes(item.weekday));
 
   const baseDebug: SurveySuggestionDebug = {
     input_area_code: areaCode,
@@ -167,74 +159,74 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
     };
   }
 
-  if (!mappedSchedules.length) {
+  if (!fixedSchedule) {
     return {
       result: {
         area_code: areaCode,
         schedules: [],
         suggestion: null,
         reason: 'NO_SCHEDULE_FOR_AREA',
-        message: 'ยังไม่พบตารางคิวที่ตรงกับผู้รับผิดชอบตามพื้นที่'
+        message: 'ยังไม่พบตารางคิวแบบ fixed schedule สำหรับพื้นที่นี้'
       },
       debug: baseDebug
     };
   }
 
+  const fixedSchedules = fixedSchedule.weekdays.map((weekday) => {
+    const matchingActiveSchedule = mappedSchedules.find((item) => item.weekday === weekday);
+    return {
+      surveyor_name: fixedSchedule.surveyorName,
+      weekday,
+      max_jobs_per_day: matchingActiveSchedule?.max_jobs_per_day ?? 5
+    };
+  });
+
   const today = startOfTodayUtc();
   const searchStartDate = addDays(today, 1);
 
   for (let dayOffset = 0; dayOffset < 60; dayOffset += 1) {
-    const pivotDate = addDays(searchStartDate, dayOffset);
+    const candidateDate = addDays(searchStartDate, dayOffset);
+    const candidateWeekday = WEEKDAY_ORDER[candidateDate.getUTCDay()];
+    const matchingFixedSchedule = fixedSchedules.find((item) => item.weekday === candidateWeekday);
 
-    for (const schedule of mappedSchedules) {
-      const candidateDate = getNextDateForWeekday(pivotDate, schedule.weekday);
-      if (formatDateOnly(candidateDate) !== formatDateOnly(pivotDate)) {
-        continue;
-      }
+    if (!matchingFixedSchedule) {
+      continue;
+    }
 
-      const dateOnly = formatDateOnly(candidateDate);
+    const dateOnly = formatDateOnlyUtc(candidateDate);
 
-      const { count, error: countError } = await supabase
-        .from('service_requests')
-        .select('id', { count: 'exact', head: true })
-        .eq('assigned_surveyor', schedule.surveyor_name)
-        .eq('scheduled_survey_date', dateOnly);
+    const { count, error: countError } = await supabase
+      .from('service_requests')
+      .select('id', { count: 'exact', head: true })
+      .eq('assigned_surveyor', fixedSchedule.surveyorName)
+      .eq('scheduled_survey_date', dateOnly);
 
-      if (countError) {
-        throw new Error(countError.message);
-      }
+    if (countError) {
+      throw new Error(countError.message);
+    }
 
-      const currentJobs = count ?? 0;
-      if (currentJobs < schedule.max_jobs_per_day) {
-        return {
-          result: {
-            area_code: areaCode,
-            schedules: mappedSchedules.map((item) => ({
-              surveyor_name: item.surveyor_name,
-              weekday: item.weekday,
-              max_jobs_per_day: item.max_jobs_per_day
-            })),
-            suggestion: {
-              surveyor: schedule.surveyor_name,
-              suggested_date: dateOnly,
-              current_jobs: currentJobs,
-              max_jobs_per_day: schedule.max_jobs_per_day
-            }
-          },
-          debug: baseDebug
-        };
-      }
+    const currentJobs = count ?? 0;
+    if (currentJobs < matchingFixedSchedule.max_jobs_per_day) {
+      return {
+        result: {
+          area_code: areaCode,
+          schedules: fixedSchedules,
+          suggestion: {
+            surveyor: fixedSchedule.surveyorName,
+            suggested_date: dateOnly,
+            current_jobs: currentJobs,
+            max_jobs_per_day: matchingFixedSchedule.max_jobs_per_day
+          }
+        },
+        debug: baseDebug
+      };
     }
   }
 
   return {
     result: {
       area_code: areaCode,
-      schedules: mappedSchedules.map((item) => ({
-        surveyor_name: item.surveyor_name,
-        weekday: item.weekday,
-        max_jobs_per_day: item.max_jobs_per_day
-      })),
+      schedules: fixedSchedules,
       suggestion: null,
       message: 'ไม่พบคิวว่างในช่วง 60 วันข้างหน้า'
     },
