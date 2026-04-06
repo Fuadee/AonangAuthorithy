@@ -228,6 +228,7 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
         <RequestTable
           requests={filteredRequests}
           emptyMessage={searchQuery.trim() ? 'ไม่พบรายการที่ตรงกับคำค้นหา' : 'ยังไม่มีคำร้อง'}
+          responsibleColumnVariant="area_with_responsible"
         />
       </section>
     </>
