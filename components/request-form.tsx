@@ -37,7 +37,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const selectedArea = useMemo(() => areas.find((area) => area.code === areaCode), [areas, areaCode]);
-  const mappedResponsibleName = useMemo(() => getResponsibleByAreaCode(areaCode), [areaCode]);
+  const mappedResponsibleName = useMemo(() => getResponsibleByAreaCode(areaCode, assignees), [areaCode, assignees]);
   const selectedSurveyor = useMemo(
     () => assignees.find((assignee) => assignee.id === assignedSurveyorId),
     [assignees, assignedSurveyorId]
