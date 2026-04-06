@@ -1,7 +1,8 @@
 insert into public.areas (code, name)
 values
-  ('AREA_1', 'พื้นที่ 1'),
-  ('AREA_2', 'พื้นที่ 2')
+  ('AREA_1', 'อ่าวนาง'),
+  ('AREA_2', 'หนองทะเล'),
+  ('AREA_3', 'ไสไทย')
 on conflict (code) do update
 set name = excluded.name;
 
@@ -28,7 +29,8 @@ from (
     ('นาย A', 'AREA_1', 'Monday', 5),
     ('นาย A', 'AREA_1', 'Wednesday', 5),
     ('นาย B', 'AREA_2', 'Tuesday', 5),
-    ('นาย B', 'AREA_2', 'Thursday', 5)
+    ('นาย B', 'AREA_2', 'Thursday', 5),
+    ('นาย C', 'AREA_3', 'Friday', 5)
 ) as seed(surveyor_name, area_code, weekday, max_jobs_per_day)
 join public.areas areas on areas.code = seed.area_code
 on conflict (surveyor_name, area_code, weekday) do update
@@ -46,6 +48,10 @@ set area_id = areas.id,
     updated_at = now()
 from public.areas areas
 where (schedules.area_id = areas.id or schedules.area_code = areas.code)
+  and not (
+    coalesce(schedules.area_code, areas.code) = 'AREA_2'
+    and coalesce(schedules.area, '') = 'พื้นที่ 2'
+  )
   and (
     schedules.area_id is distinct from areas.id
     or schedules.area_code is distinct from areas.code
@@ -58,6 +64,10 @@ set area_code = areas.code,
     updated_at = now()
 from public.areas areas
 where requests.area_id = areas.id
+  and not (
+    coalesce(requests.area_code, areas.code) = 'AREA_2'
+    and coalesce(requests.area_name, '') = 'พื้นที่ 2'
+  )
   and (requests.area_code is distinct from areas.code or requests.area_name is distinct from areas.name);
 
 update public.service_requests

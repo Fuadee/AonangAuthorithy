@@ -25,6 +25,7 @@ import {
   RequestStatus,
   RequestType
 } from '@/lib/requests/types';
+import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -535,7 +536,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           </div>
           <div>
             <dt className="text-sm text-slate-500">พื้นที่</dt>
-            <dd className="mt-1 font-medium">{request.area_name || '-'}</dd>
+            <dd className="mt-1 truncate font-medium" title={resolveAreaDisplayName(request.area_name)}>{resolveAreaDisplayName(request.area_name)}</dd>
           </div>
           <div>
             <dt className="text-sm text-slate-500">ประเภทคำร้อง</dt>

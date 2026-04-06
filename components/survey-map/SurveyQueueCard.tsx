@@ -1,6 +1,7 @@
 'use client';
 
 import { buildGoogleMapsDirectionsUrl } from '@/lib/maps/google-maps';
+import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { getRequestStatusLabel } from '@/lib/requests/types';
 import { getSurveyorName } from '@/components/survey-map/surveyor-filter';
 import type { SurveyQueueRequest } from '@/components/survey-map/types';
@@ -41,7 +42,7 @@ export function SurveyQueueCard({ request, selected, onSelect, onViewOnMap, onHi
         <div>
           <p className="text-sm font-semibold text-brand-700">{request.request_no}</p>
           <p className="text-sm text-slate-700">{request.customer_name}</p>
-          <p className="text-xs text-slate-500">พื้นที่: {request.area_name}</p>
+          <p className="truncate text-xs text-slate-500" title={resolveAreaDisplayName(request.area_name)}>พื้นที่: {resolveAreaDisplayName(request.area_name)}</p>
           <p className="text-xs text-slate-500">นัดสำรวจล่าสุด: {formatDate(request.latest_survey_date)}</p>
           <p className="text-xs text-slate-500">สถานะ: {getRequestStatusLabel(request.status)}</p>
         </div>
