@@ -1,9 +1,9 @@
 import { isAreaCode, type AreaCode } from '@/lib/requests/areas';
+import { getBangkokTodayDateKey, isFutureBangkokDate } from '@/lib/datetime';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 import {
   WEEKDAY_ORDER,
   type Weekday,
-  formatDateOnlyUtc,
   getFixedSurveyScheduleByAreaCode
 } from '@/lib/requests/fixed-survey-schedule';
 
@@ -47,15 +47,28 @@ export type SurveySuggestionDebug = {
   schedule_areas: string[];
 };
 
-function startOfTodayUtc(): Date {
-  const now = new Date();
-  return new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth(), now.getUTCDate()));
+function addDaysToDateOnly(dateOnly: string, days: number): string | null {
+  const parsed = new Date(`${dateOnly}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  parsed.setUTCDate(parsed.getUTCDate() + days);
+  return parsed.toISOString().slice(0, 10);
 }
 
-function addDays(date: Date, days: number): Date {
-  const next = new Date(date);
-  next.setUTCDate(next.getUTCDate() + days);
-  return next;
+function getBangkokWeekdayFromDateOnly(dateOnly: string): Weekday | null {
+  const parsed = new Date(`${dateOnly}T00:00:00.000Z`);
+  if (Number.isNaN(parsed.getTime())) {
+    return null;
+  }
+
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Bangkok',
+    weekday: 'long'
+  }).format(parsed);
+
+  return WEEKDAY_ORDER.find((item) => item === weekday) ?? null;
 }
 
 export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{ result: SurveySuggestionResult; debug: SurveySuggestionDebug }> {
@@ -200,19 +213,24 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
     };
   });
 
-  const today = startOfTodayUtc();
-  const searchStartDate = addDays(today, 1);
+  const bangkokToday = getBangkokTodayDateKey();
 
-  for (let dayOffset = 0; dayOffset < 60; dayOffset += 1) {
-    const candidateDate = addDays(searchStartDate, dayOffset);
-    const candidateWeekday = WEEKDAY_ORDER[candidateDate.getUTCDay()];
+  for (let dayOffset = 1; dayOffset <= 60; dayOffset += 1) {
+    const dateOnly = addDaysToDateOnly(bangkokToday, dayOffset);
+    if (!dateOnly || !isFutureBangkokDate(dateOnly)) {
+      continue;
+    }
+
+    const candidateWeekday = getBangkokWeekdayFromDateOnly(dateOnly);
+    if (!candidateWeekday) {
+      continue;
+    }
+
     const matchingFixedSchedule = fixedSchedules.find((item) => item.weekday === candidateWeekday && !!item.assignee_id);
 
     if (!matchingFixedSchedule) {
       continue;
     }
-
-    const dateOnly = formatDateOnlyUtc(candidateDate);
 
     const { count, error: countError } = await supabase
       .from('service_requests')

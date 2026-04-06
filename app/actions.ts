@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { generateRequestNo } from '@/lib/requests/generateRequestNo';
 import { isAreaCode } from '@/lib/requests/areas';
+import { isFutureBangkokDate } from '@/lib/datetime';
 import {
   canApproveFixFromPhoto,
   canMarkSurveyFailed,
@@ -143,6 +144,10 @@ export async function createRequestAction(formData: FormData) {
 
   if (scheduledSurveyDate && !isValidDateOnly(scheduledSurveyDate)) {
     throw new Error('รูปแบบวันสำรวจไม่ถูกต้อง');
+  }
+
+  if (!isFutureBangkokDate(scheduledSurveyDate)) {
+    throw new Error('วันสำรวจต้องเป็นวันถัดไปจากวันนี้ (Asia/Bangkok)');
   }
 
   if ((latitude === null) !== (longitude === null)) {
