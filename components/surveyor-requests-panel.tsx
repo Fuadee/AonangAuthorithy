@@ -3,9 +3,9 @@
 import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
+import { AreaResponsibleCell } from '@/components/area-responsible-cell';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { getAvailableRequestActions } from '@/lib/requests/workflow-action-config';
-import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
 import {
   formatThaiSurveyDate,
@@ -283,12 +283,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
                   <td className="px-4 py-3">{request.customer_name}</td>
                   <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
                   <td className="max-w-0 px-4 py-3 align-top">
-                    <div className="space-y-0.5">
-                      <p className="text-sm font-medium leading-5 text-slate-800">{resolveAreaDisplayName(request.area_name)}</p>
-                      <p className="truncate text-xs leading-4 text-slate-500" title={`ผู้รับผิดชอบ: ${responsiblePersonName}`}>
-                        ผู้รับผิดชอบ: {responsiblePersonName}
-                      </p>
-                    </div>
+                    <AreaResponsibleCell areaName={request.area_name} responsiblePersonName={responsiblePersonName} />
                   </td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3">{formatThaiSurveyDate(getCurrentSurveyDate(request))}</td>
