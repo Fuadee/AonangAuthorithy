@@ -4,8 +4,8 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createRequestAction } from '@/app/actions';
 import { Area, Assignee, REQUEST_TYPE_LABELS, REQUEST_TYPES } from '@/lib/requests/types';
 import { resolveAreaLabelFromCode } from '@/lib/requests/areas';
-import { getResponsibleByAreaCode } from '@/lib/requests/area-responsible';
-import { getSurveyorDisplayName, getSurveyorDisplayNameFromAssignee } from '@/lib/requests/surveyor-display';
+import { getResponsibleSurveyorIdByAreaCode } from '@/lib/requests/area-responsible';
+import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
 import type { SurveySuggestionResult } from '@/lib/requests/survey-suggestion';
 import { getFixedSurveyScheduleByAreaCode } from '@/lib/requests/fixed-survey-schedule';
 import { RequestLocationPicker } from '@/components/request-location-picker';
@@ -13,6 +13,12 @@ import { RequestLocationPicker } from '@/components/request-location-picker';
 type RequestFormProps = {
   areas: Area[];
   assignees: Assignee[];
+};
+
+type CanonicalSurveyorOption = {
+  id: string;
+  code: string;
+  name: string;
 };
 
 const WEEKDAY_LABELS: Record<string, string> = {
@@ -38,10 +44,30 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const selectedArea = useMemo(() => areas.find((area) => area.code === areaCode), [areas, areaCode]);
-  const mappedResponsibleName = useMemo(() => getResponsibleByAreaCode(areaCode, assignees), [areaCode, assignees]);
+  const surveyorOptions = useMemo<CanonicalSurveyorOption[]>(
+    () =>
+      assignees
+        .map((assignee) => ({
+          id: assignee.id,
+          code: assignee.code?.trim() ?? '',
+          name: assignee.name?.trim() ?? ''
+        }))
+        .filter((option) => option.id && option.name),
+    [assignees]
+  );
+  const surveyorsById = useMemo(
+    () => new Map(surveyorOptions.map((surveyor) => [surveyor.id, surveyor])),
+    [surveyorOptions]
+  );
+  const surveyorsByCode = useMemo(
+    () => new Map(surveyorOptions.map((surveyor) => [surveyor.code.toLowerCase(), surveyor])),
+    [surveyorOptions]
+  );
+  const responsibleSurveyorId = useMemo(() => getResponsibleSurveyorIdByAreaCode(areaCode) ?? '', [areaCode]);
+  const mappedResponsibleName = surveyorsById.get(responsibleSurveyorId)?.name ?? '-';
   const selectedSurveyor = useMemo(
-    () => assignees.find((assignee) => assignee.id === selectedSurveyorId),
-    [assignees, selectedSurveyorId]
+    () => surveyorsById.get(selectedSurveyorId),
+    [selectedSurveyorId, surveyorsById]
   );
   const selectedSurveyorName = selectedSurveyor?.name ?? '';
   const areaFixedSchedule = useMemo(() => getFixedSurveyScheduleByAreaCode(areaCode), [areaCode]);
@@ -87,19 +113,37 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   }, [areaCode]);
 
   const recommendation = useMemo(() => {
-    const recommendedSurveyorIdentity = areaFixedSchedule?.surveyorName ?? surveySuggestion?.suggestion?.surveyor ?? '';
-    const recommendedSurveyorId = resolveSurveyorOptionValue({
-      recommendationSurveyor: recommendedSurveyorIdentity,
-      assignees
-    });
+    const recommendedSurveyorId =
+      surveySuggestion?.suggestion?.surveyor_id ??
+      areaFixedSchedule?.surveyorId ??
+      resolveSurveyorOptionValue({
+        recommendationSurveyor: surveySuggestion?.suggestion?.surveyor_name ?? surveySuggestion?.suggestion?.surveyor ?? '',
+        surveyorsById,
+        surveyorsByCode,
+        surveyorOptions
+      });
+    const recommendedSurveyorName =
+      surveyorsById.get(recommendedSurveyorId)?.name ??
+      surveySuggestion?.suggestion?.surveyor_name ??
+      areaFixedSchedule?.surveyorName ??
+      '-';
 
     return {
       recommendedSurveyorId,
-      recommendedSurveyorName:
-        assignees.find((assignee) => assignee.id === recommendedSurveyorId)?.name ?? recommendedSurveyorIdentity,
+      recommendedSurveyorName,
       recommendedSurveyDateIso: normalizeDateInputValue(surveySuggestion?.suggestion?.suggested_date ?? '')
     };
-  }, [areaFixedSchedule?.surveyorName, assignees, surveySuggestion?.suggestion?.suggested_date, surveySuggestion?.suggestion?.surveyor]);
+  }, [
+    areaFixedSchedule?.surveyorId,
+    areaFixedSchedule?.surveyorName,
+    surveySuggestion?.suggestion?.surveyor,
+    surveySuggestion?.suggestion?.surveyor_id,
+    surveySuggestion?.suggestion?.surveyor_name,
+    surveySuggestion?.suggestion?.suggested_date,
+    surveyorOptions,
+    surveyorsByCode,
+    surveyorsById
+  ]);
 
   const isRecommendedSurveyorSelected =
     !!selectedSurveyorId &&
@@ -123,6 +167,15 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     : '-';
 
   function handleApplyRecommendation() {
+    if (process.env.NODE_ENV !== 'production') {
+      const hasRecommendedOption = surveyorOptions.some((option) => option.id === recommendation.recommendedSurveyorId);
+      console.info('[request-form] apply recommendation click', {
+        recommendation,
+        formStateBeforeApply: { selectedSurveyorId, selectedSurveyDate },
+        hasRecommendedOption
+      });
+    }
+
     if (!surveySuggestion?.suggestion) {
       return;
     }
@@ -135,6 +188,13 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     setSelectedSurveyDate(recommendation.recommendedSurveyDateIso);
     setSurveyorSelectionStatus('recommended');
     setSurveyDateSelectionStatus('recommended');
+
+    if (process.env.NODE_ENV !== 'production') {
+      console.info('[request-form] apply recommendation setState', {
+        selectedSurveyorIdAfterApply: recommendation.recommendedSurveyorId,
+        selectedSurveyDateAfterApply: recommendation.recommendedSurveyDateIso
+      });
+    }
   }
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
@@ -224,7 +284,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             <div className="mt-3 space-y-1 text-sm">
               <p>
                 <span className="text-slate-500">ผู้สำรวจที่แนะนำ:</span>{' '}
-                {getSurveyorDisplayName(recommendation.recommendedSurveyorName)}
+                {recommendation.recommendedSurveyorName}
                 {surveySuggestion.suggestion?.surveyor ? (
                   <span className="ml-2 inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
                     {isRecommendedSurveyorSelected ? 'ตามคำแนะนำ' : 'คำแนะนำของระบบ'}
@@ -276,9 +336,9 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             }}
           >
             <option value="">-- เลือกผู้สำรวจ --</option>
-            {assignees.map((assignee) => (
-              <option key={assignee.id} value={assignee.id}>
-                {getSurveyorDisplayNameFromAssignee(assignee)}
+            {surveyorOptions.map((surveyor) => (
+              <option key={surveyor.id} value={surveyor.id}>
+                {surveyor.name}
               </option>
             ))}
           </select>
@@ -297,7 +357,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
               ผู้สำรวจที่เลือกเป็นผู้แทนงานใน slot ของพื้นที่นี้
             </p>
           ) : null}
-          {!isAreaResponsibleMismatch && !!selectedSurveyorName && !!mappedResponsibleName ? (
+          {!isAreaResponsibleMismatch && !!selectedSurveyorName ? (
             <p className="mt-1 text-xs text-slate-500">ผู้รับผิดชอบประจำพื้นที่: {mappedResponsibleName}</p>
           ) : null}
         </div>
@@ -366,28 +426,30 @@ function normalizeDateInputValue(rawDate: string): string {
 
 function resolveSurveyorOptionValue({
   recommendationSurveyor,
-  assignees
+  surveyorsById,
+  surveyorsByCode,
+  surveyorOptions
 }: {
   recommendationSurveyor: string;
-  assignees: Assignee[];
+  surveyorsById: Map<string, CanonicalSurveyorOption>;
+  surveyorsByCode: Map<string, CanonicalSurveyorOption>;
+  surveyorOptions: CanonicalSurveyorOption[];
 }): string {
   const normalizedRecommendation = recommendationSurveyor.trim();
   if (!normalizedRecommendation) {
     return '';
   }
 
-  const exactMatch =
-    assignees.find((assignee) => assignee.id === normalizedRecommendation) ??
-    assignees.find((assignee) => assignee.code === normalizedRecommendation) ??
-    assignees.find((assignee) => assignee.name === normalizedRecommendation);
-  if (exactMatch) {
-    return exactMatch.id;
+  const byId = surveyorsById.get(normalizedRecommendation);
+  if (byId) {
+    return byId.id;
   }
 
-  const recommendationDisplayName = getSurveyorDisplayName(normalizedRecommendation);
-  const matchedByDisplay = assignees.find(
-    (assignee) => getSurveyorDisplayNameFromAssignee(assignee) === recommendationDisplayName
-  );
+  const byCode = surveyorsByCode.get(normalizedRecommendation.toLowerCase());
+  if (byCode) {
+    return byCode.id;
+  }
 
-  return matchedByDisplay?.id ?? '';
+  const byName = surveyorOptions.find((surveyor) => surveyor.name === normalizedRecommendation);
+  return byName?.id ?? '';
 }
