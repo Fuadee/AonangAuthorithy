@@ -8,6 +8,24 @@ const LEGACY_SURVEYOR_ALIASES: Record<string, string> = {
   'นาย B': SURVEYOR_CODE_TO_DISPLAY_NAME.STAFF_B
 };
 
+function isAliasLikeValue(value: string): boolean {
+  const normalized = value.trim();
+  if (!normalized) {
+    return false;
+  }
+
+  const upper = normalized.toUpperCase();
+  if (upper.startsWith('STAFF_')) {
+    return true;
+  }
+
+  if (/^นาย\s+[A-Z]$/i.test(normalized)) {
+    return true;
+  }
+
+  return false;
+}
+
 export function getSurveyorDisplayName(code?: string | null): string {
   if (!code) {
     return '-';
@@ -18,24 +36,29 @@ export function getSurveyorDisplayName(code?: string | null): string {
     return '-';
   }
 
-  if (normalized in SURVEYOR_CODE_TO_DISPLAY_NAME) {
-    return SURVEYOR_CODE_TO_DISPLAY_NAME[normalized as keyof typeof SURVEYOR_CODE_TO_DISPLAY_NAME];
+  const upperNormalized = normalized.toUpperCase();
+  if (upperNormalized in SURVEYOR_CODE_TO_DISPLAY_NAME) {
+    return SURVEYOR_CODE_TO_DISPLAY_NAME[upperNormalized as keyof typeof SURVEYOR_CODE_TO_DISPLAY_NAME];
   }
 
   if (normalized in LEGACY_SURVEYOR_ALIASES) {
     return LEGACY_SURVEYOR_ALIASES[normalized];
   }
 
+  if (isAliasLikeValue(normalized)) {
+    return '-';
+  }
+
   return normalized;
 }
 
 export function getSurveyorDisplayNameFromAssignee(assignee: { code?: string | null; name?: string | null }): string {
-  const fromCode = getSurveyorDisplayName(assignee.code);
-  if (fromCode !== '-') {
-    return fromCode;
+  const normalizedName = assignee.name?.trim();
+  if (normalizedName) {
+    return normalizedName;
   }
 
-  return getSurveyorDisplayName(assignee.name);
+  return getSurveyorDisplayName(assignee.code);
 }
 
 function normalizeSurveyorNameParts(fullName: string): string[] {

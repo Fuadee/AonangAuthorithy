@@ -1,5 +1,4 @@
 import { isAreaCode, type AreaCode } from '@/lib/requests/areas';
-import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
 
 type SurveyorDirectoryEntry = {
   id?: string | null;
@@ -8,32 +7,39 @@ type SurveyorDirectoryEntry = {
 };
 
 export const AREA_RESPONSIBLE_MAP: Record<AreaCode, string> = {
-  AREA_1: 'STAFF_A',
-  AREA_2: 'STAFF_B',
-  AREA_3: 'STAFF_B'
+  AREA_1: 'staff_a',
+  AREA_2: 'staff_b',
+  AREA_3: 'staff_b'
 };
 
-export function getResponsibleByAreaCode(areaCode: string, surveyors: SurveyorDirectoryEntry[] = []): string | null {
+function normalizeIdentifier(value: string | null | undefined): string {
+  return value?.trim().toLowerCase() ?? '';
+}
+
+export function getResponsibleSurveyorIdByAreaCode(areaCode: string): string | null {
   if (!isAreaCode(areaCode)) {
     return null;
   }
 
-  const responsibleSurveyorCode = AREA_RESPONSIBLE_MAP[areaCode];
-  const responsibleSurveyor = surveyors.find(
-    (surveyor) => surveyor.code?.trim() === responsibleSurveyorCode || surveyor.id?.trim() === responsibleSurveyorCode
-  );
-  const responsibleNameFromDirectory = responsibleSurveyor?.name?.trim();
+  return AREA_RESPONSIBLE_MAP[areaCode];
+}
 
-  if (responsibleNameFromDirectory) {
-    return responsibleNameFromDirectory;
+export function getResponsibleByAreaCode(areaCode: string, surveyors: SurveyorDirectoryEntry[] = []): string | null {
+  const responsibleSurveyorId = getResponsibleSurveyorIdByAreaCode(areaCode);
+  if (!responsibleSurveyorId) {
+    return null;
   }
 
-  return getSurveyorDisplayName(responsibleSurveyorCode);
+  const normalizedResponsibleSurveyorId = normalizeIdentifier(responsibleSurveyorId);
+  const responsibleSurveyor = surveyors.find((surveyor) => normalizeIdentifier(surveyor.id) === normalizedResponsibleSurveyorId);
+  const responsibleNameFromDirectory = responsibleSurveyor?.name?.trim();
+
+  return responsibleNameFromDirectory || '-';
 }
 
 export function isResponsibleForArea(areaCode: string, assigneeName: string, surveyors: SurveyorDirectoryEntry[] = []): boolean {
   const responsibleName = getResponsibleByAreaCode(areaCode, surveyors);
-  if (!responsibleName) {
+  if (!responsibleName || responsibleName === '-') {
     return false;
   }
 
