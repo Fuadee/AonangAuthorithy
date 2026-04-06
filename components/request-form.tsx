@@ -42,6 +42,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [surveyDateSelectionStatus, setSurveyDateSelectionStatus] = useState<'manual' | 'recommended'>('manual');
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [lastAutoAppliedRecommendationKey, setLastAutoAppliedRecommendationKey] = useState('');
 
   const selectedArea = useMemo(() => areas.find((area) => area.code === areaCode), [areas, areaCode]);
   const surveyorOptions = useMemo<CanonicalSurveyorOption[]>(
@@ -166,17 +167,8 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
       })
     : '-';
 
-  function handleApplyRecommendation() {
-    if (process.env.NODE_ENV !== 'production') {
-      const hasRecommendedOption = surveyorOptions.some((option) => option.id === recommendation.recommendedSurveyorId);
-      console.info('[request-form] apply recommendation click', {
-        recommendation,
-        formStateBeforeApply: { selectedSurveyorId, selectedSurveyDate },
-        hasRecommendedOption
-      });
-    }
-
-    if (!surveySuggestion?.suggestion) {
+  useEffect(() => {
+    if (!areaCode || isLoadingSuggestion) {
       return;
     }
 
@@ -184,18 +176,38 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
       return;
     }
 
+    const autoApplyKey = `${areaCode}:${recommendation.recommendedSurveyorId}:${recommendation.recommendedSurveyDateIso}`;
+    if (autoApplyKey === lastAutoAppliedRecommendationKey) {
+      return;
+    }
+
     setSelectedSurveyorId(recommendation.recommendedSurveyorId);
     setSelectedSurveyDate(recommendation.recommendedSurveyDateIso);
     setSurveyorSelectionStatus('recommended');
     setSurveyDateSelectionStatus('recommended');
+    setLastAutoAppliedRecommendationKey(autoApplyKey);
+  }, [
+    areaCode,
+    isLoadingSuggestion,
+    lastAutoAppliedRecommendationKey,
+    recommendation.recommendedSurveyDateIso,
+    recommendation.recommendedSurveyorId
+  ]);
 
-    if (process.env.NODE_ENV !== 'production') {
-      console.info('[request-form] apply recommendation setState', {
-        selectedSurveyorIdAfterApply: recommendation.recommendedSurveyorId,
-        selectedSurveyDateAfterApply: recommendation.recommendedSurveyDateIso
-      });
+  useEffect(() => {
+    if (process.env.NODE_ENV === 'production') {
+      return;
     }
-  }
+
+    console.info('[request-form] render debug', {
+      areaCode,
+      assigneesFromRoute: assignees.map((assignee) => ({ id: assignee.id, code: assignee.code, name: assignee.name })),
+      surveyorOptions,
+      recommendation,
+      selectedSurveyorId,
+      selectedSurveyDate
+    });
+  }, [areaCode, assignees, recommendation, selectedSurveyDate, selectedSurveyorId, surveyorOptions]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
     if (!location) {
@@ -302,11 +314,6 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
               </p>
             </div>
 
-            {surveySuggestion.suggestion && (
-              <button className="btn-secondary mt-3" type="button" onClick={handleApplyRecommendation}>
-                ใช้คำแนะนำ
-              </button>
-            )}
           </>
         ) : null}
 

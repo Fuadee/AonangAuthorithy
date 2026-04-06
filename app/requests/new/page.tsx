@@ -21,6 +21,16 @@ export default async function CreateRequestPage() {
     throw new Error(areasError?.message ?? assigneesError?.message);
   }
 
+  console.info('[requests/new] data source debug', {
+    areasCount: (areas ?? []).length,
+    assigneesCount: (assignees ?? []).length,
+    assignees: (assignees ?? []).map((assignee) => ({
+      id: assignee.id,
+      code: assignee.code,
+      name: assignee.name
+    }))
+  });
+
   return (
     <div className="mx-auto max-w-4xl space-y-4">
       <h2 className="text-2xl font-semibold">สร้างคำร้องใหม่</h2>
