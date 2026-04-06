@@ -7,6 +7,7 @@ import {
   RequestQueueGroup,
   ServiceRequest
 } from '@/lib/requests/types';
+import { formatThaiDate } from '@/lib/datetime';
 
 const DAY_IN_MS = 24 * 60 * 60 * 1000;
 const BUSINESS_TIME_ZONE = 'Asia/Bangkok';
@@ -269,10 +270,7 @@ function addDaysToDateKey(dateKey: string, days: number): string {
 }
 
 function formatRangeLabel(from: Date, to: Date): string {
-  return `${from.toLocaleDateString('th-TH', { day: '2-digit', month: 'short' })} - ${to.toLocaleDateString('th-TH', {
-    day: '2-digit',
-    month: 'short'
-  })}`;
+  return `${formatThaiDate(from)} - ${formatThaiDate(to)}`;
 }
 
 export function computeTrend(

@@ -4,6 +4,7 @@ import { RequestTypeBadge } from '@/components/queue/request-type-badge';
 import { getQueueWorkflowActions } from '@/lib/requests/workflow-action-config';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { getDispatchSubStatus, RequestStatus, RequestType } from '@/lib/requests/types';
+import { formatThaiDateTime } from '@/lib/datetime';
 
 export type QueueRequestCardProps = {
   requestId: string;
@@ -25,10 +26,6 @@ export type QueueRequestCardProps = {
     isDocumentReady: boolean;
   };
 };
-
-function formatDateTime(value: string): string {
-  return new Date(value).toLocaleString('th-TH');
-}
 
 export function QueueRequestCard({
   requestId,
@@ -61,7 +58,7 @@ export function QueueRequestCard({
     `พื้นที่ ${resolveAreaDisplayName(areaName)}`,
     assigneeName,
     shouldShowSurveyor ? surveyorName : null,
-    formatDateTime(updatedAt)
+    formatThaiDateTime(updatedAt)
   ].filter(
     (item): item is string => Boolean(item)
   );

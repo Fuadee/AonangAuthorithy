@@ -11,6 +11,7 @@ import {
   SurveyPlanningRequest,
   toDateKey
 } from '@/lib/requests/survey-planning';
+import { formatThaiDate } from '@/lib/datetime';
 
 type SurveyPlanningBoardProps = {
   requests: SurveyPlanningRequest[];
@@ -248,10 +249,7 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
 
   const selectedSummary = dateMap.get(selectedDateKey) ?? null;
 
-  const monthLabel = currentMonth.toLocaleDateString('th-TH', {
-    month: 'long',
-    year: 'numeric'
-  });
+  const monthLabel = formatThaiDate(currentMonth);
 
   const goToPrevious = () => {
     if (viewMode === 'month') {

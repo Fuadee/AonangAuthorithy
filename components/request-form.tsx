@@ -2,6 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createRequestAction } from '@/app/actions';
+import { formatDateOnly } from '@/lib/datetime';
 import { Area, Assignee, REQUEST_TYPE_LABELS, REQUEST_TYPES } from '@/lib/requests/types';
 import { resolveAreaLabelFromCode } from '@/lib/requests/areas';
 import { getResponsibleSurveyorIdByAreaCode } from '@/lib/requests/area-responsible';
@@ -158,11 +159,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     !!recommendation.recommendedSurveyorId &&
     selectedSurveyorId !== recommendation.recommendedSurveyorId;
 
-  const recommendedDateText = surveySuggestion?.suggestion?.recommendedSurveyDateIso
-    ? new Date(`${surveySuggestion.suggestion.recommendedSurveyDateIso}T00:00:00`).toLocaleDateString('th-TH', {
-        dateStyle: 'full'
-      })
-    : '-';
+  const recommendedDateText = formatDateOnly(surveySuggestion?.suggestion?.recommendedSurveyDateIso ?? null);
 
   useEffect(() => {
     if (!areaCode || isLoadingSuggestion) {
