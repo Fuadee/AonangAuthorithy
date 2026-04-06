@@ -2,7 +2,7 @@
 
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createRequestAction } from '@/app/actions';
-import { formatDateOnly } from '@/lib/datetime';
+import { formatDateOnly, isFutureBangkokDate } from '@/lib/datetime';
 import { Area, Assignee, REQUEST_TYPE_LABELS, REQUEST_TYPES } from '@/lib/requests/types';
 import { resolveAreaLabelFromCode } from '@/lib/requests/areas';
 import { getResponsibleSurveyorIdByAreaCode } from '@/lib/requests/area-responsible';
@@ -43,6 +43,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [surveyDateSelectionStatus, setSurveyDateSelectionStatus] = useState<'manual' | 'recommended'>('manual');
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [surveyDateError, setSurveyDateError] = useState<string | null>(null);
   const [lastAutoAppliedRecommendationKey, setLastAutoAppliedRecommendationKey] = useState('');
 
   const selectedArea = useMemo(() => areas.find((area) => area.code === areaCode), [areas, areaCode]);
@@ -170,6 +171,10 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
       return;
     }
 
+    if (!isFutureBangkokDate(recommendation.recommendedSurveyDateIso)) {
+      return;
+    }
+
     const autoApplyKey = `${areaCode}:${recommendation.recommendedSurveyorId}:${recommendation.recommendedSurveyDateIso}`;
     if (autoApplyKey === lastAutoAppliedRecommendationKey) {
       return;
@@ -214,12 +219,19 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   }, [areaCode, assignees, recommendation, selectedSurveyDate, selectedSurveyorId, surveyorOptions]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (!isFutureBangkokDate(selectedSurveyDate)) {
+      event.preventDefault();
+      setSurveyDateError('วันสำรวจต้องเป็นวันถัดไปจากวันนี้ (โซนเวลาไทย) เท่านั้น');
+      return;
+    }
+
     if (!location) {
       event.preventDefault();
       setLocationError('กรุณาปักหมุดตำแหน่งก่อนบันทึกคำร้อง');
       return;
     }
 
+    setSurveyDateError(null);
     setLocationError(null);
   }
 
@@ -387,11 +399,15 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             onChange={(event) => {
               setSelectedSurveyDate(event.target.value);
               setSurveyDateSelectionStatus('manual');
+              setSurveyDateError(null);
             }}
           />
           <p className="mt-1 text-xs text-slate-500">
             ระบบแนะนำวันสำรวจตามรอบพื้นที่ แต่สามารถเปลี่ยนวันได้ตามการนัดหมายจริง
           </p>
+          {surveyDateError ? (
+            <p className="mt-1 text-xs text-rose-600">{surveyDateError}</p>
+          ) : null}
           {selectedSurveyDate && recommendation.recommendedSurveyDateIso ? (
             <p className="mt-1 text-xs text-slate-500">
               {isRecommendedSurveyDateSelected ? 'สถานะวันสำรวจ: ตามคำแนะนำของระบบ' : 'สถานะวันสำรวจ: เลือกวันเอง'}

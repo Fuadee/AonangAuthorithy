@@ -1,8 +1,42 @@
 import { isAreaCode, type AreaCode } from '@/lib/requests/areas';
+import { getBangkokTodayDateKey, toBangkokDateKey } from '@/lib/datetime';
 
 export const WEEKDAY_ORDER = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
 
 export type Weekday = (typeof WEEKDAY_ORDER)[number];
+
+function parseDateOnlyAsUtcDate(value: string): Date | null {
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(value.trim())) {
+    return null;
+  }
+
+  const parsed = new Date(`${value}T00:00:00.000Z`);
+  return Number.isNaN(parsed.getTime()) ? null : parsed;
+}
+
+function toBangkokWeekday(dateOnly: string): Weekday | null {
+  const parsedDate = parseDateOnlyAsUtcDate(dateOnly);
+  if (!parsedDate) {
+    return null;
+  }
+
+  const weekday = new Intl.DateTimeFormat('en-US', {
+    timeZone: 'Asia/Bangkok',
+    weekday: 'long'
+  }).format(parsedDate);
+
+  return WEEKDAY_ORDER.find((item) => item === weekday) ?? null;
+}
+
+function addDaysToDateOnly(dateOnly: string, days: number): string | null {
+  const parsedDate = parseDateOnlyAsUtcDate(dateOnly);
+  if (!parsedDate) {
+    return null;
+  }
+
+  parsedDate.setUTCDate(parsedDate.getUTCDate() + days);
+  return parsedDate.toISOString().slice(0, 10);
+}
 
 export const FIXED_SURVEY_SCHEDULE: Record<
   AreaCode,
@@ -45,12 +79,11 @@ export function isDateAllowedForArea(areaCode: string, dateOnly: string): boolea
     return false;
   }
 
-  const parsedDate = new Date(`${dateOnly}T00:00:00Z`);
-  if (Number.isNaN(parsedDate.getTime())) {
+  const weekday = toBangkokWeekday(dateOnly);
+  if (!weekday) {
     return false;
   }
 
-  const weekday = WEEKDAY_ORDER[parsedDate.getUTCDay()];
   return fixedSchedule.weekdays.includes(weekday);
 }
 
@@ -89,12 +122,11 @@ export function isDateAllowedForSurveyor(surveyorName: string, dateOnly: string)
     return false;
   }
 
-  const parsedDate = new Date(`${dateOnly}T00:00:00Z`);
-  if (Number.isNaN(parsedDate.getTime())) {
+  const weekday = toBangkokWeekday(dateOnly);
+  if (!weekday) {
     return false;
   }
 
-  const weekday = WEEKDAY_ORDER[parsedDate.getUTCDay()];
   return allowedWeekdays.includes(weekday);
 }
 
@@ -108,16 +140,21 @@ export function getNextAllowedDateForArea(areaCode: string, fromDateUtc: Date): 
     return null;
   }
 
-  const cursor = new Date(fromDateUtc);
-  cursor.setUTCDate(cursor.getUTCDate() + 1);
+  const fromDateKey = toBangkokDateKey(fromDateUtc) ?? getBangkokTodayDateKey();
 
-  for (let dayOffset = 0; dayOffset < 60; dayOffset += 1) {
-    const candidate = new Date(cursor);
-    candidate.setUTCDate(cursor.getUTCDate() + dayOffset);
-    const weekday = WEEKDAY_ORDER[candidate.getUTCDay()];
+  for (let dayOffset = 1; dayOffset <= 60; dayOffset += 1) {
+    const candidateDateKey = addDaysToDateOnly(fromDateKey, dayOffset);
+    if (!candidateDateKey) {
+      continue;
+    }
+
+    const weekday = toBangkokWeekday(candidateDateKey);
+    if (!weekday) {
+      continue;
+    }
 
     if (fixedSchedule.weekdays.includes(weekday)) {
-      return formatDateOnlyUtc(candidate);
+      return candidateDateKey;
     }
   }
 

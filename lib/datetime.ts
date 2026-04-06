@@ -40,6 +40,29 @@ function parseDateOnlyAsUtcDate(value: string): Date | null {
   return Number.isNaN(parsed.valueOf()) ? null : parsed;
 }
 
+function formatBangkokDateParts(date: Date): { year: string; month: string; day: string } | null {
+  if (Number.isNaN(date.valueOf())) {
+    return null;
+  }
+
+  const formatter = new Intl.DateTimeFormat('en-CA', {
+    timeZone: BANGKOK_TIME_ZONE,
+    year: 'numeric',
+    month: '2-digit',
+    day: '2-digit'
+  });
+  const parts = formatter.formatToParts(date);
+  const year = parts.find((part) => part.type === 'year')?.value ?? '';
+  const month = parts.find((part) => part.type === 'month')?.value ?? '';
+  const day = parts.find((part) => part.type === 'day')?.value ?? '';
+
+  if (!year || !month || !day) {
+    return null;
+  }
+
+  return { year, month, day };
+}
+
 function formatWithOptions(
   value: string | number | Date | null | undefined,
   options: Intl.DateTimeFormatOptions
@@ -119,6 +142,47 @@ export function formatDateOnly(value: string | null | undefined): string {
     month: 'short',
     year: 'numeric'
   }).format(parsed);
+}
+
+export function toBangkokDateKey(value: string | number | Date | null | undefined): string | null {
+  if (value === null || value === undefined) {
+    return null;
+  }
+
+  if (typeof value === 'string' && isDateOnly(value)) {
+    const normalized = value.trim();
+    return parseDateOnlyAsUtcDate(normalized) ? normalized : null;
+  }
+
+  const parsed = safeParseDate(value);
+  if (!parsed) {
+    return null;
+  }
+
+  const parts = formatBangkokDateParts(parsed);
+  if (!parts) {
+    return null;
+  }
+
+  return `${parts.year}-${parts.month}-${parts.day}`;
+}
+
+export function getBangkokTodayDateKey(now: Date = new Date()): string {
+  const todayKey = toBangkokDateKey(now);
+  if (!todayKey) {
+    throw new Error('ไม่สามารถคำนวณวันที่ปัจจุบันของโซนเวลา Asia/Bangkok ได้');
+  }
+
+  return todayKey;
+}
+
+export function isFutureBangkokDate(value: string | number | Date | null | undefined, now: Date = new Date()): boolean {
+  const candidateDateKey = toBangkokDateKey(value);
+  if (!candidateDateKey) {
+    return false;
+  }
+
+  return candidateDateKey > getBangkokTodayDateKey(now);
 }
 
 export function toUnixMs(value: string | number | Date | null | undefined): number | null {
