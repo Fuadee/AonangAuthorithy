@@ -1,4 +1,5 @@
 import { ServiceRequest, SURVEYOR_VISIBLE_STATUSES, RequestStatus, REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS, hasSurveyBeenRescheduled } from '@/lib/requests/types';
+import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
 
 export const SURVEY_PLANNING_ACTIVE_STATUSES: RequestStatus[] = SURVEYOR_VISIBLE_STATUSES.filter(
   (status) => status !== 'SURVEY_COMPLETED'
@@ -75,7 +76,9 @@ export function toDateKey(value: string | null): string | null {
 }
 
 function getAssigneeDisplayName(request: SurveyPlanningRequest): string {
-  return request.assigned_surveyor ?? request.assignee_name ?? 'ยังไม่ระบุผู้สำรวจ';
+  const rawValue = request.assigned_surveyor ?? request.assignee_name;
+  const displayName = getSurveyorDisplayName(rawValue);
+  return displayName === '-' ? 'ยังไม่ระบุผู้สำรวจ' : displayName;
 }
 
 export function toAssigneeShortName(name: string): string {

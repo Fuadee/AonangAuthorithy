@@ -5,6 +5,7 @@ import { createRequestAction } from '@/app/actions';
 import { Area, Assignee, REQUEST_TYPE_LABELS, REQUEST_TYPES } from '@/lib/requests/types';
 import { resolveAreaLabelFromCode } from '@/lib/requests/areas';
 import { getResponsibleByAreaCode } from '@/lib/requests/area-responsible';
+import { getSurveyorDisplayName, getSurveyorDisplayNameFromAssignee } from '@/lib/requests/surveyor-display';
 import type { SurveySuggestionResult } from '@/lib/requests/survey-suggestion';
 import { isDateAllowedForArea } from '@/lib/requests/fixed-survey-schedule';
 import { RequestLocationPicker } from '@/components/request-location-picker';
@@ -213,14 +214,14 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             <p className="mt-2 text-xs text-slate-500">
               ตารางประจำ:{' '}
               {surveySuggestion.schedules
-                .map((schedule) => `${schedule.surveyor_name} (${WEEKDAY_LABELS[schedule.weekday] ?? schedule.weekday})`)
+                .map((schedule) => `${getSurveyorDisplayName(schedule.surveyor_name)} (${WEEKDAY_LABELS[schedule.weekday] ?? schedule.weekday})`)
                 .join(', ')}
             </p>
 
             <div className="mt-3 space-y-1 text-sm">
               <p>
                 <span className="text-slate-500">ผู้สำรวจที่แนะนำ:</span>{' '}
-                {surveySuggestion.suggestion?.surveyor ?? '-'}
+                {getSurveyorDisplayName(surveySuggestion.suggestion?.surveyor)}
               </p>
               <p>
                 <span className="text-slate-500">วันนัดสำรวจถัดไปที่แนะนำ:</span> {recommendedDateText}
@@ -275,7 +276,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             <option value="">-- เลือกผู้สำรวจ --</option>
             {filteredAssignees.map((assignee) => (
               <option key={assignee.id} value={assignee.id}>
-                {assignee.code} | {assignee.name}
+                {getSurveyorDisplayNameFromAssignee(assignee)}
               </option>
             ))}
           </select>

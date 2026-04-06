@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { BillingWorkflowActionRenderer } from '@/components/billing-workflow-action-renderer';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
+import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
 import { getCurrentSurveyDate, getRequestStatusLabel, REQUEST_TYPE_LABELS, RequestStatus, ServiceRequest } from '@/lib/requests/types';
 
 type BillingRequestsPanelProps = {
@@ -122,7 +123,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                   <td className="px-4 py-3">{request.customer_name}</td>
                   <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
                   <td className="max-w-0 px-4 py-3" title={resolveAreaDisplayName(request.area_name)}><p className="truncate whitespace-nowrap">{resolveAreaDisplayName(request.area_name)}</p></td>
-                  <td className="px-4 py-3">{request.assigned_surveyor ?? '-'}</td>
+                  <td className="px-4 py-3">{getSurveyorDisplayName(request.assigned_surveyor)}</td>
                   <td className="px-4 py-3">{formatSurveyDate(getCurrentSurveyDate(request))}</td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>

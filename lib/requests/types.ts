@@ -1,4 +1,5 @@
 import type { AreaCode } from '@/lib/requests/areas';
+import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
 
 export const REQUEST_STATUSES = [
   'NEW',
@@ -200,10 +201,10 @@ export function getResponsiblePersonName(
   request: Pick<ServiceRequest, 'status' | 'assignee_name' | 'assigned_surveyor'>
 ): string {
   if (isSurveyPhaseStatus(request.status)) {
-    return request.assigned_surveyor ?? request.assignee_name ?? '-';
+    return getSurveyorDisplayName(request.assigned_surveyor ?? request.assignee_name);
   }
 
-  return request.assignee_name ?? request.assigned_surveyor ?? '-';
+  return getSurveyorDisplayName(request.assignee_name ?? request.assigned_surveyor);
 }
 
 export function getStatusesByQueueGroup(queue: RequestQueueGroup): RequestStatus[] {

@@ -1,4 +1,5 @@
 import type { SurveyQueueRequest } from '@/components/survey-map/types';
+import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
 
 export const ALL_SURVEYORS_VALUE = '__ALL__';
 
@@ -13,6 +14,10 @@ export function normalizeSurveyorName(value: string | null | undefined): string 
 
 export function getSurveyorName(request: Pick<SurveyQueueRequest, 'assigned_surveyor'>): string | null {
   return normalizeSurveyorName(request.assigned_surveyor);
+}
+
+export function getSurveyorDisplayNameByRaw(value: string | null | undefined): string {
+  return getSurveyorDisplayName(value);
 }
 
 export function getAvailableSurveyors(requests: SurveyQueueRequest[]): string[] {
