@@ -2,6 +2,7 @@ import { RequestCardActionPanel } from '@/components/queue/request-card-action-p
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
 import { RequestTypeBadge } from '@/components/queue/request-type-badge';
 import { getQueueWorkflowActions } from '@/lib/requests/workflow-action-config';
+import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { getDispatchSubStatus, RequestStatus, RequestType } from '@/lib/requests/types';
 
 export type QueueRequestCardProps = {
@@ -54,7 +55,14 @@ export function QueueRequestCard({
   });
   const hasSurveyor = Boolean(surveyorName);
   const shouldShowSurveyor = hasSurveyor && surveyorName !== assigneeName;
-  const compactMetaItems = [requestNo, customerName, `พื้นที่ ${areaName}`, assigneeName, shouldShowSurveyor ? surveyorName : null, formatDateTime(updatedAt)].filter(
+  const compactMetaItems = [
+    requestNo,
+    customerName,
+    `พื้นที่ ${resolveAreaDisplayName(areaName)}`,
+    assigneeName,
+    shouldShowSurveyor ? surveyorName : null,
+    formatDateTime(updatedAt)
+  ].filter(
     (item): item is string => Boolean(item)
   );
   const dispatchSubStatus = getDispatchSubStatus({

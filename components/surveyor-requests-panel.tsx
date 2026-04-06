@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { getAvailableRequestActions } from '@/lib/requests/workflow-action-config';
+import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import {
   formatThaiSurveyDate,
   getCurrentSurveyDate,
@@ -277,7 +278,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
                   </td>
                   <td className="px-4 py-3">{request.customer_name}</td>
                   <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
-                  <td className="px-4 py-3">{request.area_name}</td>
+                  <td className="max-w-0 px-4 py-3" title={resolveAreaDisplayName(request.area_name)}><p className="truncate whitespace-nowrap">{resolveAreaDisplayName(request.area_name)}</p></td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3">{formatThaiSurveyDate(getCurrentSurveyDate(request))}</td>
                   <td className="px-4 py-3">
