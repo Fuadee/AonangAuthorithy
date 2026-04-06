@@ -1,5 +1,5 @@
 import { ServiceRequest, SURVEYOR_VISIBLE_STATUSES, RequestStatus, REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS, hasSurveyBeenRescheduled } from '@/lib/requests/types';
-import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
+import { getSurveyorDisplayName, getSurveyorShortDisplayNames } from '@/lib/requests/surveyor-display';
 
 export const SURVEY_PLANNING_ACTIVE_STATUSES: RequestStatus[] = SURVEYOR_VISIBLE_STATUSES.filter(
   (status) => status !== 'SURVEY_COMPLETED'
@@ -36,7 +36,7 @@ export type PlannedSurveyTask = {
 export type DayPlanningSummary = {
   dateKey: string;
   total: number;
-  byAssignee: Array<{ name: string; shortName: string; total: number }>;
+  byAssignee: Array<{ name: string; calendarDisplayName: string; total: number }>;
   tasks: PlannedSurveyTask[];
   density: 'none' | 'low' | 'medium' | 'high';
 };
@@ -79,23 +79,6 @@ function getAssigneeDisplayName(request: SurveyPlanningRequest): string {
   const rawValue = request.assigned_surveyor ?? request.assignee_name;
   const displayName = getSurveyorDisplayName(rawValue);
   return displayName === '-' ? 'ยังไม่ระบุผู้สำรวจ' : displayName;
-}
-
-export function toAssigneeShortName(name: string): string {
-  const cleaned = name.trim();
-  if (!cleaned) {
-    return '-';
-  }
-
-  const words = cleaned.split(/\s+/).filter(Boolean);
-  if (words.length > 1) {
-    return words
-      .slice(0, 2)
-      .map((word) => word[0]?.toUpperCase() ?? '')
-      .join('');
-  }
-
-  return cleaned.length <= 10 ? cleaned : `${cleaned.slice(0, 9)}…`;
 }
 
 export function getDensityLevel(total: number): DayPlanningSummary['density'] {
@@ -163,8 +146,10 @@ export function summarizePlanningByDate(tasks: PlannedSurveyTask[]): Map<string,
       assigneeCounter.set(task.assigneeName, (assigneeCounter.get(task.assigneeName) ?? 0) + 1);
     }
 
+    const surveyorShortDisplayNames = getSurveyorShortDisplayNames(Array.from(assigneeCounter.keys()));
+
     const byAssignee = Array.from(assigneeCounter.entries())
-      .map(([name, total]) => ({ name, shortName: toAssigneeShortName(name), total }))
+      .map(([name, total]) => ({ name, calendarDisplayName: surveyorShortDisplayNames.get(name) ?? name, total }))
       .sort((left, right) => {
         if (right.total !== left.total) {
           return right.total - left.total;
