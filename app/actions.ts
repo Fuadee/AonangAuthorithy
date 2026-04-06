@@ -4,6 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { generateRequestNo } from '@/lib/requests/generateRequestNo';
 import { isAreaCode } from '@/lib/requests/areas';
+import { isResponsibleForArea } from '@/lib/requests/area-responsible';
 import {
   canApproveFixFromPhoto,
   canMarkSurveyFailed,
@@ -183,6 +184,10 @@ export async function createRequestAction(formData: FormData) {
 
   if (assignee.name !== assignedSurveyor) {
     throw new Error('ข้อมูลผู้รับผิดชอบและผู้สำรวจไม่สอดคล้องกัน');
+  }
+
+  if (!isResponsibleForArea(area.code, assignee.name)) {
+    throw new Error('ผู้รับผิดชอบไม่ตรงตามกติกาพื้นที่');
   }
 
   const requestNo = await generateRequestNo();
@@ -1402,6 +1407,15 @@ export async function updateRequestAssigneeAction(formData: FormData) {
   const assigneeId = requiredField(formData, 'assignee_id');
 
   const supabase = createServerSupabaseClient();
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,area_code')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'Request not found');
+  }
 
   const { data: assignee, error: assigneeError } = await supabase
     .from('assignees')
@@ -1414,12 +1428,17 @@ export async function updateRequestAssigneeAction(formData: FormData) {
     throw new Error(assigneeError?.message ?? 'Assignee not found');
   }
 
+  if (!isResponsibleForArea(request.area_code ?? '', assignee.name)) {
+    throw new Error('ผู้รับผิดชอบไม่ตรงตามกติกาพื้นที่');
+  }
+
   const { error } = await supabase
     .from('service_requests')
     .update({
       assignee_id: assignee.id,
       assignee_code: assignee.code,
       assignee_name: assignee.name,
+      assigned_surveyor: assignee.name,
       updated_at: new Date().toISOString()
     })
     .eq('id', requestId);

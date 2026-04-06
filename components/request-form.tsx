@@ -4,6 +4,7 @@ import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createRequestAction } from '@/app/actions';
 import { Area, Assignee, REQUEST_TYPE_LABELS, REQUEST_TYPES } from '@/lib/requests/types';
 import { resolveAreaLabelFromCode } from '@/lib/requests/areas';
+import { getResponsibleByAreaCode } from '@/lib/requests/area-responsible';
 import type { SurveySuggestionResult } from '@/lib/requests/survey-suggestion';
 import { RequestLocationPicker } from '@/components/request-location-picker';
 
@@ -34,6 +35,15 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const selectedArea = useMemo(() => areas.find((area) => area.code === areaCode), [areas, areaCode]);
+  const mappedResponsibleName = useMemo(() => getResponsibleByAreaCode(areaCode), [areaCode]);
+  const filteredAssignees = useMemo(() => {
+    if (!mappedResponsibleName) {
+      return assignees;
+    }
+
+    const mapped = assignees.filter((assignee) => assignee.name === mappedResponsibleName);
+    return mapped.length > 0 ? mapped : assignees;
+  }, [assignees, mappedResponsibleName]);
   const selectedSurveyor = useMemo(
     () => assignees.find((assignee) => assignee.id === assignedSurveyorId),
     [assignees, assignedSurveyorId]
@@ -42,6 +52,20 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   useEffect(() => {
     setAssignedSurveyor(selectedSurveyor?.name ?? '');
   }, [selectedSurveyor]);
+
+  useEffect(() => {
+    if (!mappedResponsibleName) {
+      return;
+    }
+
+    const mappedAssignee = assignees.find((assignee) => assignee.name === mappedResponsibleName);
+    if (!mappedAssignee) {
+      return;
+    }
+
+    setAssignedSurveyorId(mappedAssignee.id);
+    setAssignedSurveyor(mappedAssignee.name);
+  }, [assignees, mappedResponsibleName]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -231,7 +255,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             onChange={(event) => setAssignedSurveyorId(event.target.value)}
           >
             <option value="">-- เลือกผู้สำรวจ --</option>
-            {assignees.map((assignee) => (
+            {filteredAssignees.map((assignee) => (
               <option key={assignee.id} value={assignee.id}>
                 {assignee.code} | {assignee.name}
               </option>
