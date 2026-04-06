@@ -33,6 +33,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [scheduledSurveyDate, setScheduledSurveyDate] = useState('');
   const [surveySuggestion, setSurveySuggestion] = useState<SurveySuggestionResult | null>(null);
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
+  const [selectionSource, setSelectionSource] = useState<'manual' | 'recommended'>('manual');
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
 
@@ -100,12 +101,17 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   }
   const recommendedSurveyorName = areaFixedSchedule?.surveyorName ?? surveySuggestion?.suggestion?.surveyor ?? '';
   const recommendedSurveyDate = surveySuggestion?.suggestion?.suggested_date ?? '';
+  const normalizedRecommendedSurveyDate = normalizeDateInputValue(recommendedSurveyDate);
   const isRecommendedSurveyorSelected =
     !!selectedSurveyorName &&
     !!recommendedSurveyorName &&
-    selectedSurveyorName === recommendedSurveyorName;
+    selectedSurveyorName === recommendedSurveyorName &&
+    selectionSource === 'recommended';
   const isRecommendedSurveyDateSelected =
-    !!scheduledSurveyDate && !!recommendedSurveyDate && scheduledSurveyDate === recommendedSurveyDate;
+    !!scheduledSurveyDate &&
+    !!normalizedRecommendedSurveyDate &&
+    scheduledSurveyDate === normalizedRecommendedSurveyDate &&
+    selectionSource === 'recommended';
   const isAreaResponsibleMismatch =
     !!selectedSurveyorName && !!recommendedSurveyorName && selectedSurveyorName !== recommendedSurveyorName;
 
@@ -114,6 +120,28 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
         dateStyle: 'full'
       })
     : '-';
+
+  function handleApplyRecommendation() {
+    if (!surveySuggestion?.suggestion) {
+      return;
+    }
+
+    const resolvedSurveyorId = resolveSurveyorOptionValue({
+      recommendationSurveyor: surveySuggestion.suggestion.surveyor,
+      assignees
+    });
+    const resolvedSurveyDate = normalizeDateInputValue(surveySuggestion.suggestion.suggested_date);
+
+    if (!resolvedSurveyorId || !resolvedSurveyDate) {
+      return;
+    }
+
+    const resolvedSurveyor = assignees.find((assignee) => assignee.id === resolvedSurveyorId);
+    setAssignedSurveyorId(resolvedSurveyorId);
+    setAssignedSurveyor(resolvedSurveyor?.name ?? '');
+    setScheduledSurveyDate(resolvedSurveyDate);
+    setSelectionSource('recommended');
+  }
 
   return (
     <form action={createRequestAction} className="card space-y-5 p-6" onSubmit={handleSubmit}>
@@ -211,16 +239,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             </div>
 
             {surveySuggestion.suggestion && (
-              <button
-                className="btn-secondary mt-3"
-                type="button"
-                onClick={() => {
-                  const suggestedSurveyorName = surveySuggestion.suggestion?.surveyor ?? '';
-                  const matchedSurveyor = assignees.find((assignee) => assignee.name === suggestedSurveyorName);
-                  setAssignedSurveyorId(matchedSurveyor?.id ?? '');
-                  setScheduledSurveyDate(surveySuggestion.suggestion?.suggested_date ?? '');
-                }}
-              >
+              <button className="btn-secondary mt-3" type="button" onClick={handleApplyRecommendation}>
                 ใช้คำแนะนำ
               </button>
             )}
@@ -247,7 +266,10 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             name="assigned_surveyor_id"
             required
             value={assignedSurveyorId}
-            onChange={(event) => setAssignedSurveyorId(event.target.value)}
+            onChange={(event) => {
+              setAssignedSurveyorId(event.target.value);
+              setSelectionSource('manual');
+            }}
           >
             <option value="">-- เลือกผู้สำรวจ --</option>
             {assignees.map((assignee) => (
@@ -283,7 +305,10 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             type="date"
             required
             value={scheduledSurveyDate}
-            onChange={(event) => setScheduledSurveyDate(event.target.value)}
+            onChange={(event) => {
+              setScheduledSurveyDate(event.target.value);
+              setSelectionSource('manual');
+            }}
           />
           <p className="mt-1 text-xs text-slate-500">
             ระบบแนะนำวันสำรวจตามรอบพื้นที่ แต่สามารถเปลี่ยนวันได้ตามการนัดหมายจริง
@@ -311,4 +336,50 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
       </button>
     </form>
   );
+}
+
+function normalizeDateInputValue(rawDate: string): string {
+  const trimmedDate = rawDate.trim();
+  if (!trimmedDate) {
+    return '';
+  }
+
+  if (/^\d{4}-\d{2}-\d{2}$/.test(trimmedDate)) {
+    return trimmedDate;
+  }
+
+  const parsedDate = new Date(trimmedDate);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return '';
+  }
+
+  return parsedDate.toISOString().slice(0, 10);
+}
+
+function resolveSurveyorOptionValue({
+  recommendationSurveyor,
+  assignees
+}: {
+  recommendationSurveyor: string;
+  assignees: Assignee[];
+}): string {
+  const normalizedRecommendation = recommendationSurveyor.trim();
+  if (!normalizedRecommendation) {
+    return '';
+  }
+
+  const exactMatch =
+    assignees.find((assignee) => assignee.id === normalizedRecommendation) ??
+    assignees.find((assignee) => assignee.code === normalizedRecommendation) ??
+    assignees.find((assignee) => assignee.name === normalizedRecommendation);
+  if (exactMatch) {
+    return exactMatch.id;
+  }
+
+  const recommendationDisplayName = getSurveyorDisplayName(normalizedRecommendation);
+  const matchedByDisplay = assignees.find(
+    (assignee) => getSurveyorDisplayNameFromAssignee(assignee) === recommendationDisplayName
+  );
+
+  return matchedByDisplay?.id ?? '';
 }
