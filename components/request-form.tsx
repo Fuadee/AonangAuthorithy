@@ -3,6 +3,7 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createRequestAction } from '@/app/actions';
 import { Area, Assignee, REQUEST_TYPE_LABELS, REQUEST_TYPES } from '@/lib/requests/types';
+import { resolveAreaLabelFromCode } from '@/lib/requests/areas';
 import type { SurveySuggestionResult } from '@/lib/requests/survey-suggestion';
 import { RequestLocationPicker } from '@/components/request-location-picker';
 
@@ -148,12 +149,12 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
           <option value="">-- เลือกพื้นที่ --</option>
           {areas.map((area) => (
             <option key={area.id} value={area.code}>
-              {area.code} | {area.name}
+              {resolveAreaLabelFromCode(area.code)}
             </option>
           ))}
         </select>
         <p className="mt-1 text-xs text-slate-500">
-          {selectedArea ? `พื้นที่ที่เลือก: ${selectedArea.code} | ${selectedArea.name}` : 'ยังไม่เลือกพื้นที่'}
+          {selectedArea ? `พื้นที่ที่เลือก: ${resolveAreaLabelFromCode(selectedArea.code)}` : 'ยังไม่เลือกพื้นที่'}
         </p>
       </div>
 

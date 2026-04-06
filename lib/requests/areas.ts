@@ -8,9 +8,52 @@ export const AREA_LABELS: Record<AreaCode, string> = {
   AREA_3: 'ไสไทย'
 };
 
-const LEGACY_AREA_2_NAMES = new Set(['พื้นที่ 2', 'AREA_2']);
+const LEGACY_AREA_NAMES: Record<string, AreaCode> = {
+  'พื้นที่ 1': 'AREA_1',
+  'พื้นที่ 2': 'AREA_2',
+  'พื้นที่ 3': 'AREA_3'
+};
 
-export const LEGACY_AREA_2_LABEL = 'พื้นที่เดิม (AREA_2)';
+function normalizeAreaCodeLikeValue(value: string): string {
+  return value.trim().toUpperCase();
+}
+
+function extractAreaCode(value: string): AreaCode | null {
+  const normalizedValue = normalizeAreaCodeLikeValue(value);
+
+  if (isAreaCode(normalizedValue)) {
+    return normalizedValue;
+  }
+
+  if (normalizedValue.includes('|')) {
+    const [left] = normalizedValue.split('|');
+    const normalizedLeft = left?.trim();
+    if (normalizedLeft && isAreaCode(normalizedLeft)) {
+      return normalizedLeft;
+    }
+  }
+
+  return null;
+}
+
+export function formatAreaLabel(value: string): string {
+  const normalizedValue = value.trim();
+  if (!normalizedValue) {
+    return '-';
+  }
+
+  const fromCode = extractAreaCode(normalizedValue);
+  if (fromCode) {
+    return AREA_LABELS[fromCode];
+  }
+
+  const fromLegacyName = LEGACY_AREA_NAMES[normalizedValue];
+  if (fromLegacyName) {
+    return AREA_LABELS[fromLegacyName];
+  }
+
+  return normalizedValue;
+}
 
 export function isAreaCode(value: string): value is AreaCode {
   return (AREA_CODES as readonly string[]).includes(value);
@@ -30,9 +73,5 @@ export function resolveAreaDisplayName(areaName: string | null | undefined): str
     return '-';
   }
 
-  if (LEGACY_AREA_2_NAMES.has(normalizedAreaName)) {
-    return LEGACY_AREA_2_LABEL;
-  }
-
-  return normalizedAreaName;
+  return formatAreaLabel(normalizedAreaName);
 }
