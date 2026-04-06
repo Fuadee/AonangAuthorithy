@@ -181,9 +181,10 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
   }
 
   const today = startOfTodayUtc();
+  const searchStartDate = addDays(today, 1);
 
   for (let dayOffset = 0; dayOffset < 60; dayOffset += 1) {
-    const pivotDate = addDays(today, dayOffset);
+    const pivotDate = addDays(searchStartDate, dayOffset);
 
     for (const schedule of mappedSchedules) {
       const candidateDate = getNextDateForWeekday(pivotDate, schedule.weekday);
