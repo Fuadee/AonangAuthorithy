@@ -7,23 +7,23 @@ export type Weekday = (typeof WEEKDAY_ORDER)[number];
 export const FIXED_SURVEY_SCHEDULE: Record<
   AreaCode,
   {
-    surveyorId: string;
+    surveyorCode: string;
     surveyorName: string;
     weekdays: Weekday[];
   }
 > = {
   AREA_1: {
-    surveyorId: 'staff_a',
+    surveyorCode: 'STAFF_A',
     surveyorName: 'นาย เดชา เกาะกลาง',
     weekdays: ['Monday', 'Wednesday']
   },
   AREA_2: {
-    surveyorId: 'staff_b',
+    surveyorCode: 'STAFF_B',
     surveyorName: 'นาย ชัยยุทธ สายนุ้ย',
     weekdays: ['Tuesday', 'Thursday']
   },
   AREA_3: {
-    surveyorId: 'staff_b',
+    surveyorCode: 'STAFF_B',
     surveyorName: 'นาย ชัยยุทธ สายนุ้ย',
     weekdays: ['Tuesday', 'Thursday']
   }
@@ -31,7 +31,7 @@ export const FIXED_SURVEY_SCHEDULE: Record<
 
 export function getFixedSurveyScheduleByAreaCode(
   areaCode: string
-): { surveyorId: string; surveyorName: string; weekdays: Weekday[] } | null {
+): { surveyorCode: string; surveyorName: string; weekdays: Weekday[] } | null {
   if (!isAreaCode(areaCode)) {
     return null;
   }

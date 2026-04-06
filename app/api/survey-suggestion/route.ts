@@ -11,7 +11,7 @@ export async function GET(request: NextRequest) {
   try {
     const { result, debug } = await getSuggestedSurveyByArea(areaCode);
 
-    console.info('[survey-suggestion] request debug', {
+    console.info('[survey-recommendation] resolved suggestion', {
       input_area_code: debug.input_area_code,
       area_exists: debug.area_exists,
       total_schedule_rows: debug.total_schedule_rows,

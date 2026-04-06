@@ -10,7 +10,7 @@ export default async function SurveyPlanningPage() {
   const { data, error } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,request_type,status,assigned_surveyor,assignee_name,scheduled_survey_date,survey_date_current,survey_date_initial,previous_survey_date,survey_rescheduled_at'
+      'id,request_no,customer_name,request_type,status,assigned_surveyor_id,assigned_surveyor,assignee_name,scheduled_survey_date,survey_date_current,survey_date_initial,previous_survey_date,survey_rescheduled_at'
     )
     .in('status', SURVEY_PLANNING_ACTIVE_STATUSES)
     .not('scheduled_survey_date', 'is', null)

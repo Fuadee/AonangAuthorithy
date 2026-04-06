@@ -8,16 +8,18 @@ set name = excluded.name;
 
 insert into public.assignees (code, name, is_active)
 values
-  ('STAFF_A', 'นาย A', true),
-  ('STAFF_B', 'นาย B', true)
+  ('STAFF_A', 'นาย เดชา เกาะกลาง', true),
+  ('STAFF_B', 'นาย ชัยยุทธ สายนุ้ย', true)
 on conflict (code) do update
 set
   name = excluded.name,
   is_active = excluded.is_active;
 
-insert into public.survey_schedules (surveyor_name, area_id, area_code, area, weekday, max_jobs_per_day, active)
+insert into public.survey_schedules (assignee_id, assignee_code, surveyor_name, area_id, area_code, area, weekday, max_jobs_per_day, active)
 select
-  seed.surveyor_name,
+  assignees.id,
+  assignees.code,
+  assignees.name,
   areas.id,
   areas.code,
   areas.name,
@@ -26,16 +28,19 @@ select
   true
 from (
   values
-    ('นาย A', 'AREA_1', 'Monday', 5),
-    ('นาย A', 'AREA_1', 'Wednesday', 5),
-    ('นาย B', 'AREA_2', 'Tuesday', 5),
-    ('นาย B', 'AREA_2', 'Thursday', 5),
-    ('นาย B', 'AREA_3', 'Tuesday', 5),
-    ('นาย B', 'AREA_3', 'Thursday', 5)
-) as seed(surveyor_name, area_code, weekday, max_jobs_per_day)
+    ('STAFF_A', 'AREA_1', 'Monday', 5),
+    ('STAFF_A', 'AREA_1', 'Wednesday', 5),
+    ('STAFF_B', 'AREA_2', 'Tuesday', 5),
+    ('STAFF_B', 'AREA_2', 'Thursday', 5),
+    ('STAFF_B', 'AREA_3', 'Tuesday', 5),
+    ('STAFF_B', 'AREA_3', 'Thursday', 5)
+) as seed(assignee_code, area_code, weekday, max_jobs_per_day)
+join public.assignees assignees on assignees.code = seed.assignee_code
 join public.areas areas on areas.code = seed.area_code
-on conflict (surveyor_name, area_code, weekday) do update
+on conflict (assignee_id, area_code, weekday) do update
 set
+  assignee_code = excluded.assignee_code,
+  surveyor_name = excluded.surveyor_name,
   area_id = excluded.area_id,
   area = excluded.area,
   max_jobs_per_day = excluded.max_jobs_per_day,

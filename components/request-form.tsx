@@ -64,7 +64,14 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     () => new Map(surveyorOptions.map((surveyor) => [surveyor.code.toLowerCase(), surveyor])),
     [surveyorOptions]
   );
-  const responsibleSurveyorId = useMemo(() => getResponsibleSurveyorIdByAreaCode(areaCode) ?? '', [areaCode]);
+  const responsibleSurveyorId = useMemo(() => {
+    const responsibleSurveyorCode = getResponsibleSurveyorIdByAreaCode(areaCode);
+    if (!responsibleSurveyorCode) {
+      return '';
+    }
+
+    return surveyorsByCode.get(responsibleSurveyorCode.toLowerCase())?.id ?? '';
+  }, [areaCode, surveyorsByCode]);
   const mappedResponsibleName = surveyorsById.get(responsibleSurveyorId)?.name ?? '-';
   const selectedSurveyor = useMemo(
     () => surveyorsById.get(selectedSurveyorId),
@@ -115,33 +122,23 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
 
   const recommendation = useMemo(() => {
     const recommendedSurveyorId =
-      surveySuggestion?.suggestion?.surveyor_id ??
-      areaFixedSchedule?.surveyorId ??
-      resolveSurveyorOptionValue({
-        recommendationSurveyor: surveySuggestion?.suggestion?.surveyor_name ?? surveySuggestion?.suggestion?.surveyor ?? '',
-        surveyorsById,
-        surveyorsByCode,
-        surveyorOptions
-      });
+      surveySuggestion?.suggestion?.recommendedSurveyorId ??
+      (areaFixedSchedule ? (surveyorsByCode.get(areaFixedSchedule.surveyorCode.toLowerCase())?.id ?? '') : '');
     const recommendedSurveyorName =
       surveyorsById.get(recommendedSurveyorId)?.name ??
-      surveySuggestion?.suggestion?.surveyor_name ??
       areaFixedSchedule?.surveyorName ??
       '-';
 
     return {
       recommendedSurveyorId,
       recommendedSurveyorName,
-      recommendedSurveyDateIso: normalizeDateInputValue(surveySuggestion?.suggestion?.suggested_date ?? '')
+      recommendedSurveyDateIso: normalizeDateInputValue(surveySuggestion?.suggestion?.recommendedSurveyDateIso ?? '')
     };
   }, [
-    areaFixedSchedule?.surveyorId,
+    areaFixedSchedule?.surveyorCode,
     areaFixedSchedule?.surveyorName,
-    surveySuggestion?.suggestion?.surveyor,
-    surveySuggestion?.suggestion?.surveyor_id,
-    surveySuggestion?.suggestion?.surveyor_name,
-    surveySuggestion?.suggestion?.suggested_date,
-    surveyorOptions,
+    surveySuggestion?.suggestion?.recommendedSurveyDateIso,
+    surveySuggestion?.suggestion?.recommendedSurveyorId,
     surveyorsByCode,
     surveyorsById
   ]);
@@ -161,8 +158,8 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     !!recommendation.recommendedSurveyorId &&
     selectedSurveyorId !== recommendation.recommendedSurveyorId;
 
-  const recommendedDateText = surveySuggestion?.suggestion?.suggested_date
-    ? new Date(`${surveySuggestion.suggestion.suggested_date}T00:00:00`).toLocaleDateString('th-TH', {
+  const recommendedDateText = surveySuggestion?.suggestion?.recommendedSurveyDateIso
+    ? new Date(`${surveySuggestion.suggestion.recommendedSurveyDateIso}T00:00:00`).toLocaleDateString('th-TH', {
         dateStyle: 'full'
       })
     : '-';
@@ -181,6 +178,14 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
       return;
     }
 
+    console.info('[request-form] apply recommendation', {
+      before: { selectedSurveyorId, selectedSurveyDate },
+      after: {
+        selectedSurveyorId: recommendation.recommendedSurveyorId,
+        selectedSurveyDate: recommendation.recommendedSurveyDateIso
+      }
+    });
+
     setSelectedSurveyorId(recommendation.recommendedSurveyorId);
     setSelectedSurveyDate(recommendation.recommendedSurveyDateIso);
     setSurveyorSelectionStatus('recommended');
@@ -190,6 +195,8 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     areaCode,
     isLoadingSuggestion,
     lastAutoAppliedRecommendationKey,
+    selectedSurveyDate,
+    selectedSurveyorId,
     recommendation.recommendedSurveyDateIso,
     recommendation.recommendedSurveyorId
   ]);
@@ -297,10 +304,10 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
               <p>
                 <span className="text-slate-500">ผู้สำรวจที่แนะนำ:</span>{' '}
                 {recommendation.recommendedSurveyorName}
-                {surveySuggestion.suggestion?.surveyor ? (
-                  <span className="ml-2 inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
-                    {isRecommendedSurveyorSelected ? 'ตามคำแนะนำ' : 'คำแนะนำของระบบ'}
-                  </span>
+              {surveySuggestion.suggestion?.recommendedSurveyorId ? (
+                <span className="ml-2 inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                  {isRecommendedSurveyorSelected ? 'ตามคำแนะนำ' : 'คำแนะนำของระบบ'}
+                </span>
                 ) : null}
               </p>
               <p>
@@ -429,34 +436,4 @@ function normalizeDateInputValue(rawDate: string): string {
   }
 
   return parsedDate.toISOString().slice(0, 10);
-}
-
-function resolveSurveyorOptionValue({
-  recommendationSurveyor,
-  surveyorsById,
-  surveyorsByCode,
-  surveyorOptions
-}: {
-  recommendationSurveyor: string;
-  surveyorsById: Map<string, CanonicalSurveyorOption>;
-  surveyorsByCode: Map<string, CanonicalSurveyorOption>;
-  surveyorOptions: CanonicalSurveyorOption[];
-}): string {
-  const normalizedRecommendation = recommendationSurveyor.trim();
-  if (!normalizedRecommendation) {
-    return '';
-  }
-
-  const byId = surveyorsById.get(normalizedRecommendation);
-  if (byId) {
-    return byId.id;
-  }
-
-  const byCode = surveyorsByCode.get(normalizedRecommendation.toLowerCase());
-  if (byCode) {
-    return byCode.id;
-  }
-
-  const byName = surveyorOptions.find((surveyor) => surveyor.name === normalizedRecommendation);
-  return byName?.id ?? '';
 }
