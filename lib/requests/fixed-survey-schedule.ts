@@ -12,15 +12,15 @@ export const FIXED_SURVEY_SCHEDULE: Record<
   }
 > = {
   AREA_1: {
-    surveyorName: 'นาย A',
+    surveyorName: 'นาย เดชา เกาะกลาง',
     weekdays: ['Monday', 'Wednesday']
   },
   AREA_2: {
-    surveyorName: 'นาย B',
+    surveyorName: 'นาย ชัยยุทธ สายนุ้ย',
     weekdays: ['Tuesday', 'Thursday']
   },
   AREA_3: {
-    surveyorName: 'นาย B',
+    surveyorName: 'นาย ชัยยุทธ สายนุ้ย',
     weekdays: ['Tuesday', 'Thursday']
   }
 };
