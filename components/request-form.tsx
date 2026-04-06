@@ -6,6 +6,7 @@ import { Area, Assignee, REQUEST_TYPE_LABELS, REQUEST_TYPES } from '@/lib/reques
 import { resolveAreaLabelFromCode } from '@/lib/requests/areas';
 import { getResponsibleByAreaCode } from '@/lib/requests/area-responsible';
 import type { SurveySuggestionResult } from '@/lib/requests/survey-suggestion';
+import { isDateAllowedForArea } from '@/lib/requests/fixed-survey-schedule';
 import { RequestLocationPicker } from '@/components/request-location-picker';
 
 type RequestFormProps = {
@@ -33,6 +34,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [scheduleDateError, setScheduleDateError] = useState<string | null>(null);
 
   const selectedArea = useMemo(() => areas.find((area) => area.code === areaCode), [areas, areaCode]);
   const mappedResponsibleName = useMemo(() => getResponsibleByAreaCode(areaCode), [areaCode]);
@@ -110,6 +112,12 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   }, [areaCode]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (scheduledSurveyDate && areaCode && !isDateAllowedForArea(areaCode, scheduledSurveyDate)) {
+      event.preventDefault();
+      setScheduleDateError('วันสำรวจต้องเป็นวันตาม fixed schedule ของพื้นที่เท่านั้น');
+      return;
+    }
+
     if (!location) {
       event.preventDefault();
       setLocationError('กรุณาปักหมุดตำแหน่งก่อนบันทึกคำร้อง');
@@ -118,6 +126,16 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
 
     setLocationError(null);
   }
+
+  const allowedWeekdayLabels = (surveySuggestion?.schedules ?? [])
+    .map((schedule) => WEEKDAY_LABELS[schedule.weekday] ?? schedule.weekday)
+    .join(', ');
+
+  const minScheduledDate = useMemo(() => {
+    const tomorrow = new Date();
+    tomorrow.setDate(tomorrow.getDate() + 1);
+    return tomorrow.toISOString().slice(0, 10);
+  }, []);
 
   const recommendedDateText = surveySuggestion?.suggestion?.suggested_date
     ? new Date(`${surveySuggestion.suggestion.suggested_date}T00:00:00`).toLocaleDateString('th-TH', {
@@ -274,8 +292,27 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             name="scheduled_survey_date"
             type="date"
             value={scheduledSurveyDate}
-            onChange={(event) => setScheduledSurveyDate(event.target.value)}
+            min={minScheduledDate}
+            onChange={(event) => {
+              const nextDate = event.target.value;
+              if (!nextDate) {
+                setScheduledSurveyDate('');
+                setScheduleDateError(null);
+                return;
+              }
+
+              if (areaCode && !isDateAllowedForArea(areaCode, nextDate)) {
+                setScheduledSurveyDate('');
+                setScheduleDateError(`พื้นที่นี้เลือกได้เฉพาะวัน ${allowedWeekdayLabels || '-'} เท่านั้น`);
+                return;
+              }
+
+              setScheduleDateError(null);
+              setScheduledSurveyDate(nextDate);
+            }}
           />
+          {allowedWeekdayLabels ? <p className="mt-1 text-xs text-slate-500">เลือกได้เฉพาะวัน: {allowedWeekdayLabels}</p> : null}
+          {scheduleDateError ? <p className="mt-1 text-xs text-rose-600">{scheduleDateError}</p> : null}
         </div>
       </div>
 
