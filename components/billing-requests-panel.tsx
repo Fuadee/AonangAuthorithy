@@ -6,6 +6,7 @@ import { BillingWorkflowActionRenderer } from '@/components/billing-workflow-act
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
 import { getCurrentSurveyDate, getRequestStatusLabel, REQUEST_TYPE_LABELS, RequestStatus, ServiceRequest } from '@/lib/requests/types';
+import { formatDateOnly } from '@/lib/datetime';
 
 type BillingRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -23,14 +24,6 @@ const FILTER_OPTIONS: Array<{ value: BillingFilter; label: string }> = [
     label: getRequestStatusLabel(status)
   }))
 ];
-
-function formatSurveyDate(value: string | null): string {
-  if (!value) {
-    return '-';
-  }
-
-  return new Date(`${value}T00:00:00`).toLocaleDateString('th-TH', { dateStyle: 'medium' });
-}
 
 
 export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
@@ -124,7 +117,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                   <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
                   <td className="max-w-0 px-4 py-3" title={resolveAreaDisplayName(request.area_name)}><p className="truncate whitespace-nowrap">{resolveAreaDisplayName(request.area_name)}</p></td>
                   <td className="px-4 py-3">{getSurveyorDisplayName(request.assigned_surveyor)}</td>
-                  <td className="px-4 py-3">{formatSurveyDate(getCurrentSurveyDate(request))}</td>
+                  <td className="px-4 py-3">{formatDateOnly(getCurrentSurveyDate(request))}</td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
                     <BillingWorkflowActionRenderer

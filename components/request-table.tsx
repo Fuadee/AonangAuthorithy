@@ -13,6 +13,7 @@ import {
   RequestStatus,
   ServiceRequest
 } from '@/lib/requests/types';
+import { formatDateOnly, formatThaiDate, safeParseDate } from '@/lib/datetime';
 
 type RequestTableProps = {
   requests: ServiceRequest[];
@@ -24,14 +25,6 @@ type RequestTableProps = {
   responsibleColumnVariant?: 'person' | 'area_with_responsible';
 };
 
-function formatSurveyDate(value: string | null): string {
-  if (!value) {
-    return '-';
-  }
-
-  return new Date(`${value}T00:00:00`).toLocaleDateString('th-TH', { dateStyle: 'medium' });
-}
-
 type DispatchDateMeta = {
   thaiDate: string;
   ageInDays: number | null;
@@ -42,12 +35,12 @@ function getDispatchDateMeta(value: string | null): DispatchDateMeta | null {
     return null;
   }
 
-  const sentAt = new Date(value);
-  if (Number.isNaN(sentAt.valueOf())) {
+  const sentAt = safeParseDate(value);
+  if (!sentAt) {
     return null;
   }
 
-  const thaiDate = sentAt.toLocaleDateString('th-TH', { day: 'numeric', month: 'short', year: 'numeric' });
+  const thaiDate = formatThaiDate(sentAt);
   const ageInDays = Math.floor((Date.now() - sentAt.getTime()) / (24 * 60 * 60 * 1000));
 
   return {
@@ -155,7 +148,7 @@ export function RequestTable({
                     <p className="text-sm text-gray-900">-</p>
                   )
                 ) : (
-                  <p className="text-sm text-slate-700">{formatSurveyDate(getCurrentSurveyDate(request))}</p>
+                  <p className="text-sm text-slate-700">{formatDateOnly(getCurrentSurveyDate(request))}</p>
                 )}
               </div>
 
@@ -275,7 +268,7 @@ export function RequestTable({
                         <p className="text-sm text-gray-900">-</p>
                       )
                     ) : (
-                      <p className="truncate whitespace-nowrap text-[#64748B]">{formatSurveyDate(getCurrentSurveyDate(request))}</p>
+                      <p className="truncate whitespace-nowrap text-[#64748B]">{formatDateOnly(getCurrentSurveyDate(request))}</p>
                     )}
                   </td>
                   {hasSeparateStatusColumn ? (

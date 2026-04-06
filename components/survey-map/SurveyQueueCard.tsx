@@ -5,6 +5,7 @@ import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { getRequestStatusLabel } from '@/lib/requests/types';
 import { getSurveyorDisplayNameByRaw, getSurveyorName } from '@/components/survey-map/surveyor-filter';
 import type { SurveyQueueRequest } from '@/components/survey-map/types';
+import { formatDateOnly } from '@/lib/datetime';
 
 type SurveyQueueCardProps = {
   request: SurveyQueueRequest;
@@ -13,13 +14,6 @@ type SurveyQueueCardProps = {
   onViewOnMap: (id: string) => void;
   onHide: (id: string) => void;
 };
-
-function formatDate(value: string | null): string {
-  if (!value) {
-    return '-';
-  }
-  return new Date(`${value}T00:00:00`).toLocaleDateString('th-TH', { dateStyle: 'medium' });
-}
 
 export function SurveyQueueCard({ request, selected, onSelect, onViewOnMap, onHide }: SurveyQueueCardProps) {
   const hasCoordinate = request.latitude !== null && request.longitude !== null;
@@ -43,7 +37,7 @@ export function SurveyQueueCard({ request, selected, onSelect, onViewOnMap, onHi
           <p className="text-sm font-semibold text-brand-700">{request.request_no}</p>
           <p className="text-sm text-slate-700">{request.customer_name}</p>
           <p className="truncate text-xs text-slate-500" title={resolveAreaDisplayName(request.area_name)}>พื้นที่: {resolveAreaDisplayName(request.area_name)}</p>
-          <p className="text-xs text-slate-500">นัดสำรวจล่าสุด: {formatDate(request.latest_survey_date)}</p>
+          <p className="text-xs text-slate-500">นัดสำรวจล่าสุด: {formatDateOnly(request.latest_survey_date)}</p>
           <p className="text-xs text-slate-500">สถานะ: {getRequestStatusLabel(request.status)}</p>
         </div>
         <span className="rounded-full bg-slate-100 px-2 py-1 text-xs text-slate-600">ผู้สำรวจ: {surveyorName}</span>

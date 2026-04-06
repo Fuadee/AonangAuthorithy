@@ -18,6 +18,7 @@ import {
   resolveDateRange
 } from '@/lib/analytics/executive-dashboard';
 import { ServiceRequest } from '@/lib/requests/types';
+import { formatThaiDate } from '@/lib/datetime';
 
 type ExecutiveDashboardProps = {
   requests: ServiceRequest[];
@@ -34,8 +35,8 @@ const DRILLDOWN_TABS: Array<{ key: DrilldownFilter; label: string }> = [
 ];
 
 function formatDateRange(from: Date, to: Date): string {
-  const fromText = from.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' });
-  const toText = to.toLocaleDateString('th-TH', { day: '2-digit', month: 'short', year: 'numeric' });
+  const fromText = formatThaiDate(from);
+  const toText = formatThaiDate(to);
   return `${fromText} - ${toText}`;
 }
 
@@ -75,7 +76,7 @@ export function ExecutiveDashboard({
   }, [drilldownFilter, now, requests, timeRange]);
 
   const busiestQueue = computed.bottlenecks[0];
-  const thisMonthLabel = computed.range.from.toLocaleDateString('th-TH', { month: 'long', year: 'numeric' });
+  const thisMonthLabel = formatThaiDate(computed.range.from);
 
   return (
     <div className="space-y-6">

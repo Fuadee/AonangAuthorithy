@@ -7,6 +7,7 @@ import {
   hasSurveyBeenRescheduled
 } from '@/lib/requests/types';
 import { getSurveyorDisplayName, getSurveyorShortDisplayNames } from '@/lib/requests/surveyor-display';
+import { formatDateOnly } from '@/lib/datetime';
 
 export const SURVEY_PLANNING_ACTIVE_STATUSES: RequestStatus[] = SURVEYOR_VISIBLE_STATUSES.filter(
   (status) => status !== 'SURVEY_COMPLETED'
@@ -196,12 +197,17 @@ export function getMonthDateRange(anchorDate: Date): { from: string; to: string 
 }
 
 export function formatDateKeyThai(dateKey: string, options?: Intl.DateTimeFormatOptions): string {
-  return new Date(`${dateKey}T00:00:00`).toLocaleDateString('th-TH', {
+  if (!options) {
+    return formatDateOnly(dateKey);
+  }
+
+  return new Intl.DateTimeFormat('th-TH', {
+    timeZone: 'Asia/Bangkok',
     day: '2-digit',
     month: 'long',
     year: 'numeric',
     ...options
-  });
+  }).format(new Date(`${dateKey}T00:00:00.000Z`));
 }
 
 function isSurveyCompletedEquivalent(status: RequestStatus): boolean {

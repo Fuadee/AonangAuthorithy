@@ -29,6 +29,8 @@ export const REQUEST_STATUSES = [
   'WAIT_MANAGER_REVIEW',
   'COMPLETED'
 ] as const;
+import { formatDateOnly, formatThaiDateTime } from '@/lib/datetime';
+
 export const REQUEST_TYPES = ['METER', 'EXPANSION'] as const;
 export const REQUEST_QUEUE_GROUPS = ['SURVEY', 'DISPATCH', 'KRABI', 'BILLING', 'MANAGER', 'DONE', 'OTHER'] as const;
 export const DOCUMENT_STATUSES = ['COMPLETE', 'INCOMPLETE'] as const;
@@ -411,11 +413,7 @@ export function formatThaiSurveyDate(value: string | null): string {
     return '-';
   }
 
-  return new Date(`${dateOnly}T00:00:00`).toLocaleDateString('th-TH', {
-    day: '2-digit',
-    month: '2-digit',
-    year: 'numeric'
-  });
+  return formatDateOnly(dateOnly);
 }
 
 export function hasSurveyBeenRescheduled(
@@ -473,12 +471,12 @@ export function getCustomerDelaySummary(
 ): string | null {
   if (request.status === 'WAIT_DOCUMENT_FROM_CUSTOMER') {
     return request.awaiting_customer_documents_since
-      ? `รอเอกสารจากผู้ใช้ไฟตั้งแต่ ${new Date(request.awaiting_customer_documents_since).toLocaleString('th-TH')}`
+      ? `รอเอกสารจากผู้ใช้ไฟตั้งแต่ ${formatThaiDateTime(request.awaiting_customer_documents_since)}`
       : 'รอเอกสารจากผู้ใช้ไฟ';
   }
 
   if (request.documents_received_at) {
-    return `ได้รับเอกสารจากผู้ใช้ไฟแล้วเมื่อ ${new Date(request.documents_received_at).toLocaleString('th-TH')}`;
+    return `ได้รับเอกสารจากผู้ใช้ไฟแล้วเมื่อ ${formatThaiDateTime(request.documents_received_at)}`;
   }
 
   return null;
@@ -568,9 +566,9 @@ export function getPostSurveyFixSummary(
             : '-',
     finalApprovalSourceLabel: getFinalApprovalSource(request),
     customerFixNote: request.customer_fix_note ?? '-',
-    customerFixReportedAt: request.customer_fix_reported_at ? new Date(request.customer_fix_reported_at).toLocaleString('th-TH') : '-',
+    customerFixReportedAt: request.customer_fix_reported_at ? formatThaiDateTime(request.customer_fix_reported_at) : '-',
     photoReviewedBy: request.photo_reviewed_by ?? '-',
-    photoReviewedAt: request.photo_reviewed_at ? new Date(request.photo_reviewed_at).toLocaleString('th-TH') : '-'
+    photoReviewedAt: request.photo_reviewed_at ? formatThaiDateTime(request.photo_reviewed_at) : '-'
   };
 }
 

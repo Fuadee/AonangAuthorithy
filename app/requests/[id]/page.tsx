@@ -27,6 +27,7 @@ import {
   RequestType
 } from '@/lib/requests/types';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
+import { formatDateOnly, formatThaiDateTime, formatThaiTimelineDate, safeParseDate } from '@/lib/datetime';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 export const dynamic = 'force-dynamic';
@@ -40,24 +41,21 @@ type TimelineItem = {
   title: string;
   description?: string;
   at: string;
+  sortAt: number;
 };
 
 function formatSurveyDate(value: string | null): string {
-  if (!value) {
-    return '-';
-  }
-
-  return new Date(`${value}T00:00:00`).toLocaleDateString('th-TH', { dateStyle: 'full' });
+  return formatDateOnly(value);
 }
 
 function formatDateTime(value: string | null): string {
-  if (!value) {
-    return '-';
-  }
-
-  return new Date(value).toLocaleString('th-TH');
+  return formatThaiDateTime(value);
 }
 
+function resolveTimelineSortAt(value: string): number {
+  const parsed = safeParseDate(value);
+  return parsed ? parsed.getTime() : 0;
+}
 
 function getNextStepSummary(status: RequestStatus, requestType: RequestType): { nextStep: string; owner: string } {
   const normalizedStatus = normalizeSurveyWorkflowStatus(status);
@@ -245,7 +243,8 @@ function getTimeline(request: {
     {
       key: 'created',
       title: 'สร้างคำร้อง',
-      at: request.created_at
+      at: request.created_at,
+      sortAt: resolveTimelineSortAt(request.created_at)
     }
   ];
 
@@ -254,7 +253,8 @@ function getTimeline(request: {
       key: 'reviewed',
       title: 'ตรวจเอกสารล่าสุด',
       description: request.survey_note ? `หมายเหตุ: ${request.survey_note}` : undefined,
-      at: request.survey_reviewed_at
+      at: request.survey_reviewed_at,
+      sortAt: resolveTimelineSortAt(request.survey_reviewed_at)
     });
   }
 
@@ -263,7 +263,8 @@ function getTimeline(request: {
       key: 'rescheduled',
       title: 'ขอเลื่อนวันสำรวจ',
       description: `วันสำรวจใหม่: ${formatSurveyDate(request.survey_reschedule_date)}`,
-      at: `${request.survey_reschedule_date}T00:00:00`
+      at: `${request.survey_reschedule_date}T00:00:00.000Z`,
+      sortAt: resolveTimelineSortAt(`${request.survey_reschedule_date}T00:00:00.000Z`)
     });
   }
 
@@ -272,7 +273,8 @@ function getTimeline(request: {
       key: 'survey-initial',
       title: 'นัดสำรวจครั้งแรก',
       description: `วันนัด: ${formatSurveyDate(request.survey_date_initial)}`,
-      at: `${request.survey_date_initial}T00:00:00`
+      at: `${request.survey_date_initial}T00:00:00.000Z`,
+      sortAt: resolveTimelineSortAt(`${request.survey_date_initial}T00:00:00.000Z`)
     });
   }
 
@@ -280,7 +282,8 @@ function getTimeline(request: {
     items.push({
       key: 'awaiting-customer-docs',
       title: 'เอกสารไม่ครบ / รอผู้ใช้ไฟนำเอกสารมาให้',
-      at: request.awaiting_customer_documents_since
+      at: request.awaiting_customer_documents_since,
+      sortAt: resolveTimelineSortAt(request.awaiting_customer_documents_since)
     });
   }
 
@@ -288,7 +291,8 @@ function getTimeline(request: {
     items.push({
       key: 'documents-received',
       title: 'ได้รับเอกสารจากลูกค้า',
-      at: request.documents_received_at
+      at: request.documents_received_at,
+      sortAt: resolveTimelineSortAt(request.documents_received_at)
     });
   }
 
@@ -297,7 +301,8 @@ function getTimeline(request: {
       key: 'rescheduled-latest',
       title: 'นัดสำรวจใหม่',
       description: `${formatSurveyDate(request.survey_date_current)}${request.survey_reschedule_reason ? ` | เหตุผล: ${request.survey_reschedule_reason}` : ''}`,
-      at: request.survey_rescheduled_at
+      at: request.survey_rescheduled_at,
+      sortAt: resolveTimelineSortAt(request.survey_rescheduled_at)
     });
   }
 
@@ -306,7 +311,8 @@ function getTimeline(request: {
       key: 'completed',
       title: request.survey_result === 'FAIL' ? 'สำรวจไม่ผ่าน' : 'สำรวจหน้างานเสร็จ',
       description: request.customer_fix_note ? `รายการที่ต้องแก้: ${request.customer_fix_note}` : undefined,
-      at: request.survey_completed_at
+      at: request.survey_completed_at,
+      sortAt: resolveTimelineSortAt(request.survey_completed_at)
     });
   }
 
@@ -315,7 +321,8 @@ function getTimeline(request: {
       key: 'document-prepared',
       title: 'เอกสารพร้อมจัดส่ง',
       description: request.planned_dispatch_date ? `รอบส่ง: ${formatSurveyDate(request.planned_dispatch_date)}` : undefined,
-      at: request.document_prepared_at
+      at: request.document_prepared_at,
+      sortAt: resolveTimelineSortAt(request.document_prepared_at)
     });
   }
 
@@ -324,7 +331,8 @@ function getTimeline(request: {
       key: 'sent-to-krabi',
       title: 'ส่งเอกสารไปกระบี่แล้ว',
       description: request.dispatched_to_krabi_by ? `ผู้ส่ง: ${request.dispatched_to_krabi_by}` : undefined,
-      at: request.dispatched_to_krabi_at
+      at: request.dispatched_to_krabi_at,
+      sortAt: resolveTimelineSortAt(request.dispatched_to_krabi_at)
     });
   }
 
@@ -333,7 +341,8 @@ function getTimeline(request: {
       key: 'krabi-returned-for-fix',
       title: 'กระบี่ตีกลับให้แก้ไขเอกสาร',
       description: request.reject_reason ? `เหตุผล: ${request.reject_reason}` : undefined,
-      at: request.rejected_at
+      at: request.rejected_at,
+      sortAt: resolveTimelineSortAt(request.rejected_at)
     });
   }
 
@@ -341,7 +350,8 @@ function getTimeline(request: {
     items.push({
       key: 'krabi-in-progress',
       title: 'กระบี่รับดำเนินการ / กำลังประมาณการ',
-      at: request.krabi_in_progress_at
+      at: request.krabi_in_progress_at,
+      sortAt: resolveTimelineSortAt(request.krabi_in_progress_at)
     });
   }
 
@@ -349,7 +359,8 @@ function getTimeline(request: {
     items.push({
       key: 'krabi-completed',
       title: 'กระบี่ประมาณการเสร็จแล้ว',
-      at: request.krabi_completed_at
+      at: request.krabi_completed_at,
+      sortAt: resolveTimelineSortAt(request.krabi_completed_at)
     });
   }
 
@@ -357,7 +368,8 @@ function getTimeline(request: {
     items.push({
       key: 'customer-fix-reported',
       title: 'ผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว / ส่งรูปแล้ว',
-      at: request.customer_fix_reported_at
+      at: request.customer_fix_reported_at,
+      sortAt: resolveTimelineSortAt(request.customer_fix_reported_at)
     });
   }
 
@@ -366,7 +378,8 @@ function getTimeline(request: {
       key: 'photo-review',
       title: request.photo_review_status === 'APPROVED' ? 'ตรวจรูปแล้วผ่าน' : 'ตรวจรูปแล้วต้องลงพื้นที่ตรวจซ้ำ',
       description: request.photo_reviewed_by ? `ผู้ตรวจ: ${request.photo_reviewed_by}` : undefined,
-      at: request.photo_reviewed_at
+      at: request.photo_reviewed_at,
+      sortAt: resolveTimelineSortAt(request.photo_reviewed_at)
     });
   }
 
@@ -375,7 +388,8 @@ function getTimeline(request: {
       key: 'collect-docs-on-site',
       title: 'กำหนดเป็นเคสรับเอกสารหน้างาน',
       description: 'สามารถรับงานและไปสำรวจได้ แต่ต้องยืนยันเอกสารครบหลังสำรวจ',
-      at: request.updated_at
+      at: request.updated_at,
+      sortAt: resolveTimelineSortAt(request.updated_at)
     });
   }
 
@@ -392,7 +406,8 @@ function getTimeline(request: {
       key: 'billed',
       title: 'ออกใบแจ้งหนี้แล้ว',
       description: detail.length ? detail.join(' | ') : undefined,
-      at: request.billed_at
+      at: request.billed_at,
+      sortAt: resolveTimelineSortAt(request.billed_at)
     });
   }
 
@@ -401,7 +416,8 @@ function getTimeline(request: {
       key: 'surveyor-signed',
       title: 'นักสำรวจเซ็นรับรองใบแจ้งหนี้',
       description: request.invoice_signed_by ? `ผู้เซ็น: ${request.invoice_signed_by}` : undefined,
-      at: request.invoice_signed_at
+      at: request.invoice_signed_at,
+      sortAt: resolveTimelineSortAt(request.invoice_signed_at)
     });
   }
 
@@ -410,7 +426,8 @@ function getTimeline(request: {
       key: 'paid',
       title: 'ยืนยันชำระเงินแล้ว',
       description: request.paid_by ? `ยืนยันโดย: ${request.paid_by}` : undefined,
-      at: request.paid_at
+      at: request.paid_at,
+      sortAt: resolveTimelineSortAt(request.paid_at)
     });
   }
 
@@ -419,11 +436,12 @@ function getTimeline(request: {
       key: 'updated',
       title: 'อัปเดตข้อมูลล่าสุด',
       description: `สถานะล่าสุด: ${getRequestStatusLabel(request.status)}`,
-      at: request.updated_at
+      at: request.updated_at,
+      sortAt: resolveTimelineSortAt(request.updated_at)
     });
   }
 
-  return items.sort((a, b) => new Date(b.at).getTime() - new Date(a.at).getTime());
+  return items.sort((a, b) => b.sortAt - a.sortAt);
 }
 
 export default async function RequestDetailPage({ params }: RequestDetailPageProps) {
@@ -802,7 +820,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
             <li className="rounded-lg border border-slate-200 p-3" key={item.key}>
               <p className="text-sm font-semibold text-slate-800">{item.title}</p>
               {item.description ? <p className="mt-1 text-sm text-slate-600">{item.description}</p> : null}
-              <p className="mt-1 text-xs text-slate-500">{formatDateTime(item.at)}</p>
+              <p className="mt-1 text-xs text-slate-500">{formatThaiTimelineDate(item.at)}</p>
             </li>
           ))}
         </ol>
