@@ -4,8 +4,7 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { generateRequestNo } from '@/lib/requests/generateRequestNo';
 import { isAreaCode } from '@/lib/requests/areas';
-import { isResponsibleForArea } from '@/lib/requests/area-responsible';
-import { isDateAllowedForArea } from '@/lib/requests/fixed-survey-schedule';
+import { isDateAllowedForSurveyor } from '@/lib/requests/fixed-survey-schedule';
 import {
   canApproveFixFromPhoto,
   canMarkSurveyFailed,
@@ -187,12 +186,8 @@ export async function createRequestAction(formData: FormData) {
     throw new Error('ข้อมูลผู้รับผิดชอบและผู้สำรวจไม่สอดคล้องกัน');
   }
 
-  if (!isResponsibleForArea(area.code, assignee.name)) {
-    throw new Error('ผู้รับผิดชอบไม่ตรงตามกติกาพื้นที่');
-  }
-
-  if (!isDateAllowedForArea(area.code, scheduledSurveyDate)) {
-    throw new Error('วันสำรวจไม่ตรงตาม fixed schedule ของพื้นที่');
+  if (!isDateAllowedForSurveyor(assignee.name, scheduledSurveyDate)) {
+    throw new Error('วันสำรวจไม่ตรงตามตารางวันที่อนุญาตของผู้สำรวจ');
   }
 
   const requestNo = await generateRequestNo();
@@ -1431,10 +1426,6 @@ export async function updateRequestAssigneeAction(formData: FormData) {
 
   if (assigneeError || !assignee) {
     throw new Error(assigneeError?.message ?? 'Assignee not found');
-  }
-
-  if (!isResponsibleForArea(request.area_code ?? '', assignee.name)) {
-    throw new Error('ผู้รับผิดชอบไม่ตรงตามกติกาพื้นที่');
   }
 
   const { error } = await supabase

@@ -7,7 +7,7 @@ import { resolveAreaLabelFromCode } from '@/lib/requests/areas';
 import { getResponsibleByAreaCode } from '@/lib/requests/area-responsible';
 import { getSurveyorDisplayName, getSurveyorDisplayNameFromAssignee } from '@/lib/requests/surveyor-display';
 import type { SurveySuggestionResult } from '@/lib/requests/survey-suggestion';
-import { isDateAllowedForArea } from '@/lib/requests/fixed-survey-schedule';
+import { getAllowedWeekdaysForSurveyor, isDateAllowedForSurveyor } from '@/lib/requests/fixed-survey-schedule';
 import { RequestLocationPicker } from '@/components/request-location-picker';
 
 type RequestFormProps = {
@@ -39,36 +39,15 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
 
   const selectedArea = useMemo(() => areas.find((area) => area.code === areaCode), [areas, areaCode]);
   const mappedResponsibleName = useMemo(() => getResponsibleByAreaCode(areaCode), [areaCode]);
-  const filteredAssignees = useMemo(() => {
-    if (!mappedResponsibleName) {
-      return assignees;
-    }
-
-    const mapped = assignees.filter((assignee) => assignee.name === mappedResponsibleName);
-    return mapped.length > 0 ? mapped : assignees;
-  }, [assignees, mappedResponsibleName]);
   const selectedSurveyor = useMemo(
     () => assignees.find((assignee) => assignee.id === assignedSurveyorId),
     [assignees, assignedSurveyorId]
   );
+  const selectedSurveyorName = selectedSurveyor?.name ?? '';
 
   useEffect(() => {
     setAssignedSurveyor(selectedSurveyor?.name ?? '');
   }, [selectedSurveyor]);
-
-  useEffect(() => {
-    if (!mappedResponsibleName) {
-      return;
-    }
-
-    const mappedAssignee = assignees.find((assignee) => assignee.name === mappedResponsibleName);
-    if (!mappedAssignee) {
-      return;
-    }
-
-    setAssignedSurveyorId(mappedAssignee.id);
-    setAssignedSurveyor(mappedAssignee.name);
-  }, [assignees, mappedResponsibleName]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -112,10 +91,27 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     return () => controller.abort();
   }, [areaCode]);
 
+  useEffect(() => {
+    if (!scheduledSurveyDate || !selectedSurveyorName) {
+      setScheduleDateError(null);
+      return;
+    }
+
+    if (!isDateAllowedForSurveyor(selectedSurveyorName, scheduledSurveyDate)) {
+      const weekdayLabels = getAllowedWeekdaysForSurveyor(selectedSurveyorName)
+        .map((weekday) => WEEKDAY_LABELS[weekday] ?? weekday)
+        .join(', ');
+      setScheduleDateError(`ผู้สำรวจที่เลือกสามารถรับงานได้เฉพาะวัน ${weekdayLabels || '-'} เท่านั้น`);
+      return;
+    }
+
+    setScheduleDateError(null);
+  }, [scheduledSurveyDate, selectedSurveyorName]);
+
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    if (scheduledSurveyDate && areaCode && !isDateAllowedForArea(areaCode, scheduledSurveyDate)) {
+    if (scheduledSurveyDate && selectedSurveyorName && !isDateAllowedForSurveyor(selectedSurveyorName, scheduledSurveyDate)) {
       event.preventDefault();
-      setScheduleDateError('วันสำรวจต้องเป็นวันตาม fixed schedule ของพื้นที่เท่านั้น');
+      setScheduleDateError('วันสำรวจต้องเป็นวันตามตารางที่อนุญาตของผู้สำรวจที่เลือก');
       return;
     }
 
@@ -128,9 +124,15 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     setLocationError(null);
   }
 
-  const allowedWeekdayLabels = (surveySuggestion?.schedules ?? [])
-    .map((schedule) => WEEKDAY_LABELS[schedule.weekday] ?? schedule.weekday)
+  const allowedWeekdayLabels = getAllowedWeekdaysForSurveyor(selectedSurveyorName)
+    .map((weekday) => WEEKDAY_LABELS[weekday] ?? weekday)
     .join(', ');
+  const isRecommendedSurveyorSelected =
+    !!selectedSurveyorName &&
+    !!surveySuggestion?.suggestion?.surveyor &&
+    selectedSurveyorName === surveySuggestion.suggestion.surveyor;
+  const isAreaResponsibleMismatch =
+    !!selectedSurveyorName && !!mappedResponsibleName && selectedSurveyorName !== mappedResponsibleName;
 
   const minScheduledDate = useMemo(() => {
     const tomorrow = new Date();
@@ -222,6 +224,11 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
               <p>
                 <span className="text-slate-500">ผู้สำรวจที่แนะนำ:</span>{' '}
                 {getSurveyorDisplayName(surveySuggestion.suggestion?.surveyor)}
+                {surveySuggestion.suggestion?.surveyor ? (
+                  <span className="ml-2 inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                    {isRecommendedSurveyorSelected ? 'ตามคำแนะนำ' : 'คำแนะนำของระบบ'}
+                  </span>
+                ) : null}
               </p>
               <p>
                 <span className="text-slate-500">วันนัดสำรวจถัดไปที่แนะนำ:</span> {recommendedDateText}
@@ -274,13 +281,23 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             onChange={(event) => setAssignedSurveyorId(event.target.value)}
           >
             <option value="">-- เลือกผู้สำรวจ --</option>
-            {filteredAssignees.map((assignee) => (
+            {assignees.map((assignee) => (
               <option key={assignee.id} value={assignee.id}>
                 {getSurveyorDisplayNameFromAssignee(assignee)}
               </option>
             ))}
           </select>
           <input id="assigned_surveyor" name="assigned_surveyor" type="hidden" value={assignedSurveyor} readOnly />
+          {assignedSurveyorId ? (
+            <p className="mt-1 text-xs text-slate-500">
+              {isRecommendedSurveyorSelected ? 'สถานะ: ตามคำแนะนำของระบบ' : 'สถานะ: เลือกเอง'}
+            </p>
+          ) : null}
+          {isAreaResponsibleMismatch ? (
+            <p className="mt-1 text-xs text-amber-600">
+              ผู้สำรวจที่เลือกไม่ใช่ผู้รับผิดชอบประจำพื้นที่นี้ แต่สามารถใช้งานได้ในกรณีสลับคิวหรือแทนงาน
+            </p>
+          ) : null}
         </div>
 
         <div>
@@ -302,9 +319,9 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
                 return;
               }
 
-              if (areaCode && !isDateAllowedForArea(areaCode, nextDate)) {
+              if (selectedSurveyorName && !isDateAllowedForSurveyor(selectedSurveyorName, nextDate)) {
                 setScheduledSurveyDate('');
-                setScheduleDateError(`พื้นที่นี้เลือกได้เฉพาะวัน ${allowedWeekdayLabels || '-'} เท่านั้น`);
+                setScheduleDateError(`ผู้สำรวจที่เลือกสามารถรับงานได้เฉพาะวัน ${allowedWeekdayLabels || '-'} เท่านั้น`);
                 return;
               }
 

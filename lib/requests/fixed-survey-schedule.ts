@@ -48,6 +48,41 @@ export function isDateAllowedForArea(areaCode: string, dateOnly: string): boolea
   return fixedSchedule.weekdays.includes(weekday);
 }
 
+export function getAllowedWeekdaysForSurveyor(surveyorName: string): Weekday[] {
+  const normalizedName = surveyorName.trim();
+  if (!normalizedName) {
+    return [];
+  }
+
+  const allowedWeekdays = new Set<Weekday>();
+  for (const schedule of Object.values(FIXED_SURVEY_SCHEDULE)) {
+    if (schedule.surveyorName !== normalizedName) {
+      continue;
+    }
+
+    for (const weekday of schedule.weekdays) {
+      allowedWeekdays.add(weekday);
+    }
+  }
+
+  return WEEKDAY_ORDER.filter((weekday) => allowedWeekdays.has(weekday));
+}
+
+export function isDateAllowedForSurveyor(surveyorName: string, dateOnly: string): boolean {
+  const allowedWeekdays = getAllowedWeekdaysForSurveyor(surveyorName);
+  if (!allowedWeekdays.length) {
+    return false;
+  }
+
+  const parsedDate = new Date(`${dateOnly}T00:00:00Z`);
+  if (Number.isNaN(parsedDate.getTime())) {
+    return false;
+  }
+
+  const weekday = WEEKDAY_ORDER[parsedDate.getUTCDay()];
+  return allowedWeekdays.includes(weekday);
+}
+
 export function formatDateOnlyUtc(date: Date): string {
   return date.toISOString().slice(0, 10);
 }
