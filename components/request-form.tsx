@@ -7,12 +7,7 @@ import { resolveAreaLabelFromCode } from '@/lib/requests/areas';
 import { getResponsibleByAreaCode } from '@/lib/requests/area-responsible';
 import { getSurveyorDisplayName, getSurveyorDisplayNameFromAssignee } from '@/lib/requests/surveyor-display';
 import type { SurveySuggestionResult } from '@/lib/requests/survey-suggestion';
-import {
-  getAllowedWeekdaysForArea,
-  getAllowedWeekdaysForSurveyor,
-  getFixedSurveyScheduleByAreaCode,
-  isDateAllowedForArea
-} from '@/lib/requests/fixed-survey-schedule';
+import { getFixedSurveyScheduleByAreaCode } from '@/lib/requests/fixed-survey-schedule';
 import { RequestLocationPicker } from '@/components/request-location-picker';
 
 type RequestFormProps = {
@@ -40,7 +35,6 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
-  const [scheduleDateError, setScheduleDateError] = useState<string | null>(null);
 
   const selectedArea = useMemo(() => areas.find((area) => area.code === areaCode), [areas, areaCode]);
   const mappedResponsibleName = useMemo(() => getResponsibleByAreaCode(areaCode), [areaCode]);
@@ -61,8 +55,6 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     async function loadSuggestion() {
       if (!areaCode) {
         setSurveySuggestion(null);
-        setAssignedSurveyor('');
-        setScheduledSurveyDate('');
         return;
       }
 
@@ -97,30 +89,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     return () => controller.abort();
   }, [areaCode]);
 
-  useEffect(() => {
-    if (!scheduledSurveyDate || !areaCode) {
-      setScheduleDateError(null);
-      return;
-    }
-
-    if (!isDateAllowedForArea(areaCode, scheduledSurveyDate)) {
-      const weekdayLabels = getAllowedWeekdaysForArea(areaCode)
-        .map((weekday) => WEEKDAY_LABELS[weekday] ?? weekday)
-        .join(', ');
-      setScheduleDateError(`วันสำรวจของพื้นที่นี้เลือกได้เฉพาะวัน ${weekdayLabels || '-'} เท่านั้น`);
-      return;
-    }
-
-    setScheduleDateError(null);
-  }, [areaCode, scheduledSurveyDate]);
-
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    if (scheduledSurveyDate && areaCode && !isDateAllowedForArea(areaCode, scheduledSurveyDate)) {
-      event.preventDefault();
-      setScheduleDateError('วันสำรวจต้องเป็นวันตามตารางของพื้นที่ที่เลือก');
-      return;
-    }
-
     if (!location) {
       event.preventDefault();
       setLocationError('กรุณาปักหมุดตำแหน่งก่อนบันทึกคำร้อง');
@@ -129,26 +98,16 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
 
     setLocationError(null);
   }
-
-  const allowedWeekdayLabels = getAllowedWeekdaysForSurveyor(selectedSurveyorName)
-    .map((weekday) => WEEKDAY_LABELS[weekday] ?? weekday)
-    .join(', ');
-  const areaAllowedWeekdayLabels = getAllowedWeekdaysForArea(areaCode)
-    .map((weekday) => WEEKDAY_LABELS[weekday] ?? weekday)
-    .join(', ');
   const recommendedSurveyorName = areaFixedSchedule?.surveyorName ?? surveySuggestion?.suggestion?.surveyor ?? '';
+  const recommendedSurveyDate = surveySuggestion?.suggestion?.suggested_date ?? '';
   const isRecommendedSurveyorSelected =
     !!selectedSurveyorName &&
     !!recommendedSurveyorName &&
     selectedSurveyorName === recommendedSurveyorName;
+  const isRecommendedSurveyDateSelected =
+    !!scheduledSurveyDate && !!recommendedSurveyDate && scheduledSurveyDate === recommendedSurveyDate;
   const isAreaResponsibleMismatch =
     !!selectedSurveyorName && !!recommendedSurveyorName && selectedSurveyorName !== recommendedSurveyorName;
-
-  const minScheduledDate = useMemo(() => {
-    const tomorrow = new Date();
-    tomorrow.setDate(tomorrow.getDate() + 1);
-    return tomorrow.toISOString().slice(0, 10);
-  }, []);
 
   const recommendedDateText = surveySuggestion?.suggestion?.suggested_date
     ? new Date(`${surveySuggestion.suggestion.suggested_date}T00:00:00`).toLocaleDateString('th-TH', {
@@ -322,33 +281,18 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             id="scheduled_survey_date"
             name="scheduled_survey_date"
             type="date"
+            required
             value={scheduledSurveyDate}
-            min={minScheduledDate}
-            onChange={(event) => {
-              const nextDate = event.target.value;
-              if (!nextDate) {
-                setScheduledSurveyDate('');
-                setScheduleDateError(null);
-                return;
-              }
-
-              if (areaCode && !isDateAllowedForArea(areaCode, nextDate)) {
-                setScheduledSurveyDate('');
-                setScheduleDateError(`วันสำรวจของพื้นที่นี้เลือกได้เฉพาะวัน ${areaAllowedWeekdayLabels || '-'} เท่านั้น`);
-                return;
-              }
-
-              setScheduleDateError(null);
-              setScheduledSurveyDate(nextDate);
-            }}
+            onChange={(event) => setScheduledSurveyDate(event.target.value)}
           />
-          {areaAllowedWeekdayLabels ? (
-            <p className="mt-1 text-xs text-slate-500">วันสำรวจอิงตามตารางของพื้นที่ (เลือกได้: {areaAllowedWeekdayLabels})</p>
+          <p className="mt-1 text-xs text-slate-500">
+            ระบบแนะนำวันสำรวจตามรอบพื้นที่ แต่สามารถเปลี่ยนวันได้ตามการนัดหมายจริง
+          </p>
+          {scheduledSurveyDate && recommendedSurveyDate ? (
+            <p className="mt-1 text-xs text-slate-500">
+              {isRecommendedSurveyDateSelected ? 'สถานะวันสำรวจ: ตามคำแนะนำ' : 'สถานะวันสำรวจ: เลือกวันเอง'}
+            </p>
           ) : null}
-          {!areaAllowedWeekdayLabels && allowedWeekdayLabels ? (
-            <p className="mt-1 text-xs text-slate-500">วันสำรวจอิงตามตารางของพื้นที่</p>
-          ) : null}
-          {scheduleDateError ? <p className="mt-1 text-xs text-rose-600">{scheduleDateError}</p> : null}
         </div>
       </div>
 

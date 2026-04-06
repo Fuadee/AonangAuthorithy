@@ -4,7 +4,6 @@ import { revalidatePath } from 'next/cache';
 import { redirect } from 'next/navigation';
 import { generateRequestNo } from '@/lib/requests/generateRequestNo';
 import { isAreaCode } from '@/lib/requests/areas';
-import { isDateAllowedForArea } from '@/lib/requests/fixed-survey-schedule';
 import {
   canApproveFixFromPhoto,
   canMarkSurveyFailed,
@@ -184,10 +183,6 @@ export async function createRequestAction(formData: FormData) {
 
   if (assignee.name !== assignedSurveyor) {
     throw new Error('ข้อมูลผู้รับผิดชอบและผู้สำรวจไม่สอดคล้องกัน');
-  }
-
-  if (!isDateAllowedForArea(areaCode, scheduledSurveyDate)) {
-    throw new Error('วันสำรวจไม่ตรงตามตารางวันที่อนุญาตของพื้นที่');
   }
 
   const requestNo = await generateRequestNo();
