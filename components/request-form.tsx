@@ -28,27 +28,23 @@ const WEEKDAY_LABELS: Record<string, string> = {
 export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [requestType, setRequestType] = useState('');
   const [areaCode, setAreaCode] = useState('');
-  const [assignedSurveyorId, setAssignedSurveyorId] = useState('');
-  const [assignedSurveyor, setAssignedSurveyor] = useState('');
-  const [scheduledSurveyDate, setScheduledSurveyDate] = useState('');
+  const [selectedSurveyorId, setSelectedSurveyorId] = useState('');
+  const [selectedSurveyDate, setSelectedSurveyDate] = useState('');
   const [surveySuggestion, setSurveySuggestion] = useState<SurveySuggestionResult | null>(null);
   const [isLoadingSuggestion, setIsLoadingSuggestion] = useState(false);
-  const [selectionSource, setSelectionSource] = useState<'manual' | 'recommended'>('manual');
+  const [surveyorSelectionStatus, setSurveyorSelectionStatus] = useState<'manual' | 'recommended'>('manual');
+  const [surveyDateSelectionStatus, setSurveyDateSelectionStatus] = useState<'manual' | 'recommended'>('manual');
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const selectedArea = useMemo(() => areas.find((area) => area.code === areaCode), [areas, areaCode]);
   const mappedResponsibleName = useMemo(() => getResponsibleByAreaCode(areaCode, assignees), [areaCode, assignees]);
   const selectedSurveyor = useMemo(
-    () => assignees.find((assignee) => assignee.id === assignedSurveyorId),
-    [assignees, assignedSurveyorId]
+    () => assignees.find((assignee) => assignee.id === selectedSurveyorId),
+    [assignees, selectedSurveyorId]
   );
-  const areaFixedSchedule = useMemo(() => getFixedSurveyScheduleByAreaCode(areaCode), [areaCode]);
   const selectedSurveyorName = selectedSurveyor?.name ?? '';
-
-  useEffect(() => {
-    setAssignedSurveyor(selectedSurveyor?.name ?? '');
-  }, [selectedSurveyor]);
+  const areaFixedSchedule = useMemo(() => getFixedSurveyScheduleByAreaCode(areaCode), [areaCode]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -90,37 +86,35 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     return () => controller.abort();
   }, [areaCode]);
 
-  function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    if (!location) {
-      event.preventDefault();
-      setLocationError('กรุณาปักหมุดตำแหน่งก่อนบันทึกคำร้อง');
-      return;
-    }
+  const recommendation = useMemo(() => {
+    const recommendedSurveyorIdentity = areaFixedSchedule?.surveyorName ?? surveySuggestion?.suggestion?.surveyor ?? '';
+    const recommendedSurveyorId = resolveSurveyorOptionValue({
+      recommendationSurveyor: recommendedSurveyorIdentity,
+      assignees
+    });
 
-    setLocationError(null);
-  }
-  const recommendedSurveyorIdentity = areaFixedSchedule?.surveyorName ?? surveySuggestion?.suggestion?.surveyor ?? '';
-  const recommendedSurveyorId = useMemo(
-    () =>
-      resolveSurveyorOptionValue({
-        recommendationSurveyor: recommendedSurveyorIdentity,
-        assignees
-      }),
-    [assignees, recommendedSurveyorIdentity]
-  );
-  const recommendedSurveyorName =
-    assignees.find((assignee) => assignee.id === recommendedSurveyorId)?.name ?? recommendedSurveyorIdentity;
-  const recommendedSurveyDate = surveySuggestion?.suggestion?.suggested_date ?? '';
-  const normalizedRecommendedSurveyDate = normalizeDateInputValue(recommendedSurveyDate);
+    return {
+      recommendedSurveyorId,
+      recommendedSurveyorName:
+        assignees.find((assignee) => assignee.id === recommendedSurveyorId)?.name ?? recommendedSurveyorIdentity,
+      recommendedSurveyDateIso: normalizeDateInputValue(surveySuggestion?.suggestion?.suggested_date ?? '')
+    };
+  }, [areaFixedSchedule?.surveyorName, assignees, surveySuggestion?.suggestion?.suggested_date, surveySuggestion?.suggestion?.surveyor]);
+
   const isRecommendedSurveyorSelected =
-    !!assignedSurveyorId && !!recommendedSurveyorId && assignedSurveyorId === recommendedSurveyorId;
+    !!selectedSurveyorId &&
+    !!recommendation.recommendedSurveyorId &&
+    selectedSurveyorId === recommendation.recommendedSurveyorId &&
+    surveyorSelectionStatus === 'recommended';
   const isRecommendedSurveyDateSelected =
-    !!scheduledSurveyDate &&
-    !!normalizedRecommendedSurveyDate &&
-    scheduledSurveyDate === normalizedRecommendedSurveyDate &&
-    selectionSource === 'recommended';
+    !!selectedSurveyDate &&
+    !!recommendation.recommendedSurveyDateIso &&
+    selectedSurveyDate === recommendation.recommendedSurveyDateIso &&
+    surveyDateSelectionStatus === 'recommended';
   const isAreaResponsibleMismatch =
-    !!assignedSurveyorId && !!recommendedSurveyorId && assignedSurveyorId !== recommendedSurveyorId;
+    !!selectedSurveyorId &&
+    !!recommendation.recommendedSurveyorId &&
+    selectedSurveyorId !== recommendation.recommendedSurveyorId;
 
   const recommendedDateText = surveySuggestion?.suggestion?.suggested_date
     ? new Date(`${surveySuggestion.suggestion.suggested_date}T00:00:00`).toLocaleDateString('th-TH', {
@@ -133,21 +127,24 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
       return;
     }
 
-    const resolvedSurveyorId = resolveSurveyorOptionValue({
-      recommendationSurveyor: surveySuggestion.suggestion.surveyor,
-      assignees
-    });
-    const resolvedSurveyDate = normalizeDateInputValue(surveySuggestion.suggestion.suggested_date);
-
-    if (!resolvedSurveyorId || !resolvedSurveyDate) {
+    if (!recommendation.recommendedSurveyorId || !recommendation.recommendedSurveyDateIso) {
       return;
     }
 
-    const resolvedSurveyor = assignees.find((assignee) => assignee.id === resolvedSurveyorId);
-    setAssignedSurveyorId(resolvedSurveyorId);
-    setAssignedSurveyor(resolvedSurveyor?.name ?? '');
-    setScheduledSurveyDate(resolvedSurveyDate);
-    setSelectionSource('recommended');
+    setSelectedSurveyorId(recommendation.recommendedSurveyorId);
+    setSelectedSurveyDate(recommendation.recommendedSurveyDateIso);
+    setSurveyorSelectionStatus('recommended');
+    setSurveyDateSelectionStatus('recommended');
+  }
+
+  function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (!location) {
+      event.preventDefault();
+      setLocationError('กรุณาปักหมุดตำแหน่งก่อนบันทึกคำร้อง');
+      return;
+    }
+
+    setLocationError(null);
   }
 
   return (
@@ -227,7 +224,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             <div className="mt-3 space-y-1 text-sm">
               <p>
                 <span className="text-slate-500">ผู้สำรวจที่แนะนำ:</span>{' '}
-                {getSurveyorDisplayName(recommendedSurveyorName)}
+                {getSurveyorDisplayName(recommendation.recommendedSurveyorName)}
                 {surveySuggestion.suggestion?.surveyor ? (
                   <span className="ml-2 inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
                     {isRecommendedSurveyorSelected ? 'ตามคำแนะนำ' : 'คำแนะนำของระบบ'}
@@ -272,10 +269,10 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             id="assigned_surveyor_id"
             name="assigned_surveyor_id"
             required
-            value={assignedSurveyorId}
+            value={selectedSurveyorId}
             onChange={(event) => {
-              setAssignedSurveyorId(event.target.value);
-              setSelectionSource('manual');
+              setSelectedSurveyorId(event.target.value);
+              setSurveyorSelectionStatus('manual');
             }}
           >
             <option value="">-- เลือกผู้สำรวจ --</option>
@@ -285,8 +282,8 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
               </option>
             ))}
           </select>
-          <input id="assigned_surveyor" name="assigned_surveyor" type="hidden" value={assignedSurveyor} readOnly />
-          {assignedSurveyorId ? (
+          <input id="assigned_surveyor" name="assigned_surveyor" type="hidden" value={selectedSurveyorName} readOnly />
+          {selectedSurveyorId ? (
             <p className="mt-1 text-xs text-slate-500">
               {isRecommendedSurveyorSelected
                 ? 'สถานะ: ตามคำแนะนำของระบบ'
@@ -315,18 +312,18 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             name="scheduled_survey_date"
             type="date"
             required
-            value={scheduledSurveyDate}
+            value={selectedSurveyDate}
             onChange={(event) => {
-              setScheduledSurveyDate(event.target.value);
-              setSelectionSource('manual');
+              setSelectedSurveyDate(event.target.value);
+              setSurveyDateSelectionStatus('manual');
             }}
           />
           <p className="mt-1 text-xs text-slate-500">
             ระบบแนะนำวันสำรวจตามรอบพื้นที่ แต่สามารถเปลี่ยนวันได้ตามการนัดหมายจริง
           </p>
-          {scheduledSurveyDate && recommendedSurveyDate ? (
+          {selectedSurveyDate && recommendation.recommendedSurveyDateIso ? (
             <p className="mt-1 text-xs text-slate-500">
-              {isRecommendedSurveyDateSelected ? 'สถานะวันสำรวจ: ตามคำแนะนำ' : 'สถานะวันสำรวจ: เลือกวันเอง'}
+              {isRecommendedSurveyDateSelected ? 'สถานะวันสำรวจ: ตามคำแนะนำของระบบ' : 'สถานะวันสำรวจ: เลือกวันเอง'}
             </p>
           ) : null}
         </div>
