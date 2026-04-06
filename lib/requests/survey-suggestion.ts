@@ -1,4 +1,5 @@
 import { isAreaCode, type AreaCode } from '@/lib/requests/areas';
+import { getResponsibleByAreaCode } from '@/lib/requests/area-responsible';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 const WEEKDAY_ORDER = ['Sunday', 'Monday', 'Tuesday', 'Wednesday', 'Thursday', 'Friday', 'Saturday'] as const;
@@ -128,12 +129,15 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
 
   const typedSchedules = (allSchedules ?? []) as SurveySchedule[];
   const activeSchedules = typedSchedules.filter((item) => item.active);
+  const mappedResponsible = getResponsibleByAreaCode(areaCode);
+  const mappedSchedules =
+    mappedResponsible === null ? [] : activeSchedules.filter((item) => item.surveyor_name === mappedResponsible);
 
   const baseDebug: SurveySuggestionDebug = {
     input_area_code: areaCode,
     area_exists: true,
     total_schedule_rows: typedSchedules.length,
-    active_schedule_rows: activeSchedules.length,
+    active_schedule_rows: mappedSchedules.length,
     schedule_areas: typedSchedules.map((item) => item.area_code)
   };
 
@@ -163,12 +167,25 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
     };
   }
 
+  if (!mappedSchedules.length) {
+    return {
+      result: {
+        area_code: areaCode,
+        schedules: [],
+        suggestion: null,
+        reason: 'NO_SCHEDULE_FOR_AREA',
+        message: 'ยังไม่พบตารางคิวที่ตรงกับผู้รับผิดชอบตามพื้นที่'
+      },
+      debug: baseDebug
+    };
+  }
+
   const today = startOfTodayUtc();
 
   for (let dayOffset = 0; dayOffset < 60; dayOffset += 1) {
     const pivotDate = addDays(today, dayOffset);
 
-    for (const schedule of activeSchedules) {
+    for (const schedule of mappedSchedules) {
       const candidateDate = getNextDateForWeekday(pivotDate, schedule.weekday);
       if (formatDateOnly(candidateDate) !== formatDateOnly(pivotDate)) {
         continue;
@@ -191,7 +208,7 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
         return {
           result: {
             area_code: areaCode,
-            schedules: activeSchedules.map((item) => ({
+            schedules: mappedSchedules.map((item) => ({
               surveyor_name: item.surveyor_name,
               weekday: item.weekday,
               max_jobs_per_day: item.max_jobs_per_day
@@ -212,7 +229,7 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
   return {
     result: {
       area_code: areaCode,
-      schedules: activeSchedules.map((item) => ({
+      schedules: mappedSchedules.map((item) => ({
         surveyor_name: item.surveyor_name,
         weekday: item.weekday,
         max_jobs_per_day: item.max_jobs_per_day

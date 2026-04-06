@@ -30,7 +30,7 @@ from (
     ('นาย A', 'AREA_1', 'Wednesday', 5),
     ('นาย B', 'AREA_2', 'Tuesday', 5),
     ('นาย B', 'AREA_2', 'Thursday', 5),
-    ('นาย C', 'AREA_3', 'Friday', 5)
+    ('นาย B', 'AREA_3', 'Friday', 5)
 ) as seed(surveyor_name, area_code, weekday, max_jobs_per_day)
 join public.areas areas on areas.code = seed.area_code
 on conflict (surveyor_name, area_code, weekday) do update
