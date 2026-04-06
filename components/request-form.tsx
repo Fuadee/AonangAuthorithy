@@ -25,7 +25,7 @@ const WEEKDAY_LABELS: Record<string, string> = {
 export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [requestType, setRequestType] = useState('');
   const [areaCode, setAreaCode] = useState('');
-  const [assigneeId, setAssigneeId] = useState('');
+  const [assignedSurveyorId, setAssignedSurveyorId] = useState('');
   const [assignedSurveyor, setAssignedSurveyor] = useState('');
   const [scheduledSurveyDate, setScheduledSurveyDate] = useState('');
   const [surveySuggestion, setSurveySuggestion] = useState<SurveySuggestionResult | null>(null);
@@ -34,10 +34,14 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [locationError, setLocationError] = useState<string | null>(null);
 
   const selectedArea = useMemo(() => areas.find((area) => area.code === areaCode), [areas, areaCode]);
-  const selectedAssignee = useMemo(
-    () => assignees.find((assignee) => assignee.id === assigneeId),
-    [assignees, assigneeId]
+  const selectedSurveyor = useMemo(
+    () => assignees.find((assignee) => assignee.id === assignedSurveyorId),
+    [assignees, assignedSurveyorId]
   );
+
+  useEffect(() => {
+    setAssignedSurveyor(selectedSurveyor?.name ?? '');
+  }, [selectedSurveyor]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -158,32 +162,6 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
         </p>
       </div>
 
-      <div>
-        <label className="text-sm font-medium" htmlFor="assignee_id">
-          ผู้รับผิดชอบ
-        </label>
-        <select
-          className="input"
-          id="assignee_id"
-          name="assignee_id"
-          required
-          value={assigneeId}
-          onChange={(event) => setAssigneeId(event.target.value)}
-        >
-          <option value="">-- เลือกผู้รับผิดชอบ --</option>
-          {assignees.map((assignee) => (
-            <option key={assignee.id} value={assignee.id}>
-              {assignee.code} | {assignee.name}
-            </option>
-          ))}
-        </select>
-        <p className="mt-1 text-xs text-slate-500">
-          {selectedAssignee
-            ? `ผู้รับผิดชอบที่เลือก: ${selectedAssignee.code} | ${selectedAssignee.name}`
-            : 'ยังไม่เลือกผู้รับผิดชอบ'}
-        </p>
-      </div>
-
       <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
         <h3 className="text-sm font-semibold text-slate-700">คำแนะนำการนัดสำรวจ</h3>
         {isLoadingSuggestion && <p className="mt-2 text-xs text-slate-500">กำลังคำนวณคิวสำรวจ...</p>}
@@ -218,7 +196,9 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
                 className="btn-secondary mt-3"
                 type="button"
                 onClick={() => {
-                  setAssignedSurveyor(surveySuggestion.suggestion?.surveyor ?? '');
+                  const suggestedSurveyorName = surveySuggestion.suggestion?.surveyor ?? '';
+                  const matchedSurveyor = assignees.find((assignee) => assignee.name === suggestedSurveyorName);
+                  setAssignedSurveyorId(matchedSurveyor?.id ?? '');
                   setScheduledSurveyDate(surveySuggestion.suggestion?.suggested_date ?? '');
                 }}
               >
@@ -239,17 +219,25 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
 
       <div className="grid gap-4 sm:grid-cols-2">
         <div>
-          <label className="text-sm font-medium" htmlFor="assigned_surveyor">
+          <label className="text-sm font-medium" htmlFor="assigned_surveyor_id">
             ผู้สำรวจ
           </label>
-          <input
+          <select
             className="input"
-            id="assigned_surveyor"
-            name="assigned_surveyor"
-            placeholder="เช่น นาย A"
-            value={assignedSurveyor}
-            onChange={(event) => setAssignedSurveyor(event.target.value)}
-          />
+            id="assigned_surveyor_id"
+            name="assigned_surveyor_id"
+            required
+            value={assignedSurveyorId}
+            onChange={(event) => setAssignedSurveyorId(event.target.value)}
+          >
+            <option value="">-- เลือกผู้สำรวจ --</option>
+            {assignees.map((assignee) => (
+              <option key={assignee.id} value={assignee.id}>
+                {assignee.code} | {assignee.name}
+              </option>
+            ))}
+          </select>
+          <input id="assigned_surveyor" name="assigned_surveyor" type="hidden" value={assignedSurveyor} readOnly />
         </div>
 
         <div>
