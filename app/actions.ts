@@ -129,20 +129,16 @@ export async function createRequestAction(formData: FormData) {
   const customerName = requiredField(formData, 'customer_name');
   const phone = requiredField(formData, 'phone');
   const areaCode = requiredField(formData, 'area_code');
-  const assigneeId = requiredField(formData, 'assignee_id');
+  const assignedSurveyorId = requiredField(formData, 'assigned_surveyor_id');
   const requestType = requiredField(formData, 'request_type');
-  const assignedSurveyor = optionalField(formData, 'assigned_surveyor');
-  const scheduledSurveyDate = optionalField(formData, 'scheduled_survey_date');
+  const assignedSurveyor = requiredField(formData, 'assigned_surveyor');
+  const scheduledSurveyDate = requiredField(formData, 'scheduled_survey_date');
   const latitude = parseOptionalCoordinate(formData, 'latitude');
   const longitude = parseOptionalCoordinate(formData, 'longitude');
   const locationNote = optionalField(formData, 'location_note');
 
   if (!REQUEST_TYPES.includes(requestType as (typeof REQUEST_TYPES)[number])) {
     throw new Error('Invalid request type');
-  }
-
-  if ((assignedSurveyor && !scheduledSurveyDate) || (!assignedSurveyor && scheduledSurveyDate)) {
-    throw new Error('กรุณาระบุผู้สำรวจและวันสำรวจให้ครบทั้งคู่');
   }
 
   if (scheduledSurveyDate && !isValidDateOnly(scheduledSurveyDate)) {
@@ -172,7 +168,7 @@ export async function createRequestAction(formData: FormData) {
     supabase
       .from('assignees')
       .select('id,code,name,is_active')
-      .eq('id', assigneeId)
+      .eq('id', assignedSurveyorId)
       .eq('is_active', true)
       .single()
   ]);
@@ -183,6 +179,10 @@ export async function createRequestAction(formData: FormData) {
 
   if (assigneeError || !assignee) {
     throw new Error(assigneeError?.message ?? 'Assignee not found');
+  }
+
+  if (assignee.name !== assignedSurveyor) {
+    throw new Error('ข้อมูลผู้รับผิดชอบและผู้สำรวจไม่สอดคล้องกัน');
   }
 
   const requestNo = await generateRequestNo();
@@ -198,8 +198,8 @@ export async function createRequestAction(formData: FormData) {
     area_name: area.name,
     assignee_id: assignee.id,
     assignee_code: assignee.code,
-    assignee_name: assignedSurveyor ?? assignee.name,
-    assigned_surveyor: assignedSurveyor,
+    assignee_name: assignee.name,
+    assigned_surveyor: assignee.name,
     scheduled_survey_date: scheduledSurveyDate,
     survey_date_initial: scheduledSurveyDate,
     survey_date_current: scheduledSurveyDate,
