@@ -11,13 +11,12 @@ type Coordinate = {
 type MapPickerProps = {
   selectedLocation: Coordinate | null;
   onPick: (location: Coordinate) => void;
-  panTo: Coordinate | null;
 };
 
 const DEFAULT_CENTER: [number, number] = [8.0376, 98.8241];
 const DEFAULT_ZOOM = 12;
 
-export function MapPicker({ selectedLocation, onPick, panTo }: MapPickerProps) {
+export function MapPicker({ selectedLocation, onPick }: MapPickerProps) {
   const containerRef = useRef<HTMLDivElement | null>(null);
   const mapRef = useRef<LeafletMap | null>(null);
   const markerRef = useRef<LeafletMarker | null>(null);
@@ -93,14 +92,6 @@ export function MapPicker({ selectedLocation, onPick, panTo }: MapPickerProps) {
 
     void syncMarker();
   }, [selectedLocation]);
-
-  useEffect(() => {
-    if (!mapRef.current || !panTo) {
-      return;
-    }
-
-    mapRef.current.setView([panTo.latitude, panTo.longitude], 15);
-  }, [panTo]);
 
   return <div className="h-80 w-full overflow-hidden rounded-lg border border-slate-300" ref={containerRef} />;
 }
