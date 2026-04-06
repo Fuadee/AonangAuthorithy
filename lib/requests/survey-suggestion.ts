@@ -28,6 +28,8 @@ export type SurveySuggestionResult = {
   }>;
   suggestion: {
     surveyor: string;
+    surveyor_id: string;
+    surveyor_name: string;
     suggested_date: string;
     current_jobs: number;
     max_jobs_per_day: number;
@@ -213,6 +215,8 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
           schedules: fixedSchedules,
           suggestion: {
             surveyor: fixedSchedule.surveyorName,
+            surveyor_id: fixedSchedule.surveyorId,
+            surveyor_name: fixedSchedule.surveyorName,
             suggested_date: dateOnly,
             current_jobs: currentJobs,
             max_jobs_per_day: matchingFixedSchedule.max_jobs_per_day
