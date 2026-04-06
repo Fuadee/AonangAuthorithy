@@ -7,7 +7,12 @@ import { resolveAreaLabelFromCode } from '@/lib/requests/areas';
 import { getResponsibleByAreaCode } from '@/lib/requests/area-responsible';
 import { getSurveyorDisplayName, getSurveyorDisplayNameFromAssignee } from '@/lib/requests/surveyor-display';
 import type { SurveySuggestionResult } from '@/lib/requests/survey-suggestion';
-import { getAllowedWeekdaysForSurveyor, isDateAllowedForSurveyor } from '@/lib/requests/fixed-survey-schedule';
+import {
+  getAllowedWeekdaysForArea,
+  getAllowedWeekdaysForSurveyor,
+  getFixedSurveyScheduleByAreaCode,
+  isDateAllowedForArea
+} from '@/lib/requests/fixed-survey-schedule';
 import { RequestLocationPicker } from '@/components/request-location-picker';
 
 type RequestFormProps = {
@@ -43,6 +48,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     () => assignees.find((assignee) => assignee.id === assignedSurveyorId),
     [assignees, assignedSurveyorId]
   );
+  const areaFixedSchedule = useMemo(() => getFixedSurveyScheduleByAreaCode(areaCode), [areaCode]);
   const selectedSurveyorName = selectedSurveyor?.name ?? '';
 
   useEffect(() => {
@@ -92,26 +98,26 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   }, [areaCode]);
 
   useEffect(() => {
-    if (!scheduledSurveyDate || !selectedSurveyorName) {
+    if (!scheduledSurveyDate || !areaCode) {
       setScheduleDateError(null);
       return;
     }
 
-    if (!isDateAllowedForSurveyor(selectedSurveyorName, scheduledSurveyDate)) {
-      const weekdayLabels = getAllowedWeekdaysForSurveyor(selectedSurveyorName)
+    if (!isDateAllowedForArea(areaCode, scheduledSurveyDate)) {
+      const weekdayLabels = getAllowedWeekdaysForArea(areaCode)
         .map((weekday) => WEEKDAY_LABELS[weekday] ?? weekday)
         .join(', ');
-      setScheduleDateError(`ผู้สำรวจที่เลือกสามารถรับงานได้เฉพาะวัน ${weekdayLabels || '-'} เท่านั้น`);
+      setScheduleDateError(`วันสำรวจของพื้นที่นี้เลือกได้เฉพาะวัน ${weekdayLabels || '-'} เท่านั้น`);
       return;
     }
 
     setScheduleDateError(null);
-  }, [scheduledSurveyDate, selectedSurveyorName]);
+  }, [areaCode, scheduledSurveyDate]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
-    if (scheduledSurveyDate && selectedSurveyorName && !isDateAllowedForSurveyor(selectedSurveyorName, scheduledSurveyDate)) {
+    if (scheduledSurveyDate && areaCode && !isDateAllowedForArea(areaCode, scheduledSurveyDate)) {
       event.preventDefault();
-      setScheduleDateError('วันสำรวจต้องเป็นวันตามตารางที่อนุญาตของผู้สำรวจที่เลือก');
+      setScheduleDateError('วันสำรวจต้องเป็นวันตามตารางของพื้นที่ที่เลือก');
       return;
     }
 
@@ -127,12 +133,16 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   const allowedWeekdayLabels = getAllowedWeekdaysForSurveyor(selectedSurveyorName)
     .map((weekday) => WEEKDAY_LABELS[weekday] ?? weekday)
     .join(', ');
+  const areaAllowedWeekdayLabels = getAllowedWeekdaysForArea(areaCode)
+    .map((weekday) => WEEKDAY_LABELS[weekday] ?? weekday)
+    .join(', ');
+  const recommendedSurveyorName = areaFixedSchedule?.surveyorName ?? surveySuggestion?.suggestion?.surveyor ?? '';
   const isRecommendedSurveyorSelected =
     !!selectedSurveyorName &&
-    !!surveySuggestion?.suggestion?.surveyor &&
-    selectedSurveyorName === surveySuggestion.suggestion.surveyor;
+    !!recommendedSurveyorName &&
+    selectedSurveyorName === recommendedSurveyorName;
   const isAreaResponsibleMismatch =
-    !!selectedSurveyorName && !!mappedResponsibleName && selectedSurveyorName !== mappedResponsibleName;
+    !!selectedSurveyorName && !!recommendedSurveyorName && selectedSurveyorName !== recommendedSurveyorName;
 
   const minScheduledDate = useMemo(() => {
     const tomorrow = new Date();
@@ -290,13 +300,16 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
           <input id="assigned_surveyor" name="assigned_surveyor" type="hidden" value={assignedSurveyor} readOnly />
           {assignedSurveyorId ? (
             <p className="mt-1 text-xs text-slate-500">
-              {isRecommendedSurveyorSelected ? 'สถานะ: ตามคำแนะนำของระบบ' : 'สถานะ: เลือกเอง'}
+              {isRecommendedSurveyorSelected ? 'สถานะ: ตามคำแนะนำของระบบ' : 'สถานะ: ผู้แทนงาน'}
             </p>
           ) : null}
           {isAreaResponsibleMismatch ? (
             <p className="mt-1 text-xs text-amber-600">
-              ผู้สำรวจที่เลือกไม่ใช่ผู้รับผิดชอบประจำพื้นที่นี้ แต่สามารถใช้งานได้ในกรณีสลับคิวหรือแทนงาน
+              ผู้สำรวจที่เลือกเป็นผู้แทนงานใน slot ของพื้นที่นี้
             </p>
+          ) : null}
+          {!isAreaResponsibleMismatch && !!selectedSurveyorName && !!mappedResponsibleName ? (
+            <p className="mt-1 text-xs text-slate-500">ผู้รับผิดชอบประจำพื้นที่: {mappedResponsibleName}</p>
           ) : null}
         </div>
 
@@ -319,9 +332,9 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
                 return;
               }
 
-              if (selectedSurveyorName && !isDateAllowedForSurveyor(selectedSurveyorName, nextDate)) {
+              if (areaCode && !isDateAllowedForArea(areaCode, nextDate)) {
                 setScheduledSurveyDate('');
-                setScheduleDateError(`ผู้สำรวจที่เลือกสามารถรับงานได้เฉพาะวัน ${allowedWeekdayLabels || '-'} เท่านั้น`);
+                setScheduleDateError(`วันสำรวจของพื้นที่นี้เลือกได้เฉพาะวัน ${areaAllowedWeekdayLabels || '-'} เท่านั้น`);
                 return;
               }
 
@@ -329,7 +342,12 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
               setScheduledSurveyDate(nextDate);
             }}
           />
-          {allowedWeekdayLabels ? <p className="mt-1 text-xs text-slate-500">เลือกได้เฉพาะวัน: {allowedWeekdayLabels}</p> : null}
+          {areaAllowedWeekdayLabels ? (
+            <p className="mt-1 text-xs text-slate-500">วันสำรวจอิงตามตารางของพื้นที่ (เลือกได้: {areaAllowedWeekdayLabels})</p>
+          ) : null}
+          {!areaAllowedWeekdayLabels && allowedWeekdayLabels ? (
+            <p className="mt-1 text-xs text-slate-500">วันสำรวจอิงตามตารางของพื้นที่</p>
+          ) : null}
           {scheduleDateError ? <p className="mt-1 text-xs text-rose-600">{scheduleDateError}</p> : null}
         </div>
       </div>

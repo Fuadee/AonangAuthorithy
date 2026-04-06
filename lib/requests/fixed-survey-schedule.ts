@@ -68,6 +68,15 @@ export function getAllowedWeekdaysForSurveyor(surveyorName: string): Weekday[] {
   return WEEKDAY_ORDER.filter((weekday) => allowedWeekdays.has(weekday));
 }
 
+export function getAllowedWeekdaysForArea(areaCode: string): Weekday[] {
+  const fixedSchedule = getFixedSurveyScheduleByAreaCode(areaCode);
+  if (!fixedSchedule) {
+    return [];
+  }
+
+  return WEEKDAY_ORDER.filter((weekday) => fixedSchedule.weekdays.includes(weekday));
+}
+
 export function isDateAllowedForSurveyor(surveyorName: string, dateOnly: string): boolean {
   const allowedWeekdays = getAllowedWeekdaysForSurveyor(surveyorName);
   if (!allowedWeekdays.length) {
