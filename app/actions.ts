@@ -198,7 +198,7 @@ export async function createRequestAction(formData: FormData) {
     area_name: area.name,
     assignee_id: assignee.id,
     assignee_code: assignee.code,
-    assignee_name: assignee.name,
+    assignee_name: assignedSurveyor ?? assignee.name,
     assigned_surveyor: assignedSurveyor,
     scheduled_survey_date: scheduledSurveyDate,
     survey_date_initial: scheduledSurveyDate,

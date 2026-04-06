@@ -1,4 +1,5 @@
 import {
+  getResponsiblePersonName,
   getRequestQueueGroup,
   getRequestQueueGroupLabel,
   getRequestStatusLabel,
@@ -202,7 +203,7 @@ export function computeRequestViews(
         requestNo: request.request_no,
         customerName: request.customer_name,
         requestType: request.request_type === 'EXPANSION' ? 'ขยายเขต' : 'ขอมิเตอร์',
-        assigneeName: request.assignee_name || request.assigned_surveyor || '-',
+        assigneeName: getResponsiblePersonName(request),
         queue: getRequestQueueGroup(request.status),
         statusLabel: getRequestStatusLabel(request.status),
         createdAt: request.created_at,
@@ -379,7 +380,7 @@ export function computePerformanceByOwner(requests: ServiceRequest[], now: Date 
   const grouped = new Map<string, ServiceRequest[]>();
 
   for (const request of requests) {
-    const key = request.assignee_name || request.assigned_surveyor || 'ไม่ระบุผู้รับผิดชอบ';
+    const key = getResponsiblePersonName(request);
     if (!grouped.has(key)) {
       grouped.set(key, []);
     }

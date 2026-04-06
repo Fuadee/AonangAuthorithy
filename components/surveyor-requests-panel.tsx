@@ -9,6 +9,7 @@ import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import {
   formatThaiSurveyDate,
   getCurrentSurveyDate,
+  getResponsiblePersonName,
   getRequestStatusLabel,
   isSurveyScheduledTodayInBangkok,
   RequestStatus,
@@ -269,8 +270,10 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
-              {filteredRequests.map((request) => (
-                <tr key={request.id} className="hover:bg-slate-50">
+              {filteredRequests.map((request) => {
+                const responsiblePersonName = getResponsiblePersonName(request);
+                return (
+                  <tr key={request.id} className="hover:bg-slate-50">
                   <td className="px-4 py-3 font-medium text-brand-700">
                     <Link className="hover:underline" href={`/requests/${request.id}`}>
                       {request.request_no}
@@ -281,8 +284,8 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
                   <td className="max-w-0 px-4 py-3 align-top">
                     <div className="space-y-0.5">
                       <p className="text-sm font-medium leading-5 text-slate-800">{resolveAreaDisplayName(request.area_name)}</p>
-                      <p className="truncate text-xs leading-4 text-slate-500" title={request.assignee_name ? `ผู้รับผิดชอบ: ${request.assignee_name}` : 'ผู้รับผิดชอบ: -'}>
-                        ผู้รับผิดชอบ: {request.assignee_name ?? '-'}
+                      <p className="truncate text-xs leading-4 text-slate-500" title={`ผู้รับผิดชอบ: ${responsiblePersonName}`}>
+                        ผู้รับผิดชอบ: {responsiblePersonName}
                       </p>
                     </div>
                   </td>
@@ -298,8 +301,9 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
                       stayOnQueue
                     />
                   </td>
-                </tr>
-              ))}
+                  </tr>
+                );
+              })}
               {!filteredRequests.length && (
                 <tr>
                   <td className="px-4 py-6 text-center text-slate-500" colSpan={7}>

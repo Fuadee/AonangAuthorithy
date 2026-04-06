@@ -222,7 +222,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
                   setScheduledSurveyDate(surveySuggestion.suggestion?.suggested_date ?? '');
                 }}
               >
-                ใช้ค่าที่แนะนำ
+                ใช้คำแนะนำ
               </button>
             )}
           </>

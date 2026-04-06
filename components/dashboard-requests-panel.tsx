@@ -6,6 +6,7 @@ import { RequestTable } from '@/components/request-table';
 import {
   getDashboardQueueGroups,
   getRequestQueueGroup,
+  getResponsiblePersonName,
   REQUEST_QUEUE_GROUP_META,
   RequestQueueGroup,
   RequestType,
@@ -148,7 +149,7 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
         return true;
       }
 
-      const searchableFields = [request.request_no, request.customer_name, request.assignee_name];
+      const searchableFields = [request.request_no, request.customer_name, getResponsiblePersonName(request)];
       return searchableFields.some((field) => field?.toLowerCase().includes(normalizedQuery));
     };
 
