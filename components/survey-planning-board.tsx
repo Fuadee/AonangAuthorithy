@@ -1,10 +1,12 @@
 'use client';
 
+import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import {
   buildPlanningTasks,
   DayPlanningSummary,
   formatDateKeyThai,
+  getOverdueSurveyJobs,
   summarizePlanningByDate,
   SurveyPlanningRequest,
   toDateKey
@@ -159,21 +161,26 @@ function summarizeMonth(
 function MonthCell({
   cell,
   summary,
+  overdueCount,
   selected,
   onSelect
 }: {
   cell: CalendarDayCell;
   summary: DayPlanningSummary | null;
+  overdueCount: number;
   selected: boolean;
   onSelect: (dateKey: string) => void;
 }) {
   const hasTask = Boolean(summary && summary.total > 0);
+  const isOverdueDay = overdueCount > 0;
   const surveyorNames = summary?.byAssignee.slice(0, 2) ?? [];
   const hiddenSurveyorCount = Math.max((summary?.byAssignee.length ?? 0) - surveyorNames.length, 0);
 
   return (
     <button
       className={`group min-h-[120px] rounded-2xl border p-2 text-left transition-all duration-150 ${getDensityClass(summary?.density ?? 'none')} ${
+        isOverdueDay ? 'border-[#EF4444] bg-[#FFF5F5]' : ''
+      } ${
         selected
           ? 'border-[#93C5FD] bg-[#EFF6FF] shadow-[0_6px_16px_-12px_rgba(30,58,138,0.55)] ring-1 ring-[#1E3A8A]/20'
           : 'hover:border-[#BFDBFE] hover:shadow-[0_8px_18px_-16px_rgba(15,23,42,0.35)]'
@@ -186,11 +193,18 @@ function MonthCell({
           <span className={`text-sm font-semibold leading-none ${cell.inCurrentMonth ? 'text-[#0F172A]' : 'text-[#94A3B8]'}`}>
             {cell.date.getUTCDate()}
           </span>
-          {hasTask ? (
-            <span className="inline-flex items-center rounded-full border border-[#DBEAFE] bg-[#EFF6FF] px-2 py-0.5 text-[10px] font-medium text-[#1D4ED8]">
-              {summary?.total} งาน
-            </span>
-          ) : null}
+          <div className="flex flex-col items-end gap-1">
+            {isOverdueDay ? (
+              <span className="inline-flex items-center rounded-full border border-[#FCA5A5] bg-[#FEF2F2] px-2 py-0.5 text-[10px] font-semibold text-[#B91C1C]">
+                เลยนัด {overdueCount}
+              </span>
+            ) : null}
+            {hasTask ? (
+              <span className="inline-flex items-center rounded-full border border-[#DBEAFE] bg-[#EFF6FF] px-2 py-0.5 text-[10px] font-medium text-[#1D4ED8]">
+                {summary?.total} งาน
+              </span>
+            ) : null}
+          </div>
         </div>
 
         <div className="mt-2 space-y-1">
@@ -213,6 +227,14 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
 
   const tasks = useMemo(() => buildPlanningTasks(requests), [requests]);
   const dateMap = useMemo(() => summarizePlanningByDate(tasks), [tasks]);
+  const overdueJobs = useMemo(() => getOverdueSurveyJobs(requests), [requests]);
+  const overdueByDate = useMemo(() => {
+    const map = new Map<string, number>();
+    for (const job of overdueJobs) {
+      map.set(job.scheduledDateKey, (map.get(job.scheduledDateKey) ?? 0) + 1);
+    }
+    return map;
+  }, [overdueJobs]);
 
   const [viewMode, setViewMode] = useState<CalendarViewMode>('month');
   const [currentMonth, setCurrentMonth] = useState<Date>(initialMonth);
@@ -324,7 +346,11 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
         </div>
       </section>
 
-      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-5">
+      <section className="grid gap-3 md:grid-cols-2 xl:grid-cols-6">
+        <article className="card h-full border-[#E5EAF1] p-3.5">
+          <p className="text-xs font-medium uppercase tracking-wide text-[#DC2626]">งานเลยนัดสำรวจ</p>
+          <p className="mt-2 text-3xl font-bold leading-none text-[#B91C1C]">{overdueJobs.length}</p>
+        </article>
         <article className="card h-full border-[#E5EAF1] p-3.5">
           <p className="text-xs font-medium uppercase tracking-wide text-[#94A3B8]">งานนัดสำรวจทั้งหมด (เดือน)</p>
           <p className="mt-2 text-3xl font-semibold leading-none text-[#0F172A]">{summaryStats.totalTasks}</p>
@@ -382,6 +408,7 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
                   key={cell.dateKey}
                   cell={cell}
                   onSelect={setSelectedDateKey}
+                  overdueCount={overdueByDate.get(cell.dateKey) ?? 0}
                   selected={selectedDateKey === cell.dateKey}
                   summary={dateMap.get(cell.dateKey) ?? null}
                 />
@@ -394,6 +421,7 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
                   key={cell.dateKey}
                   cell={cell}
                   onSelect={setSelectedDateKey}
+                  overdueCount={overdueByDate.get(cell.dateKey) ?? 0}
                   selected={selectedDateKey === cell.dateKey}
                   summary={dateMap.get(cell.dateKey) ?? null}
                 />
@@ -451,6 +479,38 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
               </div>
             ))}
             {!selectedSummary ? <p className="text-sm text-[#94A3B8]">ไม่มีงานนัดสำรวจในวันนี้</p> : null}
+          </div>
+
+          <div className="mt-4 border-t border-[#EEF2F7] pt-3">
+            <h4 className="text-sm font-semibold text-[#991B1B]">งานที่เลยนัดสำรวจ</h4>
+            <div className="mt-2 space-y-2.5">
+              {overdueJobs.map((job) => {
+                const daysOverdue = Math.floor(
+                  (new Date().getTime() - new Date(`${job.scheduledDateKey}T00:00:00`).getTime()) / (24 * 60 * 60 * 1000)
+                );
+
+                return (
+                  <div
+                    key={job.id}
+                    className="rounded-xl border border-[#FCA5A5] bg-[#FFF5F5] p-3 text-xs leading-relaxed text-[#7F1D1D] shadow-[0_4px_12px_-12px_rgba(127,29,29,0.6)]"
+                  >
+                    <p className="text-sm font-semibold text-[#991B1B]">{job.requestNo}</p>
+                    <p className="truncate text-[12px]">ลูกค้า: {job.customerName}</p>
+                    <p className="text-[12px]">นัดเดิม: {formatDateKeyThai(job.scheduledDateKey)}</p>
+                    <p className="text-[12px] font-semibold">ค้างมาแล้ว {Math.max(daysOverdue, 0)} วัน</p>
+                    <div className="mt-2">
+                      <Link
+                        className="inline-flex h-8 items-center rounded-lg border border-[#FCA5A5] bg-white px-2.5 text-[11px] font-medium text-[#991B1B] hover:bg-[#FEF2F2]"
+                        href={`/requests/${job.id}`}
+                      >
+                        ดูรายละเอียด
+                      </Link>
+                    </div>
+                  </div>
+                );
+              })}
+              {overdueJobs.length === 0 ? <p className="text-sm text-[#94A3B8]">ไม่มีงานที่เลยนัดสำรวจ</p> : null}
+            </div>
           </div>
         </aside>
       </section>

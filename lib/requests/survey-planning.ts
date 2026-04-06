@@ -1,4 +1,11 @@
-import { ServiceRequest, SURVEYOR_VISIBLE_STATUSES, RequestStatus, REQUEST_TYPE_LABELS, REQUEST_STATUS_LABELS, hasSurveyBeenRescheduled } from '@/lib/requests/types';
+import {
+  ServiceRequest,
+  SURVEYOR_VISIBLE_STATUSES,
+  RequestStatus,
+  REQUEST_TYPE_LABELS,
+  REQUEST_STATUS_LABELS,
+  hasSurveyBeenRescheduled
+} from '@/lib/requests/types';
 import { getSurveyorDisplayName, getSurveyorShortDisplayNames } from '@/lib/requests/surveyor-display';
 
 export const SURVEY_PLANNING_ACTIVE_STATUSES: RequestStatus[] = SURVEYOR_VISIBLE_STATUSES.filter(
@@ -39,6 +46,15 @@ export type DayPlanningSummary = {
   byAssignee: Array<{ name: string; calendarDisplayName: string; total: number }>;
   tasks: PlannedSurveyTask[];
   density: 'none' | 'low' | 'medium' | 'high';
+};
+
+export type OverdueSurveyJob = {
+  id: string;
+  requestNo: string;
+  customerName: string;
+  status: RequestStatus;
+  statusLabel: string;
+  scheduledDateKey: string;
 };
 
 export function resolveLatestSurveyDate(
@@ -186,4 +202,39 @@ export function formatDateKeyThai(dateKey: string, options?: Intl.DateTimeFormat
     year: 'numeric',
     ...options
   });
+}
+
+function isSurveyCompletedEquivalent(status: RequestStatus): boolean {
+  return status === 'SURVEY_COMPLETED' || REQUEST_STATUS_LABELS[status].includes('สำรวจแล้ว');
+}
+
+export function getOverdueSurveyJobs(requests: SurveyPlanningRequest[]): OverdueSurveyJob[] {
+  const todayKey = toDateKey(new Date().toISOString());
+  if (!todayKey) {
+    return [];
+  }
+
+  return requests
+    .map((request) => {
+      const scheduledDateKey = toDateKey(request.scheduled_survey_date);
+      if (!scheduledDateKey || scheduledDateKey >= todayKey || isSurveyCompletedEquivalent(request.status)) {
+        return null;
+      }
+
+      return {
+        id: request.id,
+        requestNo: request.request_no,
+        customerName: request.customer_name,
+        status: request.status,
+        statusLabel: REQUEST_STATUS_LABELS[request.status],
+        scheduledDateKey
+      } satisfies OverdueSurveyJob;
+    })
+    .filter((job): job is OverdueSurveyJob => job !== null)
+    .sort((left, right) => {
+      if (left.scheduledDateKey !== right.scheduledDateKey) {
+        return left.scheduledDateKey.localeCompare(right.scheduledDateKey);
+      }
+      return left.requestNo.localeCompare(right.requestNo, 'th');
+    });
 }
