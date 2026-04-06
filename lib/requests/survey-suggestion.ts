@@ -9,6 +9,8 @@ import {
 
 export type SurveySchedule = {
   id: string;
+  assignee_id: string | null;
+  assignee_code: string | null;
   surveyor_name: string;
   area_code: AreaCode;
   area: string;
@@ -22,15 +24,14 @@ export type SuggestionMissReason = 'INVALID_AREA_CODE' | 'AREA_NOT_FOUND' | 'NO_
 export type SurveySuggestionResult = {
   area_code: string;
   schedules: Array<{
+    assignee_id: string | null;
     surveyor_name: string;
     weekday: Weekday;
     max_jobs_per_day: number;
   }>;
   suggestion: {
-    surveyor: string;
-    surveyor_id: string;
-    surveyor_name: string;
-    suggested_date: string;
+    recommendedSurveyorId: string;
+    recommendedSurveyDateIso: string;
     current_jobs: number;
     max_jobs_per_day: number;
   } | null;
@@ -111,7 +112,7 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
 
   const { data: allSchedules, error: allSchedulesError } = await supabase
     .from('survey_schedules')
-    .select('id,surveyor_name,area_code,area,weekday,max_jobs_per_day,active')
+    .select('id,assignee_id,assignee_code,surveyor_name,area_code,area,weekday,max_jobs_per_day,active')
     .eq('area_code', areaCode)
     .order('weekday', { ascending: true });
 
@@ -125,7 +126,11 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
   const mappedSchedules =
     fixedSchedule === null
       ? []
-      : activeSchedules.filter((item) => item.surveyor_name === fixedSchedule.surveyorName && fixedSchedule.weekdays.includes(item.weekday));
+      : activeSchedules.filter(
+          (item) =>
+            item.assignee_code?.toUpperCase() === fixedSchedule.surveyorCode &&
+            fixedSchedule.weekdays.includes(item.weekday)
+        );
 
   const baseDebug: SurveySuggestionDebug = {
     input_area_code: areaCode,
@@ -174,9 +179,21 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
     };
   }
 
+  const { data: assigneeRows, error: assigneesError } = await supabase
+    .from('assignees')
+    .select('id,code')
+    .in('code', ['STAFF_A', 'STAFF_B']);
+
+  if (assigneesError) {
+    throw new Error(assigneesError.message);
+  }
+
+  const assigneeIdByCode = new Map((assigneeRows ?? []).map((assignee) => [assignee.code, assignee.id]));
+
   const fixedSchedules = fixedSchedule.weekdays.map((weekday) => {
     const matchingActiveSchedule = mappedSchedules.find((item) => item.weekday === weekday);
     return {
+      assignee_id: matchingActiveSchedule?.assignee_id ?? assigneeIdByCode.get(fixedSchedule.surveyorCode) ?? null,
       surveyor_name: fixedSchedule.surveyorName,
       weekday,
       max_jobs_per_day: matchingActiveSchedule?.max_jobs_per_day ?? 5
@@ -189,7 +206,7 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
   for (let dayOffset = 0; dayOffset < 60; dayOffset += 1) {
     const candidateDate = addDays(searchStartDate, dayOffset);
     const candidateWeekday = WEEKDAY_ORDER[candidateDate.getUTCDay()];
-    const matchingFixedSchedule = fixedSchedules.find((item) => item.weekday === candidateWeekday);
+    const matchingFixedSchedule = fixedSchedules.find((item) => item.weekday === candidateWeekday && !!item.assignee_id);
 
     if (!matchingFixedSchedule) {
       continue;
@@ -200,7 +217,7 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
     const { count, error: countError } = await supabase
       .from('service_requests')
       .select('id', { count: 'exact', head: true })
-      .eq('assigned_surveyor', fixedSchedule.surveyorName)
+      .eq('assigned_surveyor_id', matchingFixedSchedule.assignee_id)
       .eq('scheduled_survey_date', dateOnly);
 
     if (countError) {
@@ -214,10 +231,8 @@ export async function getSuggestedSurveyByArea(areaCodeInput: string): Promise<{
           area_code: areaCode,
           schedules: fixedSchedules,
           suggestion: {
-            surveyor: fixedSchedule.surveyorName,
-            surveyor_id: fixedSchedule.surveyorId,
-            surveyor_name: fixedSchedule.surveyorName,
-            suggested_date: dateOnly,
+            recommendedSurveyorId: matchingFixedSchedule.assignee_id,
+            recommendedSurveyDateIso: dateOnly,
             current_jobs: currentJobs,
             max_jobs_per_day: matchingFixedSchedule.max_jobs_per_day
           }

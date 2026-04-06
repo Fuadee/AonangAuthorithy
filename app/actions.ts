@@ -131,7 +131,7 @@ export async function createRequestAction(formData: FormData) {
   const areaCode = requiredField(formData, 'area_code');
   const assignedSurveyorId = requiredField(formData, 'assigned_surveyor_id');
   const requestType = requiredField(formData, 'request_type');
-  const assignedSurveyor = requiredField(formData, 'assigned_surveyor');
+  const assignedSurveyor = optionalField(formData, 'assigned_surveyor');
   const scheduledSurveyDate = requiredField(formData, 'scheduled_survey_date');
   const latitude = parseOptionalCoordinate(formData, 'latitude');
   const longitude = parseOptionalCoordinate(formData, 'longitude');
@@ -181,13 +181,18 @@ export async function createRequestAction(formData: FormData) {
     throw new Error(assigneeError?.message ?? 'Assignee not found');
   }
 
-  if (assignee.name !== assignedSurveyor) {
-    throw new Error('ข้อมูลผู้รับผิดชอบและผู้สำรวจไม่สอดคล้องกัน');
-  }
-
   const requestNo = await generateRequestNo();
 
   const initialStatus: RequestStatus = 'WAIT_DOCUMENT_REVIEW';
+
+  console.info('[survey-submit] create request payload', {
+    requestNo,
+    areaCode: area.code,
+    assignedSurveyorId: assignee.id,
+    assignedSurveyorName: assignee.name,
+    submittedAssignedSurveyor: assignedSurveyor,
+    scheduledSurveyDate
+  });
 
   const { error: insertError } = await supabase.from('service_requests').insert({
     request_no: requestNo,
@@ -199,6 +204,7 @@ export async function createRequestAction(formData: FormData) {
     assignee_id: assignee.id,
     assignee_code: assignee.code,
     assignee_name: assignee.name,
+    assigned_surveyor_id: assignee.id,
     assigned_surveyor: assignee.name,
     scheduled_survey_date: scheduledSurveyDate,
     survey_date_initial: scheduledSurveyDate,
@@ -1429,6 +1435,7 @@ export async function updateRequestAssigneeAction(formData: FormData) {
       assignee_id: assignee.id,
       assignee_code: assignee.code,
       assignee_name: assignee.name,
+      assigned_surveyor_id: assignee.id,
       assigned_surveyor: assignee.name,
       updated_at: new Date().toISOString()
     })

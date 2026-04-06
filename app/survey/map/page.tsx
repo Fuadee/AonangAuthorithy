@@ -19,7 +19,7 @@ export default async function SurveyMapPage({ searchParams }: SurveyMapPageProps
   const { data, error } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_name,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,status,latitude,longitude,created_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,status,latitude,longitude,created_at'
     )
     .in('status', statuses)
     .order('created_at', { ascending: false });

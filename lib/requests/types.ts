@@ -654,6 +654,7 @@ export type ServiceRequest = {
   location_note: string | null;
   area_name: string;
   assignee_name: string;
+  assigned_surveyor_id: string | null;
   assigned_surveyor: string | null;
   scheduled_survey_date: string | null;
   survey_date_initial: string | null;

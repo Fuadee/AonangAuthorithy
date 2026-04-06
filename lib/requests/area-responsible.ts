@@ -7,9 +7,9 @@ type SurveyorDirectoryEntry = {
 };
 
 export const AREA_RESPONSIBLE_MAP: Record<AreaCode, string> = {
-  AREA_1: 'staff_a',
-  AREA_2: 'staff_b',
-  AREA_3: 'staff_b'
+  AREA_1: 'STAFF_A',
+  AREA_2: 'STAFF_B',
+  AREA_3: 'STAFF_B'
 };
 
 function normalizeIdentifier(value: string | null | undefined): string {

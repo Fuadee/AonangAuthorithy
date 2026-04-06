@@ -17,6 +17,8 @@ create table if not exists public.assignees (
 
 create table if not exists public.survey_schedules (
   id uuid primary key default gen_random_uuid(),
+  assignee_id uuid references public.assignees(id),
+  assignee_code text,
   surveyor_name text not null,
   area_id uuid not null references public.areas(id),
   area_code text not null references public.areas(code),
@@ -26,7 +28,7 @@ create table if not exists public.survey_schedules (
   active boolean not null default true,
   created_at timestamptz not null default now(),
   updated_at timestamptz not null default now(),
-  unique (surveyor_name, area_code, weekday)
+  unique (assignee_id, area_code, weekday)
 );
 
 create table if not exists public.service_requests (
@@ -43,6 +45,7 @@ create table if not exists public.service_requests (
   area_name text not null,
   assignee_code text not null,
   assignee_name text not null,
+  assigned_surveyor_id uuid references public.assignees(id),
   assigned_surveyor text,
   scheduled_survey_date date,
   survey_date_initial date,
@@ -105,6 +108,8 @@ create index if not exists idx_survey_schedules_area_active on public.survey_sch
 create index if not exists idx_service_requests_survey_queue on public.service_requests (assigned_surveyor, scheduled_survey_date);
 
 create index if not exists idx_service_requests_surveyor_status on public.service_requests (assigned_surveyor, status, scheduled_survey_date);
+create index if not exists idx_service_requests_assigned_surveyor_id_date on public.service_requests (assigned_surveyor_id, scheduled_survey_date);
+create index if not exists idx_service_requests_assigned_surveyor_id_status_date on public.service_requests (assigned_surveyor_id, status, scheduled_survey_date);
 
 create index if not exists idx_service_requests_wait_billing on public.service_requests (request_type, status) where status = 'WAIT_BILLING';
 create index if not exists idx_service_requests_wait_action_confirmation on public.service_requests (request_type, status) where status = 'WAIT_ACTION_CONFIRMATION';
