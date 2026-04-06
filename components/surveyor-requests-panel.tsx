@@ -256,13 +256,13 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
 
       <section className="card overflow-hidden">
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <table className="min-w-full table-fixed divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-100 text-left text-slate-600">
               <tr>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">เลขคำร้อง</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">ลูกค้า</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">ประเภท</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">พื้นที่</th>
+                <th className="w-64 px-4 py-3 font-medium">พื้นที่</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">สถานะ</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">วันที่สำรวจ</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">จัดการ</th>
@@ -278,10 +278,17 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
                   </td>
                   <td className="px-4 py-3">{request.customer_name}</td>
                   <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
-                  <td className="max-w-0 px-4 py-3" title={resolveAreaDisplayName(request.area_name)}><p className="truncate whitespace-nowrap">{resolveAreaDisplayName(request.area_name)}</p></td>
+                  <td className="max-w-0 px-4 py-3 align-top">
+                    <div className="space-y-0.5">
+                      <p className="text-sm font-medium leading-5 text-slate-800">{resolveAreaDisplayName(request.area_name)}</p>
+                      <p className="truncate text-xs leading-4 text-slate-500" title={request.assignee_name ? `ผู้รับผิดชอบ: ${request.assignee_name}` : 'ผู้รับผิดชอบ: -'}>
+                        ผู้รับผิดชอบ: {request.assignee_name ?? '-'}
+                      </p>
+                    </div>
+                  </td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3">{formatThaiSurveyDate(getCurrentSurveyDate(request))}</td>
-                  <td className="px-4 py-3">
+                  <td className="min-w-[220px] px-4 py-3">
                     <WorkflowActionButtons
                       actions={getAvailableRequestActions(request)}
                       compact
