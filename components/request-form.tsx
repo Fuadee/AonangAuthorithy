@@ -187,7 +187,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
       </div>
 
       <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
-        <h3 className="text-sm font-semibold text-slate-700">คำแนะนำการนัดสำรวจ</h3>
+        <h3 className="text-sm font-semibold text-slate-700">วันนัดสำรวจถัดไปที่แนะนำ</h3>
         {isLoadingSuggestion && <p className="mt-2 text-xs text-slate-500">กำลังคำนวณคิวสำรวจ...</p>}
 
         {!isLoadingSuggestion && surveySuggestion?.schedules.length ? (
@@ -205,7 +205,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
                 {surveySuggestion.suggestion?.surveyor ?? '-'}
               </p>
               <p>
-                <span className="text-slate-500">วันที่แนะนำ:</span> {recommendedDateText}
+                <span className="text-slate-500">วันนัดสำรวจถัดไปที่แนะนำ:</span> {recommendedDateText}
               </p>
               <p>
                 <span className="text-slate-500">คิวของวันนั้น:</span>{' '}
@@ -237,7 +237,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
         ) : null}
 
         {!isLoadingSuggestion && !areaCode ? (
-          <p className="mt-2 text-xs text-slate-500">กรุณาเลือกพื้นที่เพื่อดูคำแนะนำการนัดสำรวจ</p>
+          <p className="mt-2 text-xs text-slate-500">กรุณาเลือกพื้นที่เพื่อดูวันนัดสำรวจถัดไปที่แนะนำ</p>
         ) : null}
       </section>
 
