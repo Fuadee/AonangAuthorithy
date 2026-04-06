@@ -1,10 +1,10 @@
 'use client';
 
 import Link from 'next/link';
+import { AreaResponsibleCell } from '@/components/area-responsible-cell';
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { getQueueWorkflowActions } from '@/lib/requests/workflow-action-config';
-import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import {
   getCurrentSurveyDate,
   getDispatchSubStatus,
@@ -131,14 +131,7 @@ export function RequestTable({
                   {responsibleColumnVariant === 'area_with_responsible' ? 'พื้นที่' : 'ผู้รับผิดชอบ'}
                 </p>
                 {responsibleColumnVariant === 'area_with_responsible' ? (
-                  <div className="space-y-0.5">
-                    <p className="truncate text-sm font-medium text-slate-800" title={resolveAreaDisplayName(request.area_name)}>
-                      {resolveAreaDisplayName(request.area_name)}
-                    </p>
-                    <p className="truncate text-sm text-muted-foreground" title={`ผู้รับผิดชอบ: ${responsiblePersonName}`}>
-                      ผู้รับผิดชอบ: {responsiblePersonName}
-                    </p>
-                  </div>
+                  <AreaResponsibleCell areaName={request.area_name} responsiblePersonName={responsiblePersonName} />
                 ) : (
                   <p className="truncate text-sm text-slate-700" title={responsiblePersonName}>{responsiblePersonName}</p>
                 )}
@@ -256,16 +249,9 @@ export function RequestTable({
                   <td className="max-w-0 px-3 py-3 align-middle" title={REQUEST_TYPE_LABELS[request.request_type]}>
                     <p className="truncate whitespace-nowrap text-[#64748B]">{REQUEST_TYPE_LABELS[request.request_type]}</p>
                   </td>
-                  <td className="max-w-0 px-3 py-3 align-middle">
+                  <td className={`max-w-0 px-3 py-3 ${responsibleColumnVariant === 'area_with_responsible' ? 'align-top' : 'align-middle'}`}>
                     {responsibleColumnVariant === 'area_with_responsible' ? (
-                      <div className="space-y-0.5">
-                        <p className="truncate text-sm font-medium text-slate-800" title={resolveAreaDisplayName(request.area_name)}>
-                          {resolveAreaDisplayName(request.area_name)}
-                        </p>
-                        <p className="truncate text-sm text-muted-foreground" title={`ผู้รับผิดชอบ: ${responsiblePersonName}`}>
-                          ผู้รับผิดชอบ: {responsiblePersonName}
-                        </p>
-                      </div>
+                      <AreaResponsibleCell areaName={request.area_name} responsiblePersonName={responsiblePersonName} />
                     ) : (
                       <p className="truncate whitespace-nowrap text-[#64748B]" title={responsiblePersonName}>
                         {responsiblePersonName}
