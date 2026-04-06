@@ -6,6 +6,7 @@ import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { getAvailableRequestActions } from '@/lib/requests/workflow-action-config';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
+import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
 import {
   formatThaiSurveyDate,
   getCurrentSurveyDate,
@@ -70,7 +71,7 @@ function SurveyorSelect({
         <option value={ALL_SURVEYORS}>ทั้งหมด</option>
         {options.map((name) => (
           <option key={name} value={name}>
-            {name}
+            {getSurveyorDisplayName(name)}
           </option>
         ))}
       </select>
@@ -88,7 +89,7 @@ function WorkloadSummary({ activeSurveyor, workloadBySurveyor }: { activeSurveyo
     <div className="text-right">
       <p className="text-sm text-slate-500">ภาระงานต่อคน</p>
       <p className="text-base font-semibold text-slate-800">
-        {activeSurveyor === ALL_SURVEYORS ? `รวม ${focusedWorkload} งาน` : `${activeSurveyor} • ${focusedWorkload} งาน`}
+        {activeSurveyor === ALL_SURVEYORS ? `รวม ${focusedWorkload} งาน` : `${getSurveyorDisplayName(activeSurveyor)} • ${focusedWorkload} งาน`}
       </p>
     </div>
   );

@@ -3,7 +3,7 @@
 import { buildGoogleMapsDirectionsUrl } from '@/lib/maps/google-maps';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { getRequestStatusLabel } from '@/lib/requests/types';
-import { getSurveyorName } from '@/components/survey-map/surveyor-filter';
+import { getSurveyorDisplayNameByRaw, getSurveyorName } from '@/components/survey-map/surveyor-filter';
 import type { SurveyQueueRequest } from '@/components/survey-map/types';
 
 type SurveyQueueCardProps = {
@@ -23,7 +23,7 @@ function formatDate(value: string | null): string {
 
 export function SurveyQueueCard({ request, selected, onSelect, onViewOnMap, onHide }: SurveyQueueCardProps) {
   const hasCoordinate = request.latitude !== null && request.longitude !== null;
-  const surveyorName = getSurveyorName(request) ?? '-';
+  const surveyorName = getSurveyorDisplayNameByRaw(getSurveyorName(request));
 
   return (
     <article

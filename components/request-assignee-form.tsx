@@ -1,5 +1,6 @@
 import { updateRequestAssigneeAction } from '@/app/actions';
 import { Assignee } from '@/lib/requests/types';
+import { getSurveyorDisplayNameFromAssignee } from '@/lib/requests/surveyor-display';
 
 type RequestAssigneeFormProps = {
   requestId: string;
@@ -22,7 +23,7 @@ export function RequestAssigneeForm({
         <select className="input" id="assignee_id" name="assignee_id" defaultValue={currentAssigneeId}>
           {assignees.map((assignee) => (
             <option key={assignee.id} value={assignee.id}>
-              {assignee.code} | {assignee.name}
+              {getSurveyorDisplayNameFromAssignee(assignee)}
             </option>
           ))}
         </select>

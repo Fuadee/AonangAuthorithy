@@ -3,7 +3,7 @@
 import { useEffect, useRef } from 'react';
 import { buildGoogleMapsDirectionsUrl } from '@/lib/maps/google-maps';
 import { getRequestStatusLabel } from '@/lib/requests/types';
-import { getSurveyorName } from '@/components/survey-map/surveyor-filter';
+import { getSurveyorDisplayNameByRaw, getSurveyorName } from '@/components/survey-map/surveyor-filter';
 import { LeafletGlobal, LeafletMap, LeafletMarker } from '@/lib/maps/leaflet-loader';
 import type { SurveyQueueRequest } from '@/components/survey-map/types';
 
@@ -47,7 +47,7 @@ export function SurveyMapMarkers({ leaflet, map, requests, selectedRequestId, on
     requests
       .filter((request) => request.latitude !== null && request.longitude !== null)
       .forEach((request) => {
-        const surveyorName = getSurveyorName(request) ?? '-';
+        const surveyorName = getSurveyorDisplayNameByRaw(getSurveyorName(request));
         const marker = leaflet
           .marker([request.latitude as number, request.longitude as number], {
             icon: request.id === selectedRequestId ? selectedIcon : defaultIcon

@@ -12,6 +12,7 @@ import {
   ALL_SURVEYORS_VALUE,
   filterRequestsBySurveyor,
   getAvailableSurveyors,
+  getSurveyorDisplayNameByRaw,
   isAllSurveyors,
   resolveDefaultSurveyorSelection
 } from '@/components/survey-map/surveyor-filter';
@@ -102,7 +103,7 @@ export function SurveyMapQueuePage({ requests, activeStatuses, initialSurveyor }
             <h2 className="text-xl font-semibold">คิวสำรวจบนแผนที่</h2>
             <p className="text-sm text-slate-500">สถานะที่เลือก: {activeStatuses.map((status) => getRequestStatusLabel(status)).join(', ')}</p>
             {!isAllSurveyors(selectedSurveyor) ? (
-              <p className="text-sm text-slate-500">กำลังแสดง: งานของ{selectedSurveyor}</p>
+              <p className="text-sm text-slate-500">กำลังแสดง: งานของ{getSurveyorDisplayNameByRaw(selectedSurveyor)}</p>
             ) : null}
           </div>
           <button className="btn-secondary" type="button" onClick={resetHiddenRequests}>
@@ -123,7 +124,7 @@ export function SurveyMapQueuePage({ requests, activeStatuses, initialSurveyor }
             <option value={ALL_SURVEYORS_VALUE}>ทั้งหมด</option>
             {availableSurveyors.map((surveyor) => (
               <option key={surveyor} value={surveyor}>
-                {surveyor}
+                {getSurveyorDisplayNameByRaw(surveyor)}
               </option>
             ))}
           </select>
