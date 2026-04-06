@@ -14,6 +14,7 @@ import {
   getPostSurveyFixSummary,
   getRequestQueueGroup,
   getRequestQueueGroupLabel,
+  getResponsiblePersonName,
   getSurveyScheduleSummary,
   hasSurveyBeenRescheduled,
   normalizeSurveyWorkflowStatus,
@@ -457,6 +458,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const nextStepSummary = getNextStepSummary(requestStatus, requestType);
   const documentReviewRules = getDocumentReviewRules(requestType);
   const currentSurveyDate = getCurrentSurveyDate(request);
+  const responsiblePersonName = getResponsiblePersonName(request);
   const hasLocation = request.latitude !== null && request.longitude !== null;
   const googleMapsUrl = hasLocation
     ? `https://www.google.com/maps?q=${request.latitude},${request.longitude}`
@@ -578,8 +580,8 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
             <dd className="mt-1 font-medium">{REQUEST_TYPE_LABELS[requestType]}</dd>
           </div>
           <div>
-            <dt className="text-sm text-slate-500">ผู้สำรวจ</dt>
-            <dd className="mt-1 font-medium">{request.assigned_surveyor ?? '-'}</dd>
+            <dt className="text-sm text-slate-500">ผู้รับผิดชอบ</dt>
+            <dd className="mt-1 font-medium">{responsiblePersonName}</dd>
           </div>
           <div>
             <dt className="text-sm text-slate-500">วันนัดสำรวจล่าสุด</dt>

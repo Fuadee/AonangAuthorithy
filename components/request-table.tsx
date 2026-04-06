@@ -7,6 +7,7 @@ import { getQueueWorkflowActions } from '@/lib/requests/workflow-action-config';
 import {
   getCurrentSurveyDate,
   getDispatchSubStatus,
+  getResponsiblePersonName,
   REQUEST_TYPE_LABELS,
   RequestStatus,
   ServiceRequest
@@ -94,6 +95,7 @@ export function RequestTable({
         </div>
 
         {requests.map((request) => {
+          const responsiblePersonName = getResponsiblePersonName(request);
           const dispatchSubStatus = getDispatchSubStatus(request);
           const workflowActions = getQueueWorkflowActions(request);
           const hasAction = workflowActions.length > 0;
@@ -123,7 +125,7 @@ export function RequestTable({
 
               <div className="min-h-14 space-y-1">
                 <p className="text-[11px] font-medium tracking-wide text-slate-500 uppercase lg:hidden">ผู้รับผิดชอบ</p>
-                <p className="truncate text-sm text-slate-700" title={request.assignee_name}>{request.assignee_name}</p>
+                <p className="truncate text-sm text-slate-700" title={responsiblePersonName}>{responsiblePersonName}</p>
               </div>
 
               <div className="min-h-14 space-y-1">
@@ -212,6 +214,7 @@ export function RequestTable({
           </thead>
           <tbody className="bg-white text-[#0F172A]">
             {requests.map((request) => {
+              const responsiblePersonName = getResponsiblePersonName(request);
               const dispatchSubStatus = getDispatchSubStatus(request);
               const isEmphasizedRow = EMPHASIZED_ROW_STATUSES.includes(request.status);
               const dispatchDateMeta = getDispatchDateMeta(request.dispatched_to_krabi_at);
@@ -235,8 +238,8 @@ export function RequestTable({
                   <td className="max-w-0 px-3 py-3 align-middle" title={REQUEST_TYPE_LABELS[request.request_type]}>
                     <p className="truncate whitespace-nowrap text-[#64748B]">{REQUEST_TYPE_LABELS[request.request_type]}</p>
                   </td>
-                  <td className="max-w-0 px-3 py-3 align-middle" title={request.assignee_name}>
-                    <p className="truncate whitespace-nowrap text-[#64748B]">{request.assignee_name}</p>
+                  <td className="max-w-0 px-3 py-3 align-middle" title={responsiblePersonName}>
+                    <p className="truncate whitespace-nowrap text-[#64748B]">{responsiblePersonName}</p>
                   </td>
                   <td className="max-w-0 px-3 py-3 align-middle">
                     {dateColumnVariant === 'krabi_dispatch_date' ? (

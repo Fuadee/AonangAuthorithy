@@ -188,6 +188,24 @@ export function getDashboardQueueGroups(): RequestQueueGroup[] {
   return DASHBOARD_QUEUE_GROUPS;
 }
 
+export function isSurveyPhaseStatus(status: RequestStatus): boolean {
+  return getRequestQueueGroup(status) === 'SURVEY';
+}
+
+/**
+ * @deprecated หลีกเลี่ยงการใช้ค่า assignee_name ตรง ๆ ใน UI layer
+ * โดยเฉพาะช่วงงานสำรวจที่ต้องอิง assigned_surveyor เป็นหลัก
+ */
+export function getResponsiblePersonName(
+  request: Pick<ServiceRequest, 'status' | 'assignee_name' | 'assigned_surveyor'>
+): string {
+  if (isSurveyPhaseStatus(request.status)) {
+    return request.assigned_surveyor ?? request.assignee_name ?? '-';
+  }
+
+  return request.assignee_name ?? request.assigned_surveyor ?? '-';
+}
+
 export function getStatusesByQueueGroup(queue: RequestQueueGroup): RequestStatus[] {
   return REQUEST_STATUSES.filter((status) => REQUEST_STATUS_QUEUE_GROUP[status] === queue);
 }
