@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { getQueueWorkflowActions } from '@/lib/requests/workflow-action-config';
+import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import {
   getCurrentSurveyDate,
   getDispatchSubStatus,
@@ -20,6 +21,7 @@ type RequestTableProps = {
   actionColumnLabel?: string;
   presentation?: 'table' | 'grid';
   dateColumnVariant?: 'survey_date' | 'krabi_dispatch_date';
+  responsibleColumnVariant?: 'person' | 'area_with_responsible';
 };
 
 function formatSurveyDate(value: string | null): string {
@@ -74,7 +76,8 @@ export function RequestTable({
   actionColumnMode = 'status',
   actionColumnLabel,
   presentation = 'table',
-  dateColumnVariant = 'survey_date'
+  dateColumnVariant = 'survey_date',
+  responsibleColumnVariant = 'person'
 }: RequestTableProps) {
   const resolvedActionColumnLabel = actionColumnLabel ?? (actionColumnMode === 'workflow' ? 'จัดการ' : 'สถานะ');
   const hasSeparateStatusColumn = actionColumnMode === 'workflow';
@@ -85,13 +88,13 @@ export function RequestTable({
   if (presentation === 'grid' && hasSeparateStatusColumn) {
     return (
       <div className="mt-6 space-y-3">
-        <div className="hidden grid-cols-[minmax(240px,2.2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(140px,1fr)_minmax(190px,1.2fr)_152px] items-center gap-4 px-4 text-xs font-semibold tracking-wide text-slate-500 uppercase lg:grid">
-          <p>Request / ลูกค้า</p>
-          <p>ประเภท</p>
-          <p>ผู้รับผิดชอบ</p>
-          <p>{dateColumnLabel}</p>
-          <p>สถานะ</p>
-          <p className="text-right">{resolvedActionColumnLabel}</p>
+          <div className="hidden grid-cols-[minmax(240px,2.2fr)_minmax(120px,1fr)_minmax(180px,1.2fr)_minmax(140px,1fr)_minmax(190px,1.2fr)_152px] items-center gap-4 px-4 text-xs font-semibold tracking-wide text-slate-500 uppercase lg:grid">
+            <p>Request / ลูกค้า</p>
+            <p>ประเภท</p>
+            <p>{responsibleColumnVariant === 'area_with_responsible' ? 'พื้นที่' : 'ผู้รับผิดชอบ'}</p>
+            <p>{dateColumnLabel}</p>
+            <p>สถานะ</p>
+            <p className="text-right">{resolvedActionColumnLabel}</p>
         </div>
 
         {requests.map((request) => {
@@ -104,7 +107,7 @@ export function RequestTable({
           return (
             <article
               key={request.id}
-              className="grid gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm transition hover:border-slate-300 hover:shadow-md lg:grid-cols-[minmax(240px,2.2fr)_minmax(120px,1fr)_minmax(120px,1fr)_minmax(140px,1fr)_minmax(190px,1.2fr)_152px] lg:items-center lg:gap-5"
+              className="grid gap-4 rounded-2xl border border-slate-200 bg-white px-4 py-4 shadow-sm transition hover:border-slate-300 hover:shadow-md lg:grid-cols-[minmax(240px,2.2fr)_minmax(120px,1fr)_minmax(180px,1.2fr)_minmax(140px,1fr)_minmax(190px,1.2fr)_152px] lg:items-center lg:gap-5"
             >
               <div className="min-h-14 space-y-1">
                 <p className="text-[11px] font-medium tracking-wide text-slate-500 uppercase lg:hidden">Request / ลูกค้า</p>
@@ -124,8 +127,21 @@ export function RequestTable({
               </div>
 
               <div className="min-h-14 space-y-1">
-                <p className="text-[11px] font-medium tracking-wide text-slate-500 uppercase lg:hidden">ผู้รับผิดชอบ</p>
-                <p className="truncate text-sm text-slate-700" title={responsiblePersonName}>{responsiblePersonName}</p>
+                <p className="text-[11px] font-medium tracking-wide text-slate-500 uppercase lg:hidden">
+                  {responsibleColumnVariant === 'area_with_responsible' ? 'พื้นที่' : 'ผู้รับผิดชอบ'}
+                </p>
+                {responsibleColumnVariant === 'area_with_responsible' ? (
+                  <div className="space-y-0.5">
+                    <p className="truncate text-sm font-medium text-slate-800" title={resolveAreaDisplayName(request.area_name)}>
+                      {resolveAreaDisplayName(request.area_name)}
+                    </p>
+                    <p className="truncate text-sm text-muted-foreground" title={`ผู้รับผิดชอบ: ${responsiblePersonName}`}>
+                      ผู้รับผิดชอบ: {responsiblePersonName}
+                    </p>
+                  </div>
+                ) : (
+                  <p className="truncate text-sm text-slate-700" title={responsiblePersonName}>{responsiblePersonName}</p>
+                )}
               </div>
 
               <div className="min-h-14 space-y-1">
@@ -193,18 +209,20 @@ export function RequestTable({
           <colgroup>
             <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[16%]'} />
             <col className={hasSeparateStatusColumn ? 'w-[16%]' : 'w-[20%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[14%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[15%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[13%]' : 'w-[14%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[10%]' : 'w-[12%]'} />
+            <col className={hasSeparateStatusColumn ? (responsibleColumnVariant === 'area_with_responsible' ? 'w-[20%]' : 'w-[12%]') : 'w-[20%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[11%]' : 'w-[13%]'} />
             {hasSeparateStatusColumn ? <col className="w-[19%]" /> : null}
-            <col className={hasSeparateStatusColumn ? 'w-[16%]' : 'w-[21%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[19%]'} />
           </colgroup>
           <thead className="bg-slate-50 text-left">
             <tr>
               <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">Request No.</th>
               <th className="px-3 py-3 align-middle text-sm font-medium text-[#64748B]">ลูกค้า</th>
               <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">ประเภท</th>
-              <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">ผู้รับผิดชอบ</th>
+              <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">
+                {responsibleColumnVariant === 'area_with_responsible' ? 'พื้นที่' : 'ผู้รับผิดชอบ'}
+              </th>
               <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">{dateColumnLabel}</th>
               {hasSeparateStatusColumn ? <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">สถานะ</th> : null}
               <th className="whitespace-nowrap px-3 py-3 align-middle text-center text-sm font-semibold text-slate-700">
@@ -238,8 +256,21 @@ export function RequestTable({
                   <td className="max-w-0 px-3 py-3 align-middle" title={REQUEST_TYPE_LABELS[request.request_type]}>
                     <p className="truncate whitespace-nowrap text-[#64748B]">{REQUEST_TYPE_LABELS[request.request_type]}</p>
                   </td>
-                  <td className="max-w-0 px-3 py-3 align-middle" title={responsiblePersonName}>
-                    <p className="truncate whitespace-nowrap text-[#64748B]">{responsiblePersonName}</p>
+                  <td className="max-w-0 px-3 py-3 align-middle">
+                    {responsibleColumnVariant === 'area_with_responsible' ? (
+                      <div className="space-y-0.5">
+                        <p className="truncate text-sm font-medium text-slate-800" title={resolveAreaDisplayName(request.area_name)}>
+                          {resolveAreaDisplayName(request.area_name)}
+                        </p>
+                        <p className="truncate text-sm text-muted-foreground" title={`ผู้รับผิดชอบ: ${responsiblePersonName}`}>
+                          ผู้รับผิดชอบ: {responsiblePersonName}
+                        </p>
+                      </div>
+                    ) : (
+                      <p className="truncate whitespace-nowrap text-[#64748B]" title={responsiblePersonName}>
+                        {responsiblePersonName}
+                      </p>
+                    )}
                   </td>
                   <td className="max-w-0 px-3 py-3 align-middle">
                     {dateColumnVariant === 'krabi_dispatch_date' ? (
