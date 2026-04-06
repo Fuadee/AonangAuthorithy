@@ -99,21 +99,28 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
 
     setLocationError(null);
   }
-  const recommendedSurveyorName = areaFixedSchedule?.surveyorName ?? surveySuggestion?.suggestion?.surveyor ?? '';
+  const recommendedSurveyorIdentity = areaFixedSchedule?.surveyorName ?? surveySuggestion?.suggestion?.surveyor ?? '';
+  const recommendedSurveyorId = useMemo(
+    () =>
+      resolveSurveyorOptionValue({
+        recommendationSurveyor: recommendedSurveyorIdentity,
+        assignees
+      }),
+    [assignees, recommendedSurveyorIdentity]
+  );
+  const recommendedSurveyorName =
+    assignees.find((assignee) => assignee.id === recommendedSurveyorId)?.name ?? recommendedSurveyorIdentity;
   const recommendedSurveyDate = surveySuggestion?.suggestion?.suggested_date ?? '';
   const normalizedRecommendedSurveyDate = normalizeDateInputValue(recommendedSurveyDate);
   const isRecommendedSurveyorSelected =
-    !!selectedSurveyorName &&
-    !!recommendedSurveyorName &&
-    selectedSurveyorName === recommendedSurveyorName &&
-    selectionSource === 'recommended';
+    !!assignedSurveyorId && !!recommendedSurveyorId && assignedSurveyorId === recommendedSurveyorId;
   const isRecommendedSurveyDateSelected =
     !!scheduledSurveyDate &&
     !!normalizedRecommendedSurveyDate &&
     scheduledSurveyDate === normalizedRecommendedSurveyDate &&
     selectionSource === 'recommended';
   const isAreaResponsibleMismatch =
-    !!selectedSurveyorName && !!recommendedSurveyorName && selectedSurveyorName !== recommendedSurveyorName;
+    !!assignedSurveyorId && !!recommendedSurveyorId && assignedSurveyorId !== recommendedSurveyorId;
 
   const recommendedDateText = surveySuggestion?.suggestion?.suggested_date
     ? new Date(`${surveySuggestion.suggestion.suggested_date}T00:00:00`).toLocaleDateString('th-TH', {
@@ -220,7 +227,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
             <div className="mt-3 space-y-1 text-sm">
               <p>
                 <span className="text-slate-500">ผู้สำรวจที่แนะนำ:</span>{' '}
-                {getSurveyorDisplayName(surveySuggestion.suggestion?.surveyor)}
+                {getSurveyorDisplayName(recommendedSurveyorName)}
                 {surveySuggestion.suggestion?.surveyor ? (
                   <span className="ml-2 inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
                     {isRecommendedSurveyorSelected ? 'ตามคำแนะนำ' : 'คำแนะนำของระบบ'}
@@ -281,7 +288,11 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
           <input id="assigned_surveyor" name="assigned_surveyor" type="hidden" value={assignedSurveyor} readOnly />
           {assignedSurveyorId ? (
             <p className="mt-1 text-xs text-slate-500">
-              {isRecommendedSurveyorSelected ? 'สถานะ: ตามคำแนะนำของระบบ' : 'สถานะ: ผู้แทนงาน'}
+              {isRecommendedSurveyorSelected
+                ? 'สถานะ: ตามคำแนะนำของระบบ'
+                : isAreaResponsibleMismatch
+                  ? 'สถานะ: ผู้แทนงาน'
+                  : 'สถานะ: เลือกผู้สำรวจเอง'}
             </p>
           ) : null}
           {isAreaResponsibleMismatch ? (
