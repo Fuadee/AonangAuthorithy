@@ -71,6 +71,8 @@ create table if not exists public.service_requests (
   photo_reviewed_at timestamptz,
   photo_reviewed_by text,
   fix_approved_via text check (fix_approved_via in ('PHOTO', 'RESURVEY')),
+  three_phase_capability_result text check (three_phase_capability_result in ('SUPPORTED', 'UNSUPPORTED')),
+  three_phase_capability_checked_at timestamptz,
   document_status text check (document_status in ('COMPLETE', 'INCOMPLETE')) ,
   collect_docs_on_site boolean not null default false,
   documents_received_at timestamptz,

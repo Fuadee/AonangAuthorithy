@@ -24,7 +24,8 @@ import {
   isPaid,
   REQUEST_TYPE_LABELS,
   RequestStatus,
-  RequestType
+  RequestType,
+  ThreePhaseCapabilityResult
 } from '@/lib/requests/types';
 import { buildFullAddress } from '@/lib/requests/address';
 import { formatDateOnly, formatThaiDateTime, formatThaiTimelineDate, safeParseDate } from '@/lib/datetime';
@@ -70,7 +71,11 @@ function getRequestTypeBadgeClass(requestType: RequestType): string {
   return 'border-slate-200 bg-slate-100 text-slate-700';
 }
 
-function getNextStepSummary(status: RequestStatus, requestType: RequestType): { nextStep: string; owner: string } {
+function getNextStepSummary(
+  status: RequestStatus,
+  requestType: RequestType,
+  threePhaseCapabilityResult: ThreePhaseCapabilityResult | null
+): { nextStep: string; owner: string } {
   const normalizedStatus = normalizeSurveyWorkflowStatus(status);
 
   if (requestType === 'METER') {
@@ -145,17 +150,22 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
         return { nextStep: 'รับงานและลงสำรวจหน้างาน', owner: 'นักสำรวจ' };
       case 'IN_SURVEY':
       case 'CHECK_3PHASE_CAPABILITY':
+        if (threePhaseCapabilityResult === 'SUPPORTED') {
+          return { nextStep: 'เข้าสู่ flow สำรวจแบบงานขอมิเตอร์แล้ว ให้ตัดสินใจผลสำรวจว่า “ผ่าน” หรือ “ไม่ผ่าน”', owner: 'นักสำรวจ' };
+        }
         return { nextStep: 'ตัดสินใจว่าระบบรองรับ 3 เฟสหรือไม่', owner: 'นักสำรวจ' };
-      case 'DESIGN_AND_ESTIMATE':
-        return { nextStep: 'ออกแบบ/ประเมินค่าใช้จ่ายก่อนออกใบแจ้งหนี้', owner: 'เจ้าหน้าที่' };
       case 'WAIT_BILLING':
-        return { nextStep: 'ออกใบแจ้งหนี้', owner: 'การเงิน' };
-      case 'WAIT_PAYMENT':
-        return { nextStep: 'รอและยืนยันการชำระเงิน', owner: 'การเงิน' };
-      case 'INSTALLATION':
-        return { nextStep: 'ดำเนินการติดตั้งเปลี่ยนมิเตอร์', owner: 'ช่างติดตั้ง' };
-      case 'INSPECTION':
-        return { nextStep: 'ตรวจสอบหลังติดตั้งและปิดงาน', owner: 'เจ้าหน้าที่ตรวจสอบ' };
+        return { nextStep: 'ผลสำรวจผ่านแล้ว รอออกใบแจ้งหนี้เหมือนงานขอมิเตอร์', owner: 'การเงิน' };
+      case 'WAIT_ACTION_CONFIRMATION':
+        return { nextStep: 'บันทึก “เซ็นใบแจ้งหนี้” และ “ชำระเงิน” ให้ครบทั้งสองรายการ', owner: 'นักสำรวจ / การเงิน' };
+      case 'WAIT_MANAGER_REVIEW':
+        return { nextStep: 'ผู้จัดการตรวจเอกสารและอนุมัติปิดงาน', owner: 'ผู้จัดการ' };
+      case 'COMPLETED':
+        return { nextStep: 'ปิดงานเรียบร้อยแล้ว', owner: 'เสร็จสิ้น' };
+      case 'WAIT_CUSTOMER_FIX':
+      case 'WAIT_FIX_REVIEW':
+      case 'READY_FOR_RESURVEY':
+        return { nextStep: 'อยู่ใน flow แก้ไข/ตรวจซ้ำแบบเดียวกับงานขอมิเตอร์', owner: 'นักสำรวจ / เจ้าหน้าที่' };
       case 'WAIT_LAYOUT_DRAWING':
         return { nextStep: 'งานถูกส่งต่อเข้า flow ขยายเขต เริ่มที่รอวาดผัง', owner: 'ทีมเอกสารขยายเขต' };
       default:
@@ -281,6 +291,8 @@ function getTimeline(request: {
   rejected_at: string | null;
   forwarded_to_expansion_at: string | null;
   forwarded_to_expansion_note: string | null;
+  three_phase_capability_result: ThreePhaseCapabilityResult | null;
+  three_phase_capability_checked_at: string | null;
 }): TimelineItem[] {
   const items: TimelineItem[] = [
     {
@@ -339,6 +351,15 @@ function getTimeline(request: {
     });
   }
 
+  if (request.three_phase_capability_checked_at && request.three_phase_capability_result === 'SUPPORTED') {
+    items.push({
+      key: 'three-phase-capability-supported',
+      title: 'ตรวจสอบแล้วระบบรองรับ 3 เฟส',
+      at: request.three_phase_capability_checked_at,
+      sortAt: resolveTimelineSortAt(request.three_phase_capability_checked_at)
+    });
+  }
+
   if (request.survey_rescheduled_at && request.survey_date_current) {
     items.push({
       key: 'rescheduled-latest',
@@ -353,7 +374,12 @@ function getTimeline(request: {
     items.push({
       key: 'completed',
       title: request.survey_result === 'FAIL' ? 'สำรวจไม่ผ่าน' : 'สำรวจหน้างานเสร็จ',
-      description: request.customer_fix_note ? `รายการที่ต้องแก้: ${request.customer_fix_note}` : undefined,
+      description:
+        request.survey_result === 'PASS'
+          ? 'ผลสำรวจผ่าน เข้าสู่ขั้นตอนออกใบแจ้งหนี้'
+          : request.customer_fix_note
+            ? `ผลสำรวจไม่ผ่าน เข้าสู่ขั้นตอนแก้ไข/ตรวจซ้ำ | รายการที่ต้องแก้: ${request.customer_fix_note}`
+            : 'ผลสำรวจไม่ผ่าน เข้าสู่ขั้นตอนแก้ไข/ตรวจซ้ำ',
       at: request.survey_completed_at,
       sortAt: resolveTimelineSortAt(request.survey_completed_at)
     });
@@ -504,7 +530,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,forwarded_to_expansion_at,forwarded_to_expansion_note,house_number,village_no,road,landmark,latitude,longitude,location_note,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,forwarded_to_expansion_at,forwarded_to_expansion_note,three_phase_capability_result,three_phase_capability_checked_at,house_number,village_no,road,landmark,latitude,longitude,location_note,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -527,7 +553,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const paid = isPaid(request);
   const canGoBilling = canMoveToBilling(request);
   const readyForManager = canMoveToManagerReview(request);
-  const nextStepSummary = getNextStepSummary(requestStatus, requestType);
+  const nextStepSummary = getNextStepSummary(requestStatus, requestType, request.three_phase_capability_result);
   const documentReviewRules = getDocumentReviewRules(requestType);
   const currentSurveyDate = getCurrentSurveyDate(request);
   const responsiblePersonName = getResponsiblePersonName(request);
@@ -583,7 +609,9 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     rejected_at: request.rejected_at
     ,
     forwarded_to_expansion_at: request.forwarded_to_expansion_at,
-    forwarded_to_expansion_note: request.forwarded_to_expansion_note
+    forwarded_to_expansion_note: request.forwarded_to_expansion_note,
+    three_phase_capability_result: request.three_phase_capability_result,
+    three_phase_capability_checked_at: request.three_phase_capability_checked_at
   });
   const krabiDispatchWarning = getKrabiDispatchWarning(request);
 

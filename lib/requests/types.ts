@@ -44,6 +44,7 @@ export const SURVEY_RESULTS = ['PASS', 'FAIL'] as const;
 export const FIX_VERIFICATION_MODES = ['PHOTO_OR_RESURVEY', 'RESURVEY_ONLY'] as const;
 export const PHOTO_REVIEW_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const;
 export const FIX_APPROVAL_SOURCES = ['PHOTO', 'RESURVEY'] as const;
+export const THREE_PHASE_CAPABILITY_RESULTS = ['SUPPORTED', 'UNSUPPORTED'] as const;
 
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 export type RequestType = (typeof REQUEST_TYPES)[number];
@@ -53,6 +54,7 @@ export type SurveyResult = (typeof SURVEY_RESULTS)[number];
 export type FixVerificationMode = (typeof FIX_VERIFICATION_MODES)[number];
 export type PhotoReviewStatus = (typeof PHOTO_REVIEW_STATUSES)[number];
 export type FixApprovalSource = (typeof FIX_APPROVAL_SOURCES)[number];
+export type ThreePhaseCapabilityResult = (typeof THREE_PHASE_CAPABILITY_RESULTS)[number];
 export type DocumentReviewMode = 'BASIC' | 'DETAILED';
 
 export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
@@ -518,15 +520,17 @@ export function canMoveToBilling(request: Pick<ServiceRequest, 'collect_docs_on_
 }
 
 export function canMarkSurveyPassed(request: Pick<ServiceRequest, 'status' | 'request_type'>): boolean {
-  return request.request_type === 'METER' && request.status === 'IN_SURVEY';
+  return ['METER', 'METER_TO_3PHASE'].includes(request.request_type) && request.status === 'IN_SURVEY';
 }
 
-export function canEvaluateThreePhaseCapability(request: Pick<ServiceRequest, 'status' | 'request_type'>): boolean {
-  return request.request_type === 'METER_TO_3PHASE' && ['IN_SURVEY', 'CHECK_3PHASE_CAPABILITY'].includes(request.status);
+export function canEvaluateThreePhaseCapability(
+  request: Pick<ServiceRequest, 'status' | 'request_type' | 'three_phase_capability_result'>
+): boolean {
+  return request.request_type === 'METER_TO_3PHASE' && request.status === 'IN_SURVEY' && request.three_phase_capability_result !== 'SUPPORTED';
 }
 
 export function canMarkSurveyFailed(request: Pick<ServiceRequest, 'status' | 'request_type'>): boolean {
-  return request.request_type === 'METER' && request.status === 'IN_SURVEY';
+  return ['METER', 'METER_TO_3PHASE'].includes(request.request_type) && request.status === 'IN_SURVEY';
 }
 
 export function allowsPhotoApproval(
@@ -735,6 +739,8 @@ export type ServiceRequest = {
   krabi_completed_at: string | null;
   forwarded_to_expansion_at: string | null;
   forwarded_to_expansion_note: string | null;
+  three_phase_capability_result: ThreePhaseCapabilityResult | null;
+  three_phase_capability_checked_at: string | null;
   created_at: string;
   updated_at: string;
 };
