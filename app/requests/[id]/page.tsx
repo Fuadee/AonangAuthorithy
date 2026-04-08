@@ -557,8 +557,12 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
             </dd>
           </div>
           <div>
-            <dt className="text-sm text-slate-500">พื้นที่</dt>
+            <dt className="text-sm text-slate-500">พื้นที่ (ตำบล)</dt>
             <dd className="mt-1 truncate font-medium" title={resolveAreaDisplayName(request.area_name)}>{resolveAreaDisplayName(request.area_name)}</dd>
+          </div>
+          <div className="sm:col-span-2">
+            <dt className="text-sm text-slate-500">ที่อยู่</dt>
+            <dd className="mt-1 font-medium">{fullAddress}</dd>
           </div>
           <div>
             <dt className="text-sm text-slate-500">ประเภทคำร้อง</dt>
