@@ -21,10 +21,10 @@ type BillingRequestsPanelProps = {
   requests: ServiceRequest[];
 };
 
-type BillingQueueStatus = Extract<RequestStatus, 'WAIT_BILLING' | 'WAIT_ACTION_CONFIRMATION' | 'WAIT_PAYMENT'>;
+type BillingQueueStatus = Extract<RequestStatus, 'WAIT_ELIGIBILITY_REVIEW' | 'WAIT_BILLING' | 'WAIT_ACTION_CONFIRMATION' | 'WAIT_PAYMENT'>;
 type BillingFilter = 'ALL' | BillingQueueStatus;
 
-const BILLING_FILTER_STATUSES: BillingQueueStatus[] = ['WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION', 'WAIT_PAYMENT'];
+const BILLING_FILTER_STATUSES: BillingQueueStatus[] = ['WAIT_ELIGIBILITY_REVIEW', 'WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION', 'WAIT_PAYMENT'];
 
 const FILTER_OPTIONS: Array<{ value: BillingFilter; label: string }> = [
   { value: 'ALL', label: 'ทั้งหมด' },
@@ -43,6 +43,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
       waitBilling: requests.filter((request) => request.status === 'WAIT_BILLING').length,
       waitActionConfirmation: requests.filter((request) => request.status === 'WAIT_ACTION_CONFIRMATION').length,
       waitPayment: requests.filter((request) => request.status === 'WAIT_PAYMENT').length,
+      waitEligibilityReview: requests.filter((request) => request.status === 'WAIT_ELIGIBILITY_REVIEW').length,
       totalBillingQueue: requests.length
     }),
     [requests]
@@ -58,7 +59,11 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
 
   return (
     <div className="space-y-4">
-      <section className="grid gap-4 md:grid-cols-4">
+      <section className="grid gap-4 md:grid-cols-5">
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รอตรวจสอบสิทธิ์</p>
+          <p className="mt-2 text-3xl font-semibold text-cyan-700">{summary.waitEligibilityReview}</p>
+        </article>
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รอออกใบแจ้งหนี้</p>
           <p className="mt-2 text-3xl font-semibold text-purple-700">{summary.waitBilling}</p>

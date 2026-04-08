@@ -136,7 +136,7 @@ function getActionTitle(actionKey: WorkflowActionKey): string {
     START_DOCUMENT_FIX: 'ยืนยันเริ่มแก้ไขเอกสาร',
     RESENT_TO_KRABI: 'ยืนยันส่งเอกสารไปกระบี่ใหม่',
     RECEIVE_FROM_KRABI: 'ยืนยันรับเอกสารกลับจากกระบี่',
-    SEND_TO_ELIGIBILITY_REVIEW: 'ส่งเข้าตรวจสอบสิทธิ์',
+    SEND_TO_ELIGIBILITY_REVIEW: 'ตรวจสอบสิทธิ์',
     ELIGIBILITY_PASS: 'ยืนยันผลตรวจสอบสิทธิ์ผ่าน',
     ELIGIBILITY_FAIL: 'ยืนยันผลตรวจสอบสิทธิ์ไม่ผ่าน',
     MOVE_TO_FINAL_MANAGER_APPROVAL: 'ส่งให้ผู้จัดการอ่าวนางอนุมัติรอบสุดท้าย',
