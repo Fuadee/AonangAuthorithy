@@ -139,11 +139,11 @@ function getNextStepSummary(
           owner: 'ทีมเอกสาร'
         };
       case 'KRABI_APPROVED':
-      case 'WAIT_RECEIVE_FROM_KRABI':
         return {
-          nextStep: 'รอตรวจสอบสิทธิ์ และบันทึกผลเพื่อส่งต่อขั้นตอนถัดไป',
+          nextStep: 'ทีมเอกสารยืนยันรับเอกสารกลับจากกระบี่ แล้วงานจะถูกส่งเข้าคิวตรวจสอบสิทธิ์ทันที',
           owner: 'ทีมเอกสาร'
         };
+      case 'WAIT_RECEIVE_FROM_KRABI':
       case 'WAIT_ELIGIBILITY_REVIEW':
         return {
           nextStep: 'บันทึกผลตรวจสอบสิทธิ์ (ผ่าน = ส่งผู้จัดการอนุมัติ, ไม่ผ่าน = ไปออกใบแจ้งหนี้)',

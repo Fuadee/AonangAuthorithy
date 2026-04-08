@@ -138,7 +138,7 @@ const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>
   KRABI_NEEDS_CORRECTION: ['DOCUMENT_FIX'],
   DOCUMENT_FIX: ['RESENT_TO_KRABI'],
   RESENT_TO_KRABI: ['WAIT_KRABI_APPROVAL'],
-  KRABI_APPROVED: ['WAIT_RECEIVE_FROM_KRABI'],
+  KRABI_APPROVED: ['WAIT_ELIGIBILITY_REVIEW'],
   WAIT_RECEIVE_FROM_KRABI: ['WAIT_ELIGIBILITY_REVIEW'],
   WAIT_ELIGIBILITY_REVIEW: ['WAIT_BILLING', 'WAIT_AONANG_MANAGER_FINAL_APPROVAL'],
   WAIT_PAYMENT: ['WAIT_AONANG_MANAGER_FINAL_APPROVAL'],
@@ -1770,7 +1770,7 @@ export async function receiveFromKrabiForMeterAction(formData: FormData) {
   const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
   if (requestError || !request) throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   if ((request.request_type as RequestType) !== 'METER_30_100_1P' || request.status !== 'KRABI_APPROVED') throw new Error('รับเอกสารกลับจากกระบี่ได้เฉพาะงานขอมิเตอร์ที่กระบี่อนุมัติแล้ว');
-  const { error } = await supabase.from('service_requests').update({ status: 'WAIT_RECEIVE_FROM_KRABI', updated_at: nowIso }).eq('id', requestId);
+  const { error } = await supabase.from('service_requests').update({ status: 'WAIT_ELIGIBILITY_REVIEW', updated_at: nowIso }).eq('id', requestId);
   if (error) throw new Error(error.message);
   finalizeWorkflowAction(requestId, formData);
 }
