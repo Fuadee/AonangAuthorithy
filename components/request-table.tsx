@@ -193,17 +193,19 @@ export function RequestTable({
       <div className="overflow-x-auto lg:overflow-x-visible">
         <table className="w-full table-fixed border-separate border-spacing-0 text-sm">
           <colgroup>
-            <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[16%]'} />
-            <col className={hasSeparateStatusColumn ? 'w-[16%]' : 'w-[20%]'} />
             <col className={hasSeparateStatusColumn ? 'w-[10%]' : 'w-[12%]'} />
-            <col className={hasSeparateStatusColumn ? (responsibleColumnVariant === 'area_with_responsible' ? 'w-[20%]' : 'w-[12%]') : 'w-[20%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[15%]' : 'w-[20%]'} />
+            <col className={hasSeparateStatusColumn ? 'w-[16%]' : 'w-[16%]'} />
+            <col className={hasSeparateStatusColumn ? (responsibleColumnVariant === 'area_with_responsible' ? 'w-[18%]' : 'w-[14%]') : 'w-[18%]'} />
             <col className={hasSeparateStatusColumn ? 'w-[11%]' : 'w-[13%]'} />
-            {hasSeparateStatusColumn ? <col className="w-[19%]" /> : null}
-            <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[19%]'} />
+            {hasSeparateStatusColumn ? <col className="w-[18%]" /> : null}
+            <col className={hasSeparateStatusColumn ? 'w-[12%]' : 'w-[21%]'} />
           </colgroup>
           <thead className="bg-slate-50 text-left">
             <tr>
-              <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">Request No.</th>
+              <th className="w-[10ch] min-w-[10ch] whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">
+                Request No.
+              </th>
               <th className="px-3 py-3 align-middle text-sm font-medium text-[#64748B]">ลูกค้า</th>
               <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">ประเภท</th>
               <th className="whitespace-nowrap px-3 py-3 align-middle text-sm font-medium text-[#64748B]">
@@ -228,10 +230,10 @@ export function RequestTable({
                   key={request.id}
                   className={`border-b border-[#E2E8F0] hover:bg-slate-50 ${isEmphasizedRow ? 'bg-rose-50/50 hover:bg-rose-100/50' : ''}`}
                 >
-                  <td className="max-w-0 px-3 py-3 align-middle" title={request.request_no}>
+                  <td className="max-w-0 px-3 py-3 align-middle tabular-nums" title={request.request_no}>
                     <Link
                       href={`/requests/${request.id}`}
-                      className="block truncate whitespace-nowrap pr-1 font-semibold text-[#1E3A8A] hover:underline"
+                      className="block w-[10ch] min-w-[10ch] truncate whitespace-nowrap pr-1 font-semibold text-[#1E3A8A] hover:underline"
                     >
                       {request.request_no}
                     </Link>
@@ -240,7 +242,9 @@ export function RequestTable({
                     <p className="max-w-[180px] truncate text-[#0F172A] lg:max-w-[220px]">{request.customer_name}</p>
                   </td>
                   <td className="max-w-0 px-3 py-3 align-middle" title={REQUEST_TYPE_LABELS[request.request_type]}>
-                    <p className="truncate whitespace-nowrap text-[#64748B]">{REQUEST_TYPE_LABELS[request.request_type]}</p>
+                    <p className="overflow-hidden text-pretty leading-5 text-[#64748B] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
+                      {REQUEST_TYPE_LABELS[request.request_type]}
+                    </p>
                   </td>
                   <td className={`max-w-0 px-3 py-3 ${responsibleColumnVariant === 'area_with_responsible' ? 'align-top' : 'align-middle'}`}>
                     {responsibleColumnVariant === 'area_with_responsible' ? (
