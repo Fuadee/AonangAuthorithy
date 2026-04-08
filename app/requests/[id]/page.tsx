@@ -58,6 +58,16 @@ function resolveTimelineSortAt(value: string): number {
   return parsed ? parsed.getTime() : 0;
 }
 
+function getRequestTypeBadgeClass(requestType: RequestType): string {
+  if (requestType === 'METER') {
+    return 'border-sky-200 bg-sky-50 text-sky-700';
+  }
+  if (requestType === 'EXPANSION') {
+    return 'border-emerald-200 bg-emerald-50 text-emerald-700';
+  }
+  return 'border-slate-200 bg-slate-100 text-slate-700';
+}
+
 function getNextStepSummary(status: RequestStatus, requestType: RequestType): { nextStep: string; owner: string } {
   const normalizedStatus = normalizeSurveyWorkflowStatus(status);
 
@@ -467,6 +477,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
 
   const requestStatus = request.status as RequestStatus;
   const requestType = request.request_type as RequestType;
+  const requestTypeLabel = REQUEST_TYPE_LABELS[requestType];
   const currentQueue = getRequestQueueGroup(requestStatus);
   const documentSummary = getDocumentStatusSummary(request);
   const postSurveyFixSummary = getPostSurveyFixSummary(request);
@@ -536,7 +547,12 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
       <div className="flex items-center justify-between">
         <div>
           <p className="text-sm text-slate-500">รายละเอียดคำร้อง</p>
-          <h2 className="text-2xl font-semibold">{request.request_no}</h2>
+          <div className="mt-1 flex flex-wrap items-center gap-2">
+            <h2 className="text-2xl font-semibold text-slate-900">{requestTypeLabel}</h2>
+            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getRequestTypeBadgeClass(requestType)}`}>
+              {request.request_no}
+            </span>
+          </div>
         </div>
         <Link className="btn-secondary" href="/dashboard">
           กลับไป Dashboard
@@ -563,10 +579,6 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           <div className="sm:col-span-2">
             <dt className="text-sm text-slate-500">ที่อยู่</dt>
             <dd className="mt-1 font-medium">{fullAddress}</dd>
-          </div>
-          <div>
-            <dt className="text-sm text-slate-500">ประเภทคำร้อง</dt>
-            <dd className="mt-1 font-medium">{REQUEST_TYPE_LABELS[requestType]}</dd>
           </div>
         </dl>
         {requestStatus === 'KRABI_NEEDS_DOCUMENT_FIX' ? (
@@ -601,7 +613,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           </div>
           <div>
             <dt className="text-sm text-slate-500">ประเภทคำร้อง</dt>
-            <dd className="mt-1 font-medium">{REQUEST_TYPE_LABELS[requestType]}</dd>
+            <dd className="mt-1 font-medium">{requestTypeLabel}</dd>
           </div>
           <div>
             <dt className="text-sm text-slate-500">ผู้รับผิดชอบ</dt>
