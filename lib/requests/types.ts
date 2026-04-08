@@ -332,6 +332,20 @@ export function isMeterFamilyRequestType(requestType: RequestType): boolean {
   return requestType === 'METER' || requestType === 'METER_TO_3PHASE';
 }
 
+export const METER_LIKE_BILLING_STATUSES: ReadonlyArray<RequestStatus> = [
+  'WAIT_BILLING',
+  'WAIT_ACTION_CONFIRMATION',
+  'WAIT_MANAGER_REVIEW'
+];
+
+export function isMeterLikeBillingRequest(requestType: RequestType, status: RequestStatus): boolean {
+  if (!METER_LIKE_BILLING_STATUSES.includes(status)) {
+    return false;
+  }
+
+  return requestType === 'METER' || requestType === 'METER_TO_3PHASE';
+}
+
 export const EXPANSION_WORKFLOW_STATUSES: RequestStatus[] = [
   'WAIT_LAYOUT_DRAWING',
   'WAITING_TO_SEND_TO_KRABI',
