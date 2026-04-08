@@ -6,7 +6,14 @@ import { BillingWorkflowActionRenderer } from '@/components/billing-workflow-act
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
-import { getCurrentSurveyDate, getRequestStatusLabel, REQUEST_TYPE_LABELS, RequestStatus, ServiceRequest } from '@/lib/requests/types';
+import {
+  getCurrentSurveyDate,
+  getRequestStatusLabel,
+  isMeterLikeBillingRequest,
+  REQUEST_TYPE_LABELS,
+  RequestStatus,
+  ServiceRequest
+} from '@/lib/requests/types';
 import { getWorkflowActionsForRequest } from '@/lib/requests/workflow-action-config';
 import { formatDateOnly } from '@/lib/datetime';
 
@@ -127,7 +134,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                   <td className="px-4 py-3">{formatDateOnly(getCurrentSurveyDate(request))}</td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
-                    {request.request_type === 'METER' ? (
+                    {isMeterLikeBillingRequest(request.request_type, request.status) ? (
                       <BillingWorkflowActionRenderer
                         compact
                         currentStatus={request.status}
