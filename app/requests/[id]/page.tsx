@@ -62,6 +62,9 @@ function getRequestTypeBadgeClass(requestType: RequestType): string {
   if (requestType === 'METER') {
     return 'border-sky-200 bg-sky-50 text-sky-700';
   }
+  if (requestType === 'METER_TO_3PHASE') {
+    return 'border-violet-200 bg-violet-50 text-violet-700';
+  }
   if (requestType === 'EXPANSION') {
     return 'border-emerald-200 bg-emerald-50 text-emerald-700';
   }
@@ -130,6 +133,34 @@ function getNextStepSummary(status: RequestStatus, requestType: RequestType): { 
         };
       default:
         break;
+    }
+  }
+
+  if (requestType === 'METER_TO_3PHASE') {
+    switch (normalizedStatus) {
+      case 'WAIT_DOCUMENT_REVIEW':
+        return { nextStep: 'ตรวจเอกสารก่อนเริ่มสำรวจ', owner: 'เจ้าหน้าที่รับคำร้อง' };
+      case 'WAIT_DOCUMENT_FROM_CUSTOMER':
+        return { nextStep: 'รอลูกค้านำเอกสารให้ครบแล้วกดยืนยันรับเอกสาร', owner: 'เจ้าหน้าที่รับคำร้อง' };
+      case 'READY_FOR_SURVEY':
+        return { nextStep: 'รับงานและลงสำรวจหน้างาน', owner: 'นักสำรวจ' };
+      case 'IN_SURVEY':
+      case 'CHECK_3PHASE_CAPABILITY':
+        return { nextStep: 'ตัดสินใจว่าระบบรองรับ 3 เฟสหรือไม่', owner: 'นักสำรวจ' };
+      case 'DESIGN_AND_ESTIMATE':
+        return { nextStep: 'ออกแบบ/ประเมินค่าใช้จ่ายก่อนออกใบแจ้งหนี้', owner: 'เจ้าหน้าที่' };
+      case 'WAIT_BILLING':
+        return { nextStep: 'ออกใบแจ้งหนี้', owner: 'การเงิน' };
+      case 'WAIT_PAYMENT':
+        return { nextStep: 'รอและยืนยันการชำระเงิน', owner: 'การเงิน' };
+      case 'INSTALLATION':
+        return { nextStep: 'ดำเนินการติดตั้งเปลี่ยนมิเตอร์', owner: 'ช่างติดตั้ง' };
+      case 'INSPECTION':
+        return { nextStep: 'ตรวจสอบหลังติดตั้งและปิดงาน', owner: 'เจ้าหน้าที่ตรวจสอบ' };
+      case 'WAIT_LAYOUT_DRAWING':
+        return { nextStep: 'งานถูกส่งต่อเข้า flow ขยายเขต เริ่มที่รอวาดผัง', owner: 'ทีมเอกสารขยายเขต' };
+      default:
+        return { nextStep: 'ติดตามความคืบหน้าตามสถานะปัจจุบัน', owner: 'ทีมปฏิบัติการ' };
     }
   }
 
@@ -249,6 +280,8 @@ function getTimeline(request: {
   reject_reason: string | null;
   rejected_by: string | null;
   rejected_at: string | null;
+  forwarded_to_expansion_at: string | null;
+  forwarded_to_expansion_note: string | null;
 }): TimelineItem[] {
   const items: TimelineItem[] = [
     {
@@ -357,6 +390,16 @@ function getTimeline(request: {
     });
   }
 
+  if (request.forwarded_to_expansion_at) {
+    items.push({
+      key: 'forwarded-to-expansion',
+      title: 'ส่งต่องานเข้าสู่ flow ขยายเขต',
+      description: request.forwarded_to_expansion_note ?? 'ระบบไม่รองรับ 3 เฟส จึงส่งต่อเข้าขยายเขตที่ WAIT_LAYOUT_DRAWING',
+      at: request.forwarded_to_expansion_at,
+      sortAt: resolveTimelineSortAt(request.forwarded_to_expansion_at)
+    });
+  }
+
   if (request.krabi_in_progress_at) {
     items.push({
       key: 'krabi-in-progress',
@@ -462,7 +505,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,house_number,village_no,road,landmark,latitude,longitude,location_note,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,forwarded_to_expansion_at,forwarded_to_expansion_note,house_number,village_no,road,landmark,latitude,longitude,location_note,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -539,6 +582,9 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     reject_reason: request.reject_reason,
     rejected_by: request.rejected_by,
     rejected_at: request.rejected_at
+    ,
+    forwarded_to_expansion_at: request.forwarded_to_expansion_at,
+    forwarded_to_expansion_note: request.forwarded_to_expansion_note
   });
   const krabiDispatchWarning = getKrabiDispatchWarning(request);
 

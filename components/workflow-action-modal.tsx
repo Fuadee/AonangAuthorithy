@@ -7,7 +7,13 @@ import {
   approveManagerReviewAction,
   completeSurveyAction,
   completeLayoutDrawingAction,
+  completeThreePhaseDesignEstimateAction,
+  completeThreePhaseInspectionAction,
+  completeThreePhaseInstallationAction,
   confirmDocumentsReceivedFromCustomerAction,
+  confirmThreePhasePaymentAction,
+  forwardThreePhaseToExpansionAction,
+  issueThreePhaseBillingAction,
   markCoordinatedWithConstructionAction,
   markExpansionBillIssuedAction,
   markKrabiDocumentFixCompletedAction,
@@ -16,6 +22,7 @@ import {
   markKrabiNeedsDocumentFixAction,
   markSentToKrabiAction,
   markSurveyPassedAction,
+  markThreePhaseCapabilitySupportedAction,
   moveToResurveyAction,
   rejectFixPhotoAndRequireResurveyAction,
   reportCustomerFixAction,
@@ -52,7 +59,14 @@ const ACTION_EXECUTORS: Partial<Record<WorkflowActionKey, ActionExecutor>> = {
   KRABI_FIX_COMPLETED: markKrabiDocumentFixCompletedAction,
   KRABI_ESTIMATION_COMPLETED: markKrabiEstimationCompletedAction,
   KRABI_BILL_ISSUED: markExpansionBillIssuedAction,
-  COORDINATED_WITH_CONSTRUCTION: markCoordinatedWithConstructionAction
+  COORDINATED_WITH_CONSTRUCTION: markCoordinatedWithConstructionAction,
+  THREE_PHASE_CAPABLE: markThreePhaseCapabilitySupportedAction,
+  THREE_PHASE_NEEDS_EXPANSION: forwardThreePhaseToExpansionAction,
+  COMPLETE_DESIGN_ESTIMATE: completeThreePhaseDesignEstimateAction,
+  ISSUE_3PHASE_BILL: issueThreePhaseBillingAction,
+  CONFIRM_3PHASE_PAYMENT: confirmThreePhasePaymentAction,
+  COMPLETE_INSTALLATION: completeThreePhaseInstallationAction,
+  COMPLETE_INSPECTION: completeThreePhaseInspectionAction
 };
 
 function ModalShell({ children, title, onClose }: { children: ReactNode; title: string; onClose: () => void }) {
@@ -78,6 +92,17 @@ function QueueStayInput({ stayOnQueue }: { stayOnQueue: boolean }) {
   }
 
   return <input name="stay_on_queue" type="hidden" value="1" />;
+}
+
+function getActionTitle(actionKey: WorkflowActionKey): string {
+  const map: Partial<Record<WorkflowActionKey, string>> = {
+    THREE_PHASE_CAPABLE: 'ยืนยันว่าระบบรองรับ 3 เฟส',
+    THREE_PHASE_NEEDS_EXPANSION: 'ยืนยันส่งต่องานขยายเขต',
+    COMPLETE_DESIGN_ESTIMATE: 'ยืนยันออกแบบ / ประเมินเสร็จ',
+    COMPLETE_INSTALLATION: 'ยืนยันติดตั้งเปลี่ยนมิเตอร์เสร็จ',
+    COMPLETE_INSPECTION: 'ยืนยันตรวจสอบหลังติดตั้งผ่าน'
+  };
+  return map[actionKey] ?? 'ยืนยันการทำรายการ';
 }
 
 export function WorkflowActionModal({ actionKey, requestId, onClose, currentStatus, stayOnQueue = false }: WorkflowActionModalProps) {
@@ -243,6 +268,69 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
             <label className="text-sm font-medium text-slate-700" htmlFor="survey_note_complete">หมายเหตุ (ถ้ามี)</label>
             <textarea className="input min-h-24" disabled={isPending} id="survey_note_complete" name="survey_note" />
           </div>
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (
+    actionKey === 'THREE_PHASE_CAPABLE' ||
+    actionKey === 'THREE_PHASE_NEEDS_EXPANSION' ||
+    actionKey === 'COMPLETE_DESIGN_ESTIMATE' ||
+    actionKey === 'COMPLETE_INSTALLATION' ||
+    actionKey === 'COMPLETE_INSPECTION'
+  ) {
+    return (
+      <ModalShell title={getActionTitle(actionKey)} onClose={onClose}>
+        <form className="space-y-3" onSubmit={onSubmitWorkflowAction(actionKey)}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          {actionKey === 'THREE_PHASE_CAPABLE' ? (
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor="survey_note_3phase">หมายเหตุ (ถ้ามี)</label>
+              <textarea className="input min-h-24" disabled={isPending} id="survey_note_3phase" name="survey_note" />
+            </div>
+          ) : null}
+          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'ISSUE_3PHASE_BILL') {
+    return (
+      <ModalShell title="ออกใบแจ้งหนี้งานเพิ่มเป็นมิเตอร์ 3 เฟส" onClose={onClose}>
+        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('ISSUE_3PHASE_BILL')}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <input className="input" name="billed_by" placeholder="ออกโดย" required type="text" />
+          <textarea className="input min-h-24" name="billing_note" placeholder="หมายเหตุ (ถ้ามี)" />
+          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'CONFIRM_3PHASE_PAYMENT') {
+    return (
+      <ModalShell title="ยืนยันรับชำระเงินงานเพิ่มเป็นมิเตอร์ 3 เฟส" onClose={onClose}>
+        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('CONFIRM_3PHASE_PAYMENT')}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <input className="input" name="paid_by" placeholder="รับชำระโดย" required type="text" />
+          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
             <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>

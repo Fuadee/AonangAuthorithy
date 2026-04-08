@@ -4,6 +4,7 @@ import {
   getRequestQueueGroupLabel,
   getRequestStatusLabel,
   REQUEST_QUEUE_GROUPS,
+  REQUEST_TYPE_LABELS,
   RequestQueueGroup,
   ServiceRequest
 } from '@/lib/requests/types';
@@ -203,7 +204,7 @@ export function computeRequestViews(
         id: request.id,
         requestNo: request.request_no,
         customerName: request.customer_name,
-        requestType: request.request_type === 'EXPANSION' ? 'ขยายเขต' : 'ขอมิเตอร์',
+        requestType: REQUEST_TYPE_LABELS[request.request_type],
         assigneeName: getResponsiblePersonName(request),
         queue: getRequestQueueGroup(request.status),
         statusLabel: getRequestStatusLabel(request.status),

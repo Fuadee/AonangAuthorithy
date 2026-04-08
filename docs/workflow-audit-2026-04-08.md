@@ -223,3 +223,13 @@ SENT_TO_KRABI / WAIT_KRABI_DOCUMENT_CHECK
 -> `KRABI_ESTIMATION_COMPLETED`
 -> `BILL_ISSUED`
 -> `COORDINATED_WITH_CONSTRUCTION`
+
+## H. Update 2026-04-08 (งานเพิ่มเป็นมิเตอร์ 3 เฟส)
+
+- เพิ่ม request type ใหม่ `METER_TO_3PHASE` (label: งานเพิ่มเป็นมิเตอร์ 3 เฟส)
+- Flow ใหม่ของงาน 3 เฟส:
+  `WAIT_DOCUMENT_REVIEW` -> `WAIT_DOCUMENT_FROM_CUSTOMER`/`READY_FOR_SURVEY` -> `IN_SURVEY` -> ตัดสินใจความพร้อม 3 เฟส
+  - รองรับ: `DESIGN_AND_ESTIMATE` -> `WAIT_BILLING` -> `WAIT_PAYMENT` -> `INSTALLATION` -> `INSPECTION` -> `COMPLETED`
+  - ไม่รองรับ: ส่งต่องานเดิมไป flow ขยายเขตที่ `WAIT_LAYOUT_DRAWING` ทันที (ไม่สร้างคำร้องใหม่)
+- เพิ่ม trace field ในคำร้องเดิม: `forwarded_to_expansion_at`, `forwarded_to_expansion_note`
+- Timeline มีข้อความ: “ระบบไม่รองรับ 3 เฟส จึงส่งต่อเข้าสู่ขั้นตอนขยายเขต ที่สถานะ WAIT_LAYOUT_DRAWING”
