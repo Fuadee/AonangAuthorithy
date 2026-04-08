@@ -332,6 +332,37 @@ export function isMeterFamilyRequestType(requestType: RequestType): boolean {
   return requestType === 'METER' || requestType === 'METER_TO_3PHASE';
 }
 
+export const EXPANSION_WORKFLOW_STATUSES: RequestStatus[] = [
+  'WAIT_LAYOUT_DRAWING',
+  'WAITING_TO_SEND_TO_KRABI',
+  'SENT_TO_KRABI',
+  'WAIT_KRABI_DOCUMENT_CHECK',
+  'KRABI_NEEDS_DOCUMENT_FIX',
+  'KRABI_IN_PROGRESS',
+  'KRABI_ESTIMATION_COMPLETED',
+  'BILL_ISSUED',
+  'COORDINATED_WITH_CONSTRUCTION'
+];
+
+export function isExpansionWorkflowStatus(status: RequestStatus): boolean {
+  return EXPANSION_WORKFLOW_STATUSES.includes(status);
+}
+
+export function shouldUseExpansionActionSet(
+  request: Pick<ServiceRequest, 'request_type' | 'status'> &
+    Partial<Pick<ServiceRequest, 'three_phase_capability_result'>>
+): boolean {
+  if (request.request_type === 'EXPANSION') {
+    return true;
+  }
+
+  if (request.request_type !== 'METER_TO_3PHASE') {
+    return false;
+  }
+
+  return isExpansionWorkflowStatus(request.status);
+}
+
 export function getRequiredDocuments(requestType: RequestType): string[] {
   if (requestType === 'EXPANSION') {
     return ['เอกสารคำขอขยายเขต', 'เอกสารยืนยันสิทธิ์ผู้ยื่น', 'ตำแหน่งหน้างาน'];

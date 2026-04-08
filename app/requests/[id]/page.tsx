@@ -22,6 +22,7 @@ import {
   isInvoiceSigned,
   needsRescheduleAfterDocuments,
   isPaid,
+  isExpansionWorkflowStatus,
   REQUEST_TYPE_LABELS,
   RequestStatus,
   RequestType,
@@ -167,8 +168,11 @@ function getNextStepSummary(
       case 'READY_FOR_RESURVEY':
         return { nextStep: 'อยู่ใน flow แก้ไข/ตรวจซ้ำแบบเดียวกับงานขอมิเตอร์', owner: 'นักสำรวจ / เจ้าหน้าที่' };
       case 'WAIT_LAYOUT_DRAWING':
-        return { nextStep: 'งานถูกส่งต่อเข้า flow ขยายเขต เริ่มที่รอวาดผัง', owner: 'ทีมเอกสารขยายเขต' };
+        return { nextStep: 'ดำเนินการต่อในขั้นตอนรอวาดผัง (flow ขยายเขต)', owner: 'ทีมเอกสารขยายเขต' };
       default:
+        if (isExpansionWorkflowStatus(normalizedStatus)) {
+          return getNextStepSummary(normalizedStatus, 'EXPANSION', null);
+        }
         return { nextStep: 'ติดตามความคืบหน้าตามสถานะปัจจุบัน', owner: 'ทีมปฏิบัติการ' };
     }
   }

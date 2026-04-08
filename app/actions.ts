@@ -21,7 +21,8 @@ import {
   REQUEST_TYPES,
   RequestType,
   resolveDocumentReviewDecision,
-  resolvePostBillingPhase
+  resolvePostBillingPhase,
+  shouldUseExpansionActionSet
 } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
@@ -80,6 +81,12 @@ function isValidRequestStatus(status: string): status is RequestStatus {
 function assertMeterLoopAllowed(requestType: RequestType): void {
   if (!['METER', 'METER_TO_3PHASE'].includes(requestType)) {
     throw new Error('รองรับ workflow ออกใบแจ้งหนี้เฉพาะคำร้องขอมิเตอร์และงานเพิ่มเป็นมิเตอร์ 3 เฟสเท่านั้น');
+  }
+}
+
+function assertExpansionWorkflowAllowed(request: { request_type: RequestType; status: RequestStatus; three_phase_capability_result?: 'SUPPORTED' | 'UNSUPPORTED' | null }): void {
+  if (!shouldUseExpansionActionSet(request)) {
+    throw new Error('action นี้รองรับเฉพาะงานขยายเขต หรือ งานเพิ่มเป็นมิเตอร์ 3 เฟสที่ถูกส่งต่อ flow ขยายเขตแล้ว');
   }
 }
 
@@ -691,9 +698,10 @@ export async function completeLayoutDrawingAction(formData: FormData) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
-  if ((request.request_type as RequestType) !== 'EXPANSION') {
-    throw new Error('action นี้รองรับเฉพาะงานขยายเขต');
-  }
+  assertExpansionWorkflowAllowed({
+    request_type: request.request_type as RequestType,
+    status: request.status as RequestStatus
+  });
 
   if (!['WAIT_LAYOUT_DRAWING', 'SURVEY_COMPLETED'].includes(request.status)) {
     throw new Error('กดวาดผังเสร็จได้เฉพาะสถานะรอวาดผัง');
@@ -733,9 +741,10 @@ export async function markDocumentReadyAction(formData: FormData) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
-  if ((request.request_type as RequestType) !== 'EXPANSION') {
-    throw new Error('คิวส่งเอกสารกระบี่รองรับเฉพาะงานขยายเขต');
-  }
+  assertExpansionWorkflowAllowed({
+    request_type: request.request_type as RequestType,
+    status: request.status as RequestStatus
+  });
   if (request.status !== 'WAITING_TO_SEND_TO_KRABI') {
     throw new Error('จัดเตรียมเอกสารได้เฉพาะสถานะรอจัดส่งเอกสาร');
   }
@@ -766,9 +775,10 @@ export async function markSentToKrabiAction(formData: FormData) {
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
-  if ((request.request_type as RequestType) !== 'EXPANSION') {
-    throw new Error('การส่งเอกสารกระบี่รองรับเฉพาะงานขยายเขต');
-  }
+  assertExpansionWorkflowAllowed({
+    request_type: request.request_type as RequestType,
+    status: request.status as RequestStatus
+  });
   if (request.status !== 'WAITING_TO_SEND_TO_KRABI') {
     throw new Error('บันทึกส่งเอกสารได้เฉพาะสถานะรอจัดส่งเอกสาร');
   }
@@ -806,9 +816,11 @@ export async function markKrabiInProgressAction(formData: FormData) {
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
-  if ((request.request_type as RequestType) !== 'EXPANSION') {
-    throw new Error('สถานะกระบี่รองรับเฉพาะงานขยายเขต');
-  }
+  assertExpansionWorkflowAllowed({
+    request_type: request.request_type as RequestType,
+    status: request.status as RequestStatus,
+    three_phase_capability_result: request.three_phase_capability_result
+  });
   if (!['WAIT_KRABI_DOCUMENT_CHECK', 'SENT_TO_KRABI'].includes(request.status)) {
     throw new Error('ต้องอยู่ขั้นรอกระบี่ตรวจรับเอกสารก่อน');
   }
@@ -844,9 +856,11 @@ export async function markKrabiNeedsDocumentFixAction(formData: FormData) {
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
-  if ((request.request_type as RequestType) !== 'EXPANSION') {
-    throw new Error('สถานะกระบี่รองรับเฉพาะงานขยายเขต');
-  }
+  assertExpansionWorkflowAllowed({
+    request_type: request.request_type as RequestType,
+    status: request.status as RequestStatus,
+    three_phase_capability_result: request.three_phase_capability_result
+  });
   if (!['WAIT_KRABI_DOCUMENT_CHECK', 'SENT_TO_KRABI'].includes(request.status)) {
     throw new Error('ต้องอยู่ขั้นรอกระบี่ตรวจรับเอกสารก่อน');
   }
@@ -881,9 +895,11 @@ export async function markKrabiDocumentFixCompletedAction(formData: FormData) {
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
-  if ((request.request_type as RequestType) !== 'EXPANSION') {
-    throw new Error('สถานะกระบี่รองรับเฉพาะงานขยายเขต');
-  }
+  assertExpansionWorkflowAllowed({
+    request_type: request.request_type as RequestType,
+    status: request.status as RequestStatus,
+    three_phase_capability_result: request.three_phase_capability_result
+  });
   if (request.status !== 'KRABI_NEEDS_DOCUMENT_FIX') {
     throw new Error('ต้องอยู่สถานะกระบี่ตีกลับให้แก้ไขเอกสารก่อน');
   }
@@ -923,9 +939,11 @@ export async function markKrabiEstimationCompletedAction(formData: FormData) {
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
-  if ((request.request_type as RequestType) !== 'EXPANSION') {
-    throw new Error('สถานะกระบี่รองรับเฉพาะงานขยายเขต');
-  }
+  assertExpansionWorkflowAllowed({
+    request_type: request.request_type as RequestType,
+    status: request.status as RequestStatus,
+    three_phase_capability_result: request.three_phase_capability_result
+  });
   if (request.status !== 'KRABI_IN_PROGRESS') {
     throw new Error('ต้องเริ่มดำเนินการที่กระบี่ก่อนจึงจะปิดงานประมาณการได้');
   }
@@ -953,9 +971,11 @@ export async function markExpansionBillIssuedAction(formData: FormData) {
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
-  if ((request.request_type as RequestType) !== 'EXPANSION') {
-    throw new Error('สถานะออกใบแจ้งหนี้ฝั่งกระบี่รองรับเฉพาะงานขยายเขต');
-  }
+  assertExpansionWorkflowAllowed({
+    request_type: request.request_type as RequestType,
+    status: request.status as RequestStatus,
+    three_phase_capability_result: request.three_phase_capability_result
+  });
   if (request.status !== 'KRABI_ESTIMATION_COMPLETED') {
     throw new Error('ต้องผ่านสถานะกระบี่ประมาณการเสร็จก่อน');
   }
@@ -983,9 +1003,11 @@ export async function markCoordinatedWithConstructionAction(formData: FormData) 
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
-  if ((request.request_type as RequestType) !== 'EXPANSION') {
-    throw new Error('สถานะ ผกส.รับเรื่อง รองรับเฉพาะงานขยายเขต');
-  }
+  assertExpansionWorkflowAllowed({
+    request_type: request.request_type as RequestType,
+    status: request.status as RequestStatus,
+    three_phase_capability_result: request.three_phase_capability_result
+  });
   if (request.status !== 'BILL_ISSUED') {
     throw new Error('ต้องบันทึกว่าออกใบแจ้งหนี้แล้วก่อน');
   }
