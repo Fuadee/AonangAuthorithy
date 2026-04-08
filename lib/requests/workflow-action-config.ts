@@ -43,35 +43,47 @@ export type WorkflowActionKey =
   | 'ISSUE_3PHASE_BILL'
   | 'CONFIRM_3PHASE_PAYMENT'
   | 'COMPLETE_INSTALLATION'
-  | 'COMPLETE_INSPECTION';
+  | 'COMPLETE_INSPECTION'
+  | 'SEND_PRE_KRABI_APPROVAL'
+  | 'APPROVE_PRE_KRABI'
+  | 'MOVE_TO_WAIT_KRABI_APPROVAL'
+  | 'MARK_KRABI_APPROVED'
+  | 'MARK_KRABI_REJECTED'
+  | 'START_DOCUMENT_FIX'
+  | 'RESENT_TO_KRABI'
+  | 'RECEIVE_FROM_KRABI'
+  | 'SKIP_BILLING'
+  | 'MOVE_TO_FINAL_MANAGER_APPROVAL'
+  | 'FINAL_MANAGER_APPROVE'
+  | 'COMPLETE_WORK';
 
 export type WorkflowActionVariant = 'primary' | 'secondary';
 export type WorkflowActionIntent = 'progress' | 'warning' | 'neutral';
 export type WorkflowActionHandlerType = 'modal' | 'schedule_dialog' | 'survey_fail_dialog';
 
 export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
-  DOC_COMPLETE: 'เอกสารครบ',
+  DOC_COMPLETE: 'ตรวจเอกสารครบ',
   DOC_INCOMPLETE_COLLECT_ON_SITE: 'เอกสารไม่ครบ (รับเอกสารหน้างาน)',
-  DOC_INCOMPLETE_WAIT_CUSTOMER: 'เอกสารไม่ครบ (รอลูกค้านำมา)',
+  DOC_INCOMPLETE_WAIT_CUSTOMER: 'แจ้งว่ารอเอกสารจากลูกค้า',
   CONFIRM_DOCS_RECEIVED: 'ได้รับเอกสารแล้ว',
-  START_SURVEY: 'รับงาน / ไปสำรวจ',
+  START_SURVEY: 'เริ่มสำรวจ',
   SCHEDULE_SURVEY: 'กำหนดวันสำรวจ',
   EDIT_SURVEY_DATE: 'แก้ไขวันนัด',
   COMPLETE_SURVEY: 'สำรวจเสร็จ',
-  SURVEY_PASS: 'สำรวจผ่าน',
-  SURVEY_FAIL: 'สำรวจไม่ผ่าน / ให้ผู้ใช้ไฟแก้ไข',
+  SURVEY_PASS: 'บันทึกว่าสำรวจผ่าน',
+  SURVEY_FAIL: 'บันทึกว่าสำรวจไม่ผ่าน',
   THREE_PHASE_CAPABLE: 'ระบบรองรับ 3 เฟส',
   THREE_PHASE_NEEDS_EXPANSION: 'ระบบไม่รองรับ 3 เฟส (ส่งต่องานขยายเขต)',
   REPORT_CUSTOMER_FIX: 'ผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว',
   SCHEDULE_RESURVEY: 'นัดตรวจซ้ำ',
-  PHOTO_APPROVE: 'อนุมัติผ่านจากรูป',
-  PHOTO_REJECT_TO_RESURVEY: 'รูปยังไม่พอ ต้องตรวจซ้ำ',
+  PHOTO_APPROVE: 'ตรวจข้อมูลแก้ไขผ่าน',
+  PHOTO_REJECT_TO_RESURVEY: 'นัดสำรวจใหม่',
   ISSUE_BILL: 'ออกใบแจ้งหนี้',
   SURVEYOR_SIGN: 'เซ็นใบแจ้งหนี้แล้ว',
   CONFIRM_PAYMENT: 'ชำระเงินแล้ว',
   MANAGER_APPROVE: 'อนุมัติแล้ว',
   LAYOUT_DRAWING_DONE: 'วาดผังเสร็จ',
-  DISPATCHED_TO_KRABI: 'ส่งให้กระบี่',
+  DISPATCHED_TO_KRABI: 'ส่งเอกสารไปกระบี่',
   KRABI_ACCEPT_AND_START: 'ยืนยันรับเอกสาร',
   KRABI_RETURN_FOR_FIX: 'เอกสารไม่พร้อม ส่งกลับแก้ไข',
   KRABI_FIX_COMPLETED: 'แก้ไขเอกสารแล้ว / พร้อมส่งใหม่',
@@ -82,7 +94,19 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   ISSUE_3PHASE_BILL: 'ออกใบแจ้งหนี้ 3 เฟส',
   CONFIRM_3PHASE_PAYMENT: 'ยืนยันชำระเงิน 3 เฟส',
   COMPLETE_INSTALLATION: 'ติดตั้งเปลี่ยนมิเตอร์เสร็จ',
-  COMPLETE_INSPECTION: 'ตรวจสอบหลังติดตั้งผ่าน'
+  COMPLETE_INSPECTION: 'ตรวจสอบหลังติดตั้งผ่าน',
+  SEND_PRE_KRABI_APPROVAL: 'ส่งให้ ผจก.อ่าวนางอนุมัติก่อนส่งกระบี่',
+  APPROVE_PRE_KRABI: 'อนุมัติก่อนส่งกระบี่',
+  MOVE_TO_WAIT_KRABI_APPROVAL: 'ส่งเอกสารไปกระบี่',
+  MARK_KRABI_APPROVED: 'บันทึกว่ากระบี่อนุมัติ',
+  MARK_KRABI_REJECTED: 'บันทึกว่ากระบี่ตีกลับ',
+  START_DOCUMENT_FIX: 'แก้ไขเอกสาร',
+  RESENT_TO_KRABI: 'ส่งเอกสารไปกระบี่ใหม่',
+  RECEIVE_FROM_KRABI: 'รับเอกสารกลับจากกระบี่',
+  SKIP_BILLING: 'ข้ามใบแจ้งหนี้',
+  MOVE_TO_FINAL_MANAGER_APPROVAL: 'ส่งให้ ผจก.อ่าวนางอนุมัติรอบสุดท้าย',
+  FINAL_MANAGER_APPROVE: 'อนุมัติปิดงาน',
+  COMPLETE_WORK: 'ปิดงานเสร็จสิ้น'
 };
 
 export function getWorkflowActionLabel(actionKey: WorkflowActionKey): string {
@@ -102,6 +126,16 @@ const STATUS_INSTRUCTION: Partial<Record<RequestStatus, string>> = {
   WAIT_CUSTOMER_FIX: 'กรุณายืนยันการแจ้งแก้ไขของผู้ใช้ไฟ',
   WAIT_FIX_REVIEW: 'กรุณาเลือกผลการตรวจจากรูป',
   READY_FOR_RESURVEY: 'กรุณารับงานตรวจซ้ำ',
+  WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL: 'กรุณาอนุมัติก่อนส่งกระบี่',
+  SENT_TO_KRABI: 'กรุณายืนยันเข้าคิวรอกระบี่อนุมัติ',
+  WAIT_KRABI_APPROVAL: 'กรุณาบันทึกผลพิจารณาจากกระบี่',
+  KRABI_NEEDS_CORRECTION: 'กรุณาเริ่มแก้ไขเอกสารตามข้อแก้ไขจากกระบี่',
+  DOCUMENT_FIX: 'กรุณาส่งเอกสารไปกระบี่ใหม่',
+  RESENT_TO_KRABI: 'กรุณายืนยันเข้าคิวรอกระบี่อนุมัติ',
+  KRABI_APPROVED: 'กรุณาบันทึกรับเอกสารกลับจากกระบี่',
+  WAIT_RECEIVE_FROM_KRABI: 'กรุณาเลือกออกใบแจ้งหนี้หรือข้ามใบแจ้งหนี้',
+  WAIT_ACTION_CONFIRMATION: 'กรุณาส่งให้ผู้จัดการอ่าวนางอนุมัติรอบสุดท้าย',
+  WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'กรุณาอนุมัติปิดงาน',
   WAIT_MANAGER_REVIEW: 'กรุณาตรวจสอบและอนุมัติปิดงาน'
 };
 
@@ -245,6 +279,49 @@ export function getAvailableRequestActions(
     return [toAction('PHOTO_APPROVE', { variant: 'primary' }), toAction('PHOTO_REJECT_TO_RESURVEY', { variant: 'secondary' })].filter(
       (action) => action.key !== 'PHOTO_APPROVE' || canApproveFixFromPhoto({ status, fix_verification_mode: request.fix_verification_mode })
     );
+  }
+
+
+  if (request.request_type === 'METER') {
+    if (status === 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL') {
+      return [toAction('APPROVE_PRE_KRABI', { variant: 'primary' })];
+    }
+
+    if (status === 'SENT_TO_KRABI') {
+      return [toAction('MOVE_TO_WAIT_KRABI_APPROVAL', { variant: 'primary' })];
+    }
+
+    if (status === 'WAIT_KRABI_APPROVAL') {
+      return [toAction('MARK_KRABI_APPROVED', { variant: 'primary' }), toAction('MARK_KRABI_REJECTED', { variant: 'secondary', intent: 'warning' })];
+    }
+
+    if (status === 'KRABI_NEEDS_CORRECTION') {
+      return [toAction('START_DOCUMENT_FIX', { variant: 'primary' })];
+    }
+
+    if (status === 'DOCUMENT_FIX') {
+      return [toAction('RESENT_TO_KRABI', { variant: 'primary' })];
+    }
+
+    if (status === 'RESENT_TO_KRABI') {
+      return [toAction('MOVE_TO_WAIT_KRABI_APPROVAL', { variant: 'primary' })];
+    }
+
+    if (status === 'KRABI_APPROVED') {
+      return [toAction('RECEIVE_FROM_KRABI', { variant: 'primary' })];
+    }
+
+    if (status === 'WAIT_RECEIVE_FROM_KRABI') {
+      return [toAction('ISSUE_BILL', { variant: 'primary' }), toAction('SKIP_BILLING', { variant: 'secondary' })];
+    }
+
+    if (status === 'WAIT_ACTION_CONFIRMATION') {
+      return [toAction('MOVE_TO_FINAL_MANAGER_APPROVAL', { variant: 'primary' })];
+    }
+
+    if (status === 'WAIT_AONANG_MANAGER_FINAL_APPROVAL') {
+      return [toAction('FINAL_MANAGER_APPROVE', { variant: 'primary' }), toAction('COMPLETE_WORK', { variant: 'secondary' })];
+    }
   }
 
   if (status === 'WAIT_MANAGER_REVIEW' && ['METER', 'METER_TO_3PHASE'].includes(request.request_type) && canMoveToManagerReview(request)) {

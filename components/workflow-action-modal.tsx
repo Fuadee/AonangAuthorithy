@@ -4,6 +4,8 @@ import { FormEvent, MouseEvent, ReactNode, useEffect, useRef, useState, useTrans
 import { useRouter } from 'next/navigation';
 import {
   approveFixFromPhotoAction,
+  approveAonangManagerFinalAction,
+  approveAonangManagerPreKrabiAction,
   approveManagerReviewAction,
   completeSurveyAction,
   completeLayoutDrawingAction,
@@ -13,6 +15,7 @@ import {
   confirmDocumentsReceivedFromCustomerAction,
   confirmThreePhasePaymentAction,
   forwardThreePhaseToExpansionAction,
+  issueBillingAction,
   issueThreePhaseBillingAction,
   markCoordinatedWithConstructionAction,
   markExpansionBillIssuedAction,
@@ -23,8 +26,16 @@ import {
   markSentToKrabiAction,
   markSurveyPassedAction,
   markThreePhaseCapabilitySupportedAction,
+  moveToFinalManagerApprovalAction,
   moveToResurveyAction,
   rejectFixPhotoAndRequireResurveyAction,
+  markKrabiApprovedForMeterAction,
+  markKrabiRejectedForMeterAction,
+  moveToWaitKrabiApprovalAction,
+  receiveFromKrabiForMeterAction,
+  resendToKrabiForMeterAction,
+  skipBillingForMeterAction,
+  startDocumentFixForMeterAction,
   reportCustomerFixAction,
   startSurveyAction,
   updateDocumentReviewDecisionAction
@@ -46,6 +57,7 @@ const ACTION_EXECUTORS: Partial<Record<WorkflowActionKey, ActionExecutor>> = {
   CONFIRM_DOCS_RECEIVED: confirmDocumentsReceivedFromCustomerAction,
   START_SURVEY: startSurveyAction,
   COMPLETE_SURVEY: completeSurveyAction,
+  ISSUE_BILL: issueBillingAction,
   SURVEY_PASS: markSurveyPassedAction,
   REPORT_CUSTOMER_FIX: reportCustomerFixAction,
   SCHEDULE_RESURVEY: moveToResurveyAction,
@@ -66,7 +78,18 @@ const ACTION_EXECUTORS: Partial<Record<WorkflowActionKey, ActionExecutor>> = {
   ISSUE_3PHASE_BILL: issueThreePhaseBillingAction,
   CONFIRM_3PHASE_PAYMENT: confirmThreePhasePaymentAction,
   COMPLETE_INSTALLATION: completeThreePhaseInstallationAction,
-  COMPLETE_INSPECTION: completeThreePhaseInspectionAction
+  COMPLETE_INSPECTION: completeThreePhaseInspectionAction,
+  APPROVE_PRE_KRABI: approveAonangManagerPreKrabiAction,
+  MOVE_TO_WAIT_KRABI_APPROVAL: moveToWaitKrabiApprovalAction,
+  MARK_KRABI_APPROVED: markKrabiApprovedForMeterAction,
+  MARK_KRABI_REJECTED: markKrabiRejectedForMeterAction,
+  START_DOCUMENT_FIX: startDocumentFixForMeterAction,
+  RESENT_TO_KRABI: resendToKrabiForMeterAction,
+  RECEIVE_FROM_KRABI: receiveFromKrabiForMeterAction,
+  SKIP_BILLING: skipBillingForMeterAction,
+  MOVE_TO_FINAL_MANAGER_APPROVAL: moveToFinalManagerApprovalAction,
+  FINAL_MANAGER_APPROVE: approveAonangManagerFinalAction,
+  COMPLETE_WORK: approveAonangManagerFinalAction
 };
 
 function ModalShell({ children, title, onClose }: { children: ReactNode; title: string; onClose: () => void }) {
@@ -100,7 +123,17 @@ function getActionTitle(actionKey: WorkflowActionKey): string {
     THREE_PHASE_NEEDS_EXPANSION: 'ยืนยันส่งต่องานขยายเขต',
     COMPLETE_DESIGN_ESTIMATE: 'ยืนยันออกแบบ / ประเมินเสร็จ',
     COMPLETE_INSTALLATION: 'ยืนยันติดตั้งเปลี่ยนมิเตอร์เสร็จ',
-    COMPLETE_INSPECTION: 'ยืนยันตรวจสอบหลังติดตั้งผ่าน'
+    COMPLETE_INSPECTION: 'ยืนยันตรวจสอบหลังติดตั้งผ่าน',
+    APPROVE_PRE_KRABI: 'อนุมัติก่อนส่งกระบี่',
+    MOVE_TO_WAIT_KRABI_APPROVAL: 'ส่งเอกสารไปกระบี่',
+    MARK_KRABI_APPROVED: 'บันทึกว่ากระบี่อนุมัติ',
+    START_DOCUMENT_FIX: 'ยืนยันเริ่มแก้ไขเอกสาร',
+    RESENT_TO_KRABI: 'ยืนยันส่งเอกสารไปกระบี่ใหม่',
+    RECEIVE_FROM_KRABI: 'ยืนยันรับเอกสารกลับจากกระบี่',
+    SKIP_BILLING: 'ยืนยันข้ามใบแจ้งหนี้',
+    MOVE_TO_FINAL_MANAGER_APPROVAL: 'ส่งให้ผู้จัดการอ่าวนางอนุมัติรอบสุดท้าย',
+    FINAL_MANAGER_APPROVE: 'อนุมัติปิดงาน',
+    COMPLETE_WORK: 'ปิดงานเสร็จสิ้น'
   };
   return map[actionKey] ?? 'ยืนยันการทำรายการ';
 }
@@ -306,6 +339,25 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
               <textarea className="input min-h-24" disabled={isPending} id="survey_note_3phase" name="survey_note" />
             </div>
           ) : null}
+          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+
+  if (actionKey === 'ISSUE_BILL') {
+    return (
+      <ModalShell title="ออกใบแจ้งหนี้" onClose={onClose}>
+        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('ISSUE_BILL')}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <input className="input" name="billed_by" placeholder="ออกโดย" required type="text" />
+          <textarea className="input min-h-24" name="billing_note" placeholder="หมายเหตุ (ถ้ามี)" />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
@@ -620,6 +672,41 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
         <form className="space-y-3" onSubmit={onSubmitWorkflowAction('COORDINATED_WITH_CONSTRUCTION')}>
           <input name="request_id" type="hidden" value={requestId} />
           <QueueStayInput stayOnQueue={stayOnQueue} />
+          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+
+
+  if (['APPROVE_PRE_KRABI','MOVE_TO_WAIT_KRABI_APPROVAL','MARK_KRABI_APPROVED','START_DOCUMENT_FIX','RESENT_TO_KRABI','RECEIVE_FROM_KRABI','SKIP_BILLING','MOVE_TO_FINAL_MANAGER_APPROVAL','FINAL_MANAGER_APPROVE','COMPLETE_WORK'].includes(actionKey)) {
+    return (
+      <ModalShell title={getActionTitle(actionKey)} onClose={onClose}>
+        <form className="space-y-3" onSubmit={onSubmitWorkflowAction(actionKey)}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'MARK_KRABI_REJECTED') {
+    return (
+      <ModalShell title="บันทึกว่ากระบี่ตีกลับ" onClose={onClose}>
+        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('MARK_KRABI_REJECTED')}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <textarea className="input min-h-24" name="reject_reason" placeholder="เหตุผลตีกลับ (ถ้ามี)" value={krabiRejectReason} onChange={(event) => setKrabiRejectReason(event.target.value)} />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>

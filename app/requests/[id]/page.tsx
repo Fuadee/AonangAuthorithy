@@ -116,6 +116,30 @@ function getNextStepSummary(
           nextStep: 'นัดตรวจซ้ำและออกตรวจซ้ำหน้างาน',
           owner: 'นักสำรวจ'
         };
+      case 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL':
+        return {
+          nextStep: 'รอผู้จัดการอ่าวนางอนุมัติก่อนส่งเอกสารไปกระบี่',
+          owner: 'ผู้จัดการอ่าวนาง'
+        };
+      case 'SENT_TO_KRABI':
+      case 'WAIT_KRABI_APPROVAL':
+        return {
+          nextStep: 'รอผลพิจารณาจากกระบี่ (อนุมัติหรือส่งกลับแก้ไขเอกสาร)',
+          owner: 'ทีมกระบี่'
+        };
+      case 'KRABI_NEEDS_CORRECTION':
+      case 'DOCUMENT_FIX':
+      case 'RESENT_TO_KRABI':
+        return {
+          nextStep: 'แก้ไขเอกสารและส่งกระบี่ใหม่จนกว่าจะอนุมัติ',
+          owner: 'ทีมเอกสาร'
+        };
+      case 'KRABI_APPROVED':
+      case 'WAIT_RECEIVE_FROM_KRABI':
+        return {
+          nextStep: 'รับเอกสารกลับจากกระบี่ แล้วตัดสินใจออกใบแจ้งหนี้หรือข้ามใบแจ้งหนี้',
+          owner: 'ทีมเอกสาร / การเงิน'
+        };
       case 'WAIT_BILLING':
         return {
           nextStep: 'เจ้าหน้าที่ออกใบแจ้งหนี้และบันทึกผู้ดำเนินการ',
@@ -126,10 +150,11 @@ function getNextStepSummary(
           nextStep: 'บันทึก “เซ็นใบแจ้งหนี้” และ “ชำระเงิน” ให้ครบทั้งสองรายการ (ทำสลับลำดับกันได้)',
           owner: 'นักสำรวจ / การเงิน'
         };
+      case 'WAIT_AONANG_MANAGER_FINAL_APPROVAL':
       case 'WAIT_MANAGER_REVIEW':
         return {
-          nextStep: 'ผู้จัดการตรวจเอกสารและอนุมัติก่อนปิดงาน',
-          owner: 'ผู้จัดการ'
+          nextStep: 'ผู้จัดการอ่าวนางอนุมัติรอบสุดท้ายก่อนปิดงาน',
+          owner: 'ผู้จัดการอ่าวนาง'
         };
       case 'COMPLETED':
         return {
@@ -380,7 +405,7 @@ function getTimeline(request: {
       title: request.survey_result === 'FAIL' ? 'สำรวจไม่ผ่าน' : 'สำรวจหน้างานเสร็จ',
       description:
         request.survey_result === 'PASS'
-          ? 'ผลสำรวจผ่าน เข้าสู่ขั้นตอนออกใบแจ้งหนี้'
+          ? 'ผลสำรวจผ่าน เข้าสู่ขั้นตอนรอผู้จัดการอ่าวนางอนุมัติก่อนส่งกระบี่'
           : request.customer_fix_note
             ? `ผลสำรวจไม่ผ่าน เข้าสู่ขั้นตอนแก้ไข/ตรวจซ้ำ | รายการที่ต้องแก้: ${request.customer_fix_note}`
             : 'ผลสำรวจไม่ผ่าน เข้าสู่ขั้นตอนแก้ไข/ตรวจซ้ำ',

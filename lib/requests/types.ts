@@ -24,6 +24,14 @@ export const REQUEST_STATUSES = [
   'WAIT_CUSTOMER_FIX',
   'WAIT_FIX_REVIEW',
   'READY_FOR_RESURVEY',
+  'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL',
+  'WAIT_KRABI_APPROVAL',
+  'KRABI_NEEDS_CORRECTION',
+  'DOCUMENT_FIX',
+  'RESENT_TO_KRABI',
+  'KRABI_APPROVED',
+  'WAIT_RECEIVE_FROM_KRABI',
+  'WAIT_AONANG_MANAGER_FINAL_APPROVAL',
   'CHECK_3PHASE_CAPABILITY',
   'NEEDS_EXPANSION',
   'DESIGN_AND_ESTIMATE',
@@ -58,7 +66,7 @@ export type ThreePhaseCapabilityResult = (typeof THREE_PHASE_CAPABILITY_RESULTS)
 export type DocumentReviewMode = 'BASIC' | 'DETAILED';
 
 export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
-  METER: 'ขอมิเตอร์',
+  METER: 'ขอมิเตอร์ 30/100 1 เฟส',
   METER_TO_3PHASE: 'งานเพิ่มเป็นมิเตอร์ 3 เฟส',
   EXPANSION: 'ขอขยายเขต'
 };
@@ -80,12 +88,20 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   BILL_ISSUED: 'ออกใบแจ้งหนี้แล้ว',
   COORDINATED_WITH_CONSTRUCTION: 'แล้วเสร็จ / ผกส.รับเรื่อง',
   WAIT_DOCUMENT_REVIEW: 'รอตรวจเอกสาร',
-  WAIT_DOCUMENT_FROM_CUSTOMER: 'รอผู้ใช้ไฟนำเอกสารมาให้',
-  READY_FOR_SURVEY: 'พร้อมรับงานสำรวจ',
-  IN_SURVEY: 'กำลังสำรวจหน้างาน',
-  WAIT_CUSTOMER_FIX: 'รอผู้ใช้ไฟแก้ไข',
-  WAIT_FIX_REVIEW: 'รอตรวจจากรูป/ข้อมูลที่ส่งมา',
-  READY_FOR_RESURVEY: 'รอนัดตรวจซ้ำ',
+  WAIT_DOCUMENT_FROM_CUSTOMER: 'รอลูกค้านำเอกสาร',
+  READY_FOR_SURVEY: 'พร้อมสำรวจ',
+  IN_SURVEY: 'กำลังสำรวจ',
+  WAIT_CUSTOMER_FIX: 'รอแก้ไขโดยลูกค้า',
+  WAIT_FIX_REVIEW: 'ตรวจข้อมูล/แก้ไข',
+  READY_FOR_RESURVEY: 'นัดสำรวจใหม่',
+  WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL: 'รอผู้จัดการอ่าวนางอนุมัติก่อนส่งกระบี่',
+  WAIT_KRABI_APPROVAL: 'รอกระบี่อนุมัติ',
+  KRABI_NEEDS_CORRECTION: 'กระบี่ตีกลับให้แก้ไขเอกสาร',
+  DOCUMENT_FIX: 'แก้ไขเอกสาร',
+  RESENT_TO_KRABI: 'ส่งเอกสารไปกระบี่ใหม่',
+  KRABI_APPROVED: 'กระบี่อนุมัติแล้ว',
+  WAIT_RECEIVE_FROM_KRABI: 'รับเอกสารกลับจากกระบี่',
+  WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'รอผู้จัดการอ่าวนางอนุมัติรอบสุดท้าย',
   CHECK_3PHASE_CAPABILITY: 'รอตรวจว่าระบบรองรับ 3 เฟสหรือไม่',
   NEEDS_EXPANSION: 'ต้องขยายเขต (รอส่งต่อ)',
   DESIGN_AND_ESTIMATE: 'ออกแบบ / ประเมิน',
@@ -188,6 +204,14 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   WAIT_CUSTOMER_FIX: 'SURVEY',
   WAIT_FIX_REVIEW: 'SURVEY',
   READY_FOR_RESURVEY: 'SURVEY',
+  WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL: 'MANAGER',
+  WAIT_KRABI_APPROVAL: 'KRABI',
+  KRABI_NEEDS_CORRECTION: 'DISPATCH',
+  DOCUMENT_FIX: 'DISPATCH',
+  RESENT_TO_KRABI: 'DISPATCH',
+  KRABI_APPROVED: 'KRABI',
+  WAIT_RECEIVE_FROM_KRABI: 'DISPATCH',
+  WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'MANAGER',
   CHECK_3PHASE_CAPABILITY: 'SURVEY',
   NEEDS_EXPANSION: 'DISPATCH',
   DESIGN_AND_ESTIMATE: 'SURVEY',
@@ -335,6 +359,7 @@ export function isMeterFamilyRequestType(requestType: RequestType): boolean {
 export const METER_LIKE_BILLING_STATUSES: ReadonlyArray<RequestStatus> = [
   'WAIT_BILLING',
   'WAIT_ACTION_CONFIRMATION',
+  'WAIT_AONANG_MANAGER_FINAL_APPROVAL',
   'WAIT_MANAGER_REVIEW'
 ];
 
