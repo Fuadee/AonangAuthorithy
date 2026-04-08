@@ -28,7 +28,13 @@ const STATUS_TONE: Record<RequestStatus, string> = {
   WAIT_CUSTOMER_FIX: 'bg-rose-100 text-rose-800',
   WAIT_FIX_REVIEW: 'bg-violet-100 text-violet-800',
   READY_FOR_RESURVEY: 'bg-indigo-100 text-indigo-800',
+  CHECK_3PHASE_CAPABILITY: 'bg-violet-100 text-violet-800',
+  NEEDS_EXPANSION: 'bg-orange-100 text-orange-800',
+  DESIGN_AND_ESTIMATE: 'bg-cyan-100 text-cyan-800',
   WAIT_BILLING: 'bg-purple-100 text-purple-800',
+  WAIT_PAYMENT: 'bg-purple-100 text-purple-800',
+  INSTALLATION: 'bg-blue-100 text-blue-800',
+  INSPECTION: 'bg-teal-100 text-teal-800',
   WAIT_ACTION_CONFIRMATION: 'bg-purple-100 text-purple-800',
   WAIT_MANAGER_REVIEW: 'bg-fuchsia-100 text-fuchsia-800',
   COMPLETED: 'bg-emerald-100 text-emerald-800'

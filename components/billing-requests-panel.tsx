@@ -3,19 +3,21 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { BillingWorkflowActionRenderer } from '@/components/billing-workflow-action-renderer';
+import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
 import { getCurrentSurveyDate, getRequestStatusLabel, REQUEST_TYPE_LABELS, RequestStatus, ServiceRequest } from '@/lib/requests/types';
+import { getWorkflowActionsForRequest } from '@/lib/requests/workflow-action-config';
 import { formatDateOnly } from '@/lib/datetime';
 
 type BillingRequestsPanelProps = {
   requests: ServiceRequest[];
 };
 
-type BillingQueueStatus = Extract<RequestStatus, 'WAIT_BILLING' | 'WAIT_ACTION_CONFIRMATION'>;
+type BillingQueueStatus = Extract<RequestStatus, 'WAIT_BILLING' | 'WAIT_ACTION_CONFIRMATION' | 'WAIT_PAYMENT'>;
 type BillingFilter = 'ALL' | BillingQueueStatus;
 
-const BILLING_FILTER_STATUSES: BillingQueueStatus[] = ['WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION'];
+const BILLING_FILTER_STATUSES: BillingQueueStatus[] = ['WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION', 'WAIT_PAYMENT'];
 
 const FILTER_OPTIONS: Array<{ value: BillingFilter; label: string }> = [
   { value: 'ALL', label: 'ทั้งหมด' },
@@ -33,6 +35,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
     () => ({
       waitBilling: requests.filter((request) => request.status === 'WAIT_BILLING').length,
       waitActionConfirmation: requests.filter((request) => request.status === 'WAIT_ACTION_CONFIRMATION').length,
+      waitPayment: requests.filter((request) => request.status === 'WAIT_PAYMENT').length,
       totalBillingQueue: requests.length
     }),
     [requests]
@@ -48,7 +51,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
 
   return (
     <div className="space-y-4">
-      <section className="grid gap-4 md:grid-cols-3">
+      <section className="grid gap-4 md:grid-cols-4">
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รอออกใบแจ้งหนี้</p>
           <p className="mt-2 text-3xl font-semibold text-purple-700">{summary.waitBilling}</p>
@@ -59,6 +62,10 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
         >
           <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รอชำระเงิน</p>
           <p className="mt-2 text-3xl font-semibold text-emerald-700">{summary.waitActionConfirmation}</p>
+        </article>
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รอชำระเงิน (3 เฟส)</p>
+          <p className="mt-2 text-3xl font-semibold text-indigo-700">{summary.waitPayment}</p>
         </article>
         <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
           <p className="truncate whitespace-nowrap text-sm font-medium text-slate-500">รวมทั้งหมด</p>
@@ -120,13 +127,23 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                   <td className="px-4 py-3">{formatDateOnly(getCurrentSurveyDate(request))}</td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
-                    <BillingWorkflowActionRenderer
-                      compact
-                      currentStatus={request.status}
-                      isInvoiceSigned={request.invoice_signed_at !== null}
-                      isPaid={request.paid_at !== null}
-                      requestId={request.id}
-                    />
+                    {request.request_type === 'METER' ? (
+                      <BillingWorkflowActionRenderer
+                        compact
+                        currentStatus={request.status}
+                        isInvoiceSigned={request.invoice_signed_at !== null}
+                        isPaid={request.paid_at !== null}
+                        requestId={request.id}
+                      />
+                    ) : (
+                      <WorkflowActionButtons
+                        actions={getWorkflowActionsForRequest(request)}
+                        compact
+                        currentStatus={request.status}
+                        requestId={request.id}
+                        stayOnQueue
+                      />
+                    )}
                   </td>
                 </tr>
               ))}

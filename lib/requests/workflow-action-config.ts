@@ -1,5 +1,6 @@
 import {
   canApproveFixFromPhoto,
+  canEvaluateThreePhaseCapability,
   canMarkSurveyPassed,
   canMoveToManagerReview,
   canStartSurvey,
@@ -19,6 +20,8 @@ export type WorkflowActionKey =
   | 'COMPLETE_SURVEY'
   | 'SURVEY_PASS'
   | 'SURVEY_FAIL'
+  | 'THREE_PHASE_CAPABLE'
+  | 'THREE_PHASE_NEEDS_EXPANSION'
   | 'REPORT_CUSTOMER_FIX'
   | 'SCHEDULE_RESURVEY'
   | 'PHOTO_APPROVE'
@@ -34,7 +37,12 @@ export type WorkflowActionKey =
   | 'KRABI_FIX_COMPLETED'
   | 'KRABI_ESTIMATION_COMPLETED'
   | 'KRABI_BILL_ISSUED'
-  | 'COORDINATED_WITH_CONSTRUCTION';
+  | 'COORDINATED_WITH_CONSTRUCTION'
+  | 'COMPLETE_DESIGN_ESTIMATE'
+  | 'ISSUE_3PHASE_BILL'
+  | 'CONFIRM_3PHASE_PAYMENT'
+  | 'COMPLETE_INSTALLATION'
+  | 'COMPLETE_INSPECTION';
 
 export type WorkflowActionVariant = 'primary' | 'secondary';
 export type WorkflowActionIntent = 'progress' | 'warning' | 'neutral';
@@ -51,6 +59,8 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   COMPLETE_SURVEY: 'สำรวจเสร็จ',
   SURVEY_PASS: 'สำรวจผ่าน',
   SURVEY_FAIL: 'สำรวจไม่ผ่าน / ให้ผู้ใช้ไฟแก้ไข',
+  THREE_PHASE_CAPABLE: 'ระบบรองรับ 3 เฟส',
+  THREE_PHASE_NEEDS_EXPANSION: 'ระบบไม่รองรับ 3 เฟส (ส่งต่องานขยายเขต)',
   REPORT_CUSTOMER_FIX: 'ผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว',
   SCHEDULE_RESURVEY: 'นัดตรวจซ้ำ',
   PHOTO_APPROVE: 'อนุมัติผ่านจากรูป',
@@ -66,7 +76,12 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   KRABI_FIX_COMPLETED: 'แก้ไขเอกสารแล้ว / พร้อมส่งใหม่',
   KRABI_ESTIMATION_COMPLETED: 'ประมาณการเสร็จ',
   KRABI_BILL_ISSUED: 'ออกใบแจ้งหนี้แล้ว',
-  COORDINATED_WITH_CONSTRUCTION: 'ผกส.รับเรื่องแล้ว'
+  COORDINATED_WITH_CONSTRUCTION: 'ผกส.รับเรื่องแล้ว',
+  COMPLETE_DESIGN_ESTIMATE: 'ออกแบบ / ประเมินเสร็จ',
+  ISSUE_3PHASE_BILL: 'ออกใบแจ้งหนี้ 3 เฟส',
+  CONFIRM_3PHASE_PAYMENT: 'ยืนยันชำระเงิน 3 เฟส',
+  COMPLETE_INSTALLATION: 'ติดตั้งเปลี่ยนมิเตอร์เสร็จ',
+  COMPLETE_INSPECTION: 'ตรวจสอบหลังติดตั้งผ่าน'
 };
 
 export function getWorkflowActionLabel(actionKey: WorkflowActionKey): string {
@@ -78,6 +93,11 @@ const STATUS_INSTRUCTION: Partial<Record<RequestStatus, string>> = {
   WAIT_DOCUMENT_FROM_CUSTOMER: 'กรุณายืนยันว่าได้รับเอกสารจากลูกค้าแล้ว',
   READY_FOR_SURVEY: 'กรุณารับงานสำรวจ',
   IN_SURVEY: 'กรุณาดำเนินการหลังสำรวจ',
+  CHECK_3PHASE_CAPABILITY: 'กรุณาเลือกผลว่าระบบรองรับ 3 เฟสหรือไม่',
+  DESIGN_AND_ESTIMATE: 'กรุณาบันทึกผลการออกแบบ/ประเมิน',
+  WAIT_PAYMENT: 'กรุณายืนยันการรับชำระเงิน',
+  INSTALLATION: 'กรุณาบันทึกผลการติดตั้งเปลี่ยนมิเตอร์',
+  INSPECTION: 'กรุณาบันทึกผลตรวจสอบหลังติดตั้ง',
   WAIT_CUSTOMER_FIX: 'กรุณายืนยันการแจ้งแก้ไขของผู้ใช้ไฟ',
   WAIT_FIX_REVIEW: 'กรุณาเลือกผลการตรวจจากรูป',
   READY_FOR_RESURVEY: 'กรุณารับงานตรวจซ้ำ',
@@ -174,6 +194,14 @@ export function getAvailableRequestActions(
       ];
     }
 
+
+    if (request.request_type === 'METER_TO_3PHASE' && canEvaluateThreePhaseCapability({ status, request_type: request.request_type })) {
+      return [
+        toAction('THREE_PHASE_CAPABLE', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าระบบรองรับ 3 เฟส?' }),
+        toAction('THREE_PHASE_NEEDS_EXPANSION', { variant: 'secondary', intent: 'warning', requiresConfirmation: 'ยืนยันส่งต่องานเดิมเข้าสู่ flow ขยายเขตที่ WAIT_LAYOUT_DRAWING?' })
+      ];
+    }
+
     return [toAction('COMPLETE_SURVEY', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าการสำรวจเสร็จสิ้นแล้ว?' })];
   }
 
@@ -192,6 +220,35 @@ export function getAvailableRequestActions(
 
   if (status === 'WAIT_MANAGER_REVIEW' && request.request_type === 'METER' && canMoveToManagerReview(request)) {
     return [toAction('MANAGER_APPROVE', { variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติปิดงาน?' })];
+  }
+
+
+
+  if (request.request_type === 'METER_TO_3PHASE' && status === 'CHECK_3PHASE_CAPABILITY') {
+    return [
+      toAction('THREE_PHASE_CAPABLE', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าระบบรองรับ 3 เฟส?' }),
+      toAction('THREE_PHASE_NEEDS_EXPANSION', { variant: 'secondary', intent: 'warning', requiresConfirmation: 'ยืนยันส่งต่องานเดิมเข้าสู่ flow ขยายเขตที่ WAIT_LAYOUT_DRAWING?' })
+    ];
+  }
+
+  if (request.request_type === 'METER_TO_3PHASE' && status === 'DESIGN_AND_ESTIMATE') {
+    return [toAction('COMPLETE_DESIGN_ESTIMATE', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าออกแบบและประเมินเรียบร้อยแล้ว?' })];
+  }
+
+  if (request.request_type === 'METER_TO_3PHASE' && status === 'WAIT_BILLING') {
+    return [toAction('ISSUE_3PHASE_BILL', { variant: 'primary' })];
+  }
+
+  if (request.request_type === 'METER_TO_3PHASE' && status === 'WAIT_PAYMENT') {
+    return [toAction('CONFIRM_3PHASE_PAYMENT', { variant: 'primary' })];
+  }
+
+  if (request.request_type === 'METER_TO_3PHASE' && status === 'INSTALLATION') {
+    return [toAction('COMPLETE_INSTALLATION', { variant: 'primary' })];
+  }
+
+  if (request.request_type === 'METER_TO_3PHASE' && status === 'INSPECTION') {
+    return [toAction('COMPLETE_INSPECTION', { variant: 'primary' })];
   }
 
   if (request.request_type === 'EXPANSION' && ['SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING'].includes(status)) {

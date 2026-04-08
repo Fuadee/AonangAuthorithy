@@ -24,14 +24,20 @@ export const REQUEST_STATUSES = [
   'WAIT_CUSTOMER_FIX',
   'WAIT_FIX_REVIEW',
   'READY_FOR_RESURVEY',
+  'CHECK_3PHASE_CAPABILITY',
+  'NEEDS_EXPANSION',
+  'DESIGN_AND_ESTIMATE',
   'WAIT_BILLING',
+  'WAIT_PAYMENT',
+  'INSTALLATION',
+  'INSPECTION',
   'WAIT_ACTION_CONFIRMATION',
   'WAIT_MANAGER_REVIEW',
   'COMPLETED'
 ] as const;
 import { formatDateOnly, formatThaiDateTime } from '@/lib/datetime';
 
-export const REQUEST_TYPES = ['METER', 'EXPANSION'] as const;
+export const REQUEST_TYPES = ['METER', 'METER_TO_3PHASE', 'EXPANSION'] as const;
 export const REQUEST_QUEUE_GROUPS = ['SURVEY', 'DISPATCH', 'KRABI', 'BILLING', 'MANAGER', 'DONE', 'OTHER'] as const;
 export const DOCUMENT_STATUSES = ['COMPLETE', 'INCOMPLETE'] as const;
 export const SURVEY_RESULTS = ['PASS', 'FAIL'] as const;
@@ -51,6 +57,7 @@ export type DocumentReviewMode = 'BASIC' | 'DETAILED';
 
 export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   METER: 'ขอมิเตอร์',
+  METER_TO_3PHASE: 'งานเพิ่มเป็นมิเตอร์ 3 เฟส',
   EXPANSION: 'ขอขยายเขต'
 };
 
@@ -77,7 +84,13 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   WAIT_CUSTOMER_FIX: 'รอผู้ใช้ไฟแก้ไข',
   WAIT_FIX_REVIEW: 'รอตรวจจากรูป/ข้อมูลที่ส่งมา',
   READY_FOR_RESURVEY: 'รอนัดตรวจซ้ำ',
+  CHECK_3PHASE_CAPABILITY: 'รอตรวจว่าระบบรองรับ 3 เฟสหรือไม่',
+  NEEDS_EXPANSION: 'ต้องขยายเขต (รอส่งต่อ)',
+  DESIGN_AND_ESTIMATE: 'ออกแบบ / ประเมิน',
   WAIT_BILLING: 'รอออกใบแจ้งหนี้',
+  WAIT_PAYMENT: 'รอชำระเงิน',
+  INSTALLATION: 'ดำเนินการติดตั้งเปลี่ยนมิเตอร์',
+  INSPECTION: 'ตรวจสอบหลังติดตั้ง',
   WAIT_ACTION_CONFIRMATION: 'รอชำระเงิน',
   WAIT_MANAGER_REVIEW: 'รอผู้จัดการตรวจ',
   COMPLETED: 'เสร็จสิ้น'
@@ -173,7 +186,13 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   WAIT_CUSTOMER_FIX: 'SURVEY',
   WAIT_FIX_REVIEW: 'SURVEY',
   READY_FOR_RESURVEY: 'SURVEY',
+  CHECK_3PHASE_CAPABILITY: 'SURVEY',
+  NEEDS_EXPANSION: 'DISPATCH',
+  DESIGN_AND_ESTIMATE: 'SURVEY',
   WAIT_BILLING: 'BILLING',
+  WAIT_PAYMENT: 'BILLING',
+  INSTALLATION: 'SURVEY',
+  INSPECTION: 'SURVEY',
   WAIT_ACTION_CONFIRMATION: 'BILLING',
   WAIT_MANAGER_REVIEW: 'MANAGER',
   COMPLETED: 'DONE'
@@ -301,6 +320,14 @@ export function getKrabiDispatchWarning(
 
 export function getDocumentReviewMode(requestType: RequestType): DocumentReviewMode {
   return requestType === 'EXPANSION' ? 'DETAILED' : 'BASIC';
+}
+
+export function isThreePhaseRequestType(requestType: RequestType): boolean {
+  return requestType === 'METER_TO_3PHASE';
+}
+
+export function isMeterFamilyRequestType(requestType: RequestType): boolean {
+  return requestType === 'METER' || requestType === 'METER_TO_3PHASE';
 }
 
 export function getRequiredDocuments(requestType: RequestType): string[] {
@@ -492,6 +519,10 @@ export function canMoveToBilling(request: Pick<ServiceRequest, 'collect_docs_on_
 
 export function canMarkSurveyPassed(request: Pick<ServiceRequest, 'status' | 'request_type'>): boolean {
   return request.request_type === 'METER' && request.status === 'IN_SURVEY';
+}
+
+export function canEvaluateThreePhaseCapability(request: Pick<ServiceRequest, 'status' | 'request_type'>): boolean {
+  return request.request_type === 'METER_TO_3PHASE' && ['IN_SURVEY', 'CHECK_3PHASE_CAPABILITY'].includes(request.status);
 }
 
 export function canMarkSurveyFailed(request: Pick<ServiceRequest, 'status' | 'request_type'>): boolean {
@@ -702,6 +733,8 @@ export type ServiceRequest = {
   krabi_received_at: string | null;
   krabi_in_progress_at: string | null;
   krabi_completed_at: string | null;
+  forwarded_to_expansion_at: string | null;
+  forwarded_to_expansion_note: string | null;
   created_at: string;
   updated_at: string;
 };
