@@ -19,10 +19,6 @@ export function buildFullAddress(parts: AddressParts): string {
   const base = [...lineParts, areaSuffix].join(' ');
 
   if (parts.landmark) {
-    if (lineParts.length === 0) {
-      return `${parts.landmark} ${areaSuffix}`;
-    }
-
     return `${base} (${parts.landmark})`;
   }
 
