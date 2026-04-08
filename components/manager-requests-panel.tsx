@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import { approveManagerReviewAction } from '@/app/actions';
+import { approveAonangManagerFinalAction, approveAonangManagerPreKrabiAction, approveManagerReviewAction } from '@/app/actions';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { getRequestStatusLabel, REQUEST_TYPE_LABELS, ServiceRequest } from '@/lib/requests/types';
 import { formatThaiDateTime } from '@/lib/datetime';
@@ -9,6 +9,27 @@ type ManagerRequestsPanelProps = {
 };
 
 export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
+  const resolveManagerAction = (request: ServiceRequest) => {
+    if (request.status === 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL') {
+      return {
+        action: approveAonangManagerPreKrabiAction,
+        label: 'อนุมัติก่อนส่งกระบี่'
+      };
+    }
+
+    if (request.status === 'WAIT_AONANG_MANAGER_FINAL_APPROVAL') {
+      return {
+        action: approveAonangManagerFinalAction,
+        label: 'อนุมัติปิดงาน'
+      };
+    }
+
+    return {
+      action: approveManagerReviewAction,
+      label: 'อนุมัติแล้ว'
+    };
+  };
+
   return (
     <section className="card overflow-hidden">
       <div className="overflow-x-auto">
@@ -25,8 +46,10 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
             </tr>
           </thead>
           <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
-            {requests.map((request) => (
-              <tr key={request.id} className="hover:bg-slate-50">
+            {requests.map((request) => {
+              const resolvedAction = resolveManagerAction(request);
+              return (
+                <tr key={request.id} className="hover:bg-slate-50">
                 <td className="px-4 py-3 font-medium text-brand-700">{request.request_no}</td>
                 <td className="px-4 py-3">{request.customer_name}</td>
                 <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
@@ -38,16 +61,17 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                     <Link className="btn-secondary" href={`/requests/${request.id}`}>
                       เปิดดู
                     </Link>
-                    <form action={approveManagerReviewAction}>
+                    <form action={resolvedAction.action}>
                       <input name="request_id" type="hidden" value={request.id} />
                       <button className="btn-primary" type="submit">
-                        อนุมัติแล้ว
+                        {resolvedAction.label}
                       </button>
                     </form>
                   </div>
                 </td>
-              </tr>
-            ))}
+                </tr>
+              );
+            })}
             {!requests.length && (
               <tr>
                 <td className="px-4 py-6 text-center text-slate-500" colSpan={7}>
