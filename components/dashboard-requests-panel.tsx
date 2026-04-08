@@ -1,12 +1,13 @@
 'use client';
 
-import { useMemo, useState } from 'react';
+import Link from 'next/link';
+import { useEffect, useMemo, useState } from 'react';
 import { DashboardSummary } from '@/components/dashboard-summary';
 import { RequestTable } from '@/components/request-table';
+import { buildFullAddress } from '@/lib/requests/address';
 import {
   getDashboardQueueGroups,
   getRequestQueueGroup,
-  getResponsiblePersonName,
   REQUEST_QUEUE_GROUP_META,
   RequestQueueGroup,
   RequestType,
@@ -135,25 +136,87 @@ function FilterGroup<T extends string>({ label, options, activeValue, onChange }
 export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequestsPanelProps) {
   const [activeFilter, setActiveFilter] = useState<RequestTypeFilter>('ALL');
   const [searchQuery, setSearchQuery] = useState('');
+  const [debouncedQuery, setDebouncedQuery] = useState('');
+  const [serverFilteredRequests, setServerFilteredRequests] = useState<ServiceRequest[] | null>(null);
+  const [suggestions, setSuggestions] = useState<ServiceRequest[]>([]);
+  const [isSearching, setIsSearching] = useState(false);
   const defaultQueueFilter: QueueFilter =
     defaultQueue && getDashboardQueueGroups().includes(defaultQueue as RequestQueueGroup)
       ? (defaultQueue as RequestQueueGroup)
       : 'ALL';
   const [queueFilter, setQueueFilter] = useState<QueueFilter>(defaultQueueFilter);
 
-  const filteredRequests = useMemo(() => {
-    const normalizedQuery = searchQuery.trim().toLowerCase();
+  useEffect(() => {
+    const timer = window.setTimeout(() => {
+      setDebouncedQuery(searchQuery.trim());
+    }, 280);
+    return () => window.clearTimeout(timer);
+  }, [searchQuery]);
 
-    const isSearchMatch = (request: ServiceRequest): boolean => {
-      if (!normalizedQuery) {
-        return true;
+  useEffect(() => {
+    let cancelled = false;
+
+    async function loadServerSearch() {
+      if (!debouncedQuery) {
+        setServerFilteredRequests(null);
+        return;
       }
+      setIsSearching(true);
+      const params = new URLSearchParams({
+        q: debouncedQuery,
+        limit: '100'
+      });
+      if (activeFilter !== 'ALL') {
+        params.set('request_type', activeFilter);
+      }
+      if (queueFilter !== 'ALL') {
+        params.set('queue', queueFilter);
+      }
+      const response = await fetch(`/api/requests/search?${params.toString()}`);
+      const payload = (await response.json()) as { data?: ServiceRequest[] };
+      if (!cancelled) {
+        setServerFilteredRequests(payload.data ?? []);
+        setIsSearching(false);
+      }
+    }
 
-      const searchableFields = [request.request_no, request.customer_name, getResponsiblePersonName(request)];
-      return searchableFields.some((field) => field?.toLowerCase().includes(normalizedQuery));
+    loadServerSearch().catch(() => {
+      if (!cancelled) {
+        setServerFilteredRequests([]);
+        setIsSearching(false);
+      }
+    });
+
+    return () => {
+      cancelled = true;
     };
+  }, [activeFilter, debouncedQuery, queueFilter]);
 
-    let result = requests.filter(isSearchMatch);
+  useEffect(() => {
+    let cancelled = false;
+    async function loadSuggestions() {
+      if (debouncedQuery.length < 2) {
+        setSuggestions([]);
+        return;
+      }
+      const response = await fetch(`/api/requests/search?${new URLSearchParams({ q: debouncedQuery, limit: '6' }).toString()}`);
+      const payload = (await response.json()) as { data?: ServiceRequest[] };
+      if (!cancelled) {
+        setSuggestions(payload.data ?? []);
+      }
+    }
+    loadSuggestions().catch(() => {
+      if (!cancelled) {
+        setSuggestions([]);
+      }
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [debouncedQuery]);
+
+  const filteredRequests = useMemo(() => {
+    let result = serverFilteredRequests ?? requests;
 
     if (activeFilter !== 'ALL') {
       result = result.filter((request) => request.request_type === activeFilter);
@@ -164,7 +227,7 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
     }
 
     return result;
-  }, [activeFilter, queueFilter, requests, searchQuery]);
+  }, [activeFilter, queueFilter, requests, serverFilteredRequests]);
 
   const queueItems = useMemo(
     () =>
@@ -205,7 +268,7 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
                 type="text"
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
-                placeholder="ค้นหาเลขคำร้อง / ชื่อลูกค้า / ผู้รับผิดชอบ"
+                placeholder="ค้นหาเลขคำร้อง / ชื่อ / เบอร์โทร / บ้านเลขที่ / หมู่ / จุดสังเกต"
                 className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#1E3A8A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20"
               />
               {searchQuery && (
@@ -219,6 +282,22 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
                   ×
                 </button>
               )}
+              {isSearching ? <div className="mt-1 text-xs text-slate-500">กำลังค้นหา...</div> : null}
+              {suggestions.length > 0 ? (
+                <div className="absolute z-20 mt-1 w-full rounded-lg border border-slate-200 bg-white p-1 shadow-lg">
+                  {suggestions.map((item) => (
+                    <Link
+                      key={item.id}
+                      href={`/requests/${item.id}`}
+                      className="block rounded-md px-2 py-1.5 text-sm text-slate-700 hover:bg-slate-100"
+                    >
+                      <span className="font-medium">{item.request_no}</span>
+                      <span> — {item.customer_name}</span>
+                      <span className="text-slate-500"> — {buildFullAddress(item)}</span>
+                    </Link>
+                  ))}
+                </div>
+              ) : null}
             </div>
             <FilterGroup label="ประเภท:" options={FILTER_OPTIONS} activeValue={activeFilter} onChange={setActiveFilter} />
             <FilterGroup label="สถานะ:" options={queueFilterOptions} activeValue={queueFilter} onChange={setQueueFilter} />
