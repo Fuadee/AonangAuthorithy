@@ -43,6 +43,11 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [surveyDateSelectionStatus, setSurveyDateSelectionStatus] = useState<'manual' | 'recommended'>('manual');
   const [location, setLocation] = useState<{ latitude: number; longitude: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [flexibleAddressError, setFlexibleAddressError] = useState<string | null>(null);
+  const [houseNumber, setHouseNumber] = useState('');
+  const [villageNo, setVillageNo] = useState('');
+  const [road, setRoad] = useState('');
+  const [landmark, setLandmark] = useState('');
   const [surveyDateError, setSurveyDateError] = useState<string | null>(null);
   const [lastAutoAppliedRecommendationKey, setLastAutoAppliedRecommendationKey] = useState('');
 
@@ -225,14 +230,26 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
       return;
     }
 
-    if (!location) {
+    const form = event.currentTarget;
+    const hasAddressDetail = [
+      form.elements.namedItem('house_number'),
+      form.elements.namedItem('village_no'),
+      form.elements.namedItem('road'),
+      form.elements.namedItem('landmark')
+    ]
+      .map((element) => ((element as HTMLInputElement | null)?.value ?? '').trim())
+      .some((value) => value.length > 0);
+    const hasMapPin = !!location;
+
+    if (!hasAddressDetail && !hasMapPin) {
       event.preventDefault();
-      setLocationError('กรุณาปักหมุดตำแหน่งก่อนบันทึกคำร้อง');
+      setFlexibleAddressError('กรุณาระบุข้อมูลตำแหน่งอย่างน้อย 1 รายการ');
       return;
     }
 
     setSurveyDateError(null);
     setLocationError(null);
+    setFlexibleAddressError(null);
   }
 
   return (
@@ -274,7 +291,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
 
       <div>
         <label className="text-sm font-medium" htmlFor="area_code">
-          พื้นที่
+          พื้นที่ (ตำบล)
         </label>
         <select
           className="input"
@@ -294,6 +311,80 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
         <p className="mt-1 text-xs text-slate-500">
           {selectedArea ? `พื้นที่ที่เลือก: ${resolveAreaLabelFromCode(selectedArea.code)}` : 'ยังไม่เลือกพื้นที่'}
         </p>
+      </div>
+
+      <div>
+        <div className="grid gap-3 md:grid-cols-4">
+          <div>
+            <label className="text-sm font-medium" htmlFor="house_number">
+              บ้านเลขที่
+            </label>
+            <input
+              className="input"
+              id="house_number"
+              name="house_number"
+              placeholder="เช่น 12/5"
+              value={houseNumber}
+              onChange={(event) => {
+                setHouseNumber(event.target.value);
+                setFlexibleAddressError(null);
+              }}
+            />
+            <p className="mt-1 text-xs text-slate-500">แนะนำให้ใส่บ้านเลขที่เพื่อให้ช่างหาเจอง่ายขึ้น</p>
+          </div>
+
+          <div>
+            <label className="text-sm font-medium" htmlFor="village_no">
+              หมู่
+            </label>
+            <input
+              className="input"
+              id="village_no"
+              name="village_no"
+              placeholder="เช่น 3"
+              value={villageNo}
+              onChange={(event) => {
+                setVillageNo(event.target.value);
+                setFlexibleAddressError(null);
+              }}
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium" htmlFor="road">
+              ถนน
+            </label>
+            <input
+              className="input"
+              id="road"
+              name="road"
+              placeholder="เช่น อ่าวนาง"
+              value={road}
+              onChange={(event) => {
+                setRoad(event.target.value);
+                setFlexibleAddressError(null);
+              }}
+            />
+          </div>
+
+          <div>
+            <label className="text-sm font-medium" htmlFor="landmark">
+              จุดสังเกต
+            </label>
+            <input
+              className="input"
+              id="landmark"
+              name="landmark"
+              placeholder="เช่น ใกล้เซเว่น / บ้านสีฟ้า / ตรงข้ามมัสยิด"
+              value={landmark}
+              onChange={(event) => {
+                setLandmark(event.target.value);
+                setFlexibleAddressError(null);
+              }}
+            />
+          </div>
+        </div>
+        {flexibleAddressError ? <p className="mt-2 text-xs text-rose-600">{flexibleAddressError}</p> : null}
       </div>
 
       <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">

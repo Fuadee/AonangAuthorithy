@@ -647,6 +647,10 @@ export type ServiceRequest = {
   request_no: string;
   customer_name: string;
   phone: string;
+  house_number: string | null;
+  village_no: string | null;
+  road: string | null;
+  landmark: string | null;
   latitude: number | null;
   longitude: number | null;
   location_note: string | null;

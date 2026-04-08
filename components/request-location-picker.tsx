@@ -47,7 +47,7 @@ export function RequestLocationPicker({ onLocationChange, submitError }: Request
   return (
     <section className="rounded-xl border border-slate-200 bg-slate-50 p-4">
       <h3 className="text-base font-semibold text-slate-800">ตำแหน่งสถานที่</h3>
-      <p className="mt-1 text-sm text-slate-600">กรุณาคลิกบนแผนที่เพื่อปักหมุดตำแหน่ง</p>
+      <p className="mt-1 text-sm text-slate-600">ปักหมุดจากแผนที่ได้ (ไม่บังคับ) และจะไม่แทนค่าช่องที่อยู่ที่กรอกเอง</p>
 
       <div className="mt-3">
         <MapPicker selectedLocation={selectedLocation} onPick={handlePick} />
