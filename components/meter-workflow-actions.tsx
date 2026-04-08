@@ -49,6 +49,7 @@ export function MeterWorkflowActions({
       'WAIT_DOCUMENT_FROM_CUSTOMER',
       'READY_FOR_SURVEY',
       'IN_SURVEY',
+      'CHECK_3PHASE_CAPABILITY',
       'WAIT_CUSTOMER_FIX',
       'WAIT_FIX_REVIEW',
       'READY_FOR_RESURVEY',

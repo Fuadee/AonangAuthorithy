@@ -244,7 +244,8 @@ export function getAvailableRequestActions(
     }
 
     if (
-      request.request_type === 'METER_TO_3PHASE' &&
+      // 30/100 (3 เฟส) reuses the exact 30/100 (1-phase) meter workflow after the 3-phase support check passes.
+      ['METER_TO_3PHASE', 'METER_30_100_3P'].includes(request.request_type) &&
       canEvaluateThreePhaseCapability({
         status,
         request_type: request.request_type,
@@ -267,28 +268,28 @@ export function getAvailableRequestActions(
     return [toAction('COMPLETE_SURVEY', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าการสำรวจเสร็จสิ้นแล้ว?' })];
   }
 
-  if (request.request_type === 'METER_TO_3PHASE' && status === 'CHECK_3PHASE_CAPABILITY') {
+  if (['METER_TO_3PHASE', 'METER_30_100_3P'].includes(request.request_type) && status === 'CHECK_3PHASE_CAPABILITY') {
     return [
       toAction('THREE_PHASE_CAPABLE', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าระบบรองรับ 3 เฟส?' }),
       toAction('THREE_PHASE_NEEDS_EXPANSION', { variant: 'secondary', intent: 'warning', requiresConfirmation: 'ยืนยันส่งต่องานเดิมเข้าสู่ flow ขยายเขตที่ WAIT_LAYOUT_DRAWING?' })
     ];
   }
 
-  if (status === 'WAIT_CUSTOMER_FIX' && ['METER', 'METER_30_100_1P', 'METER_TO_3PHASE'].includes(request.request_type)) {
+  if (status === 'WAIT_CUSTOMER_FIX' && ['METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE'].includes(request.request_type)) {
     return [
       toAction('REPORT_CUSTOMER_FIX', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าลูกค้าแจ้งแก้ไขแล้ว?' }),
       toAction('SCHEDULE_RESURVEY', { variant: 'secondary', requiresConfirmation: 'นัดตรวจซ้ำทันทีใช่หรือไม่?' })
     ];
   }
 
-  if (status === 'WAIT_FIX_REVIEW' && ['METER', 'METER_30_100_1P', 'METER_TO_3PHASE'].includes(request.request_type)) {
+  if (status === 'WAIT_FIX_REVIEW' && ['METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE'].includes(request.request_type)) {
     return [toAction('PHOTO_APPROVE', { variant: 'primary' }), toAction('PHOTO_REJECT_TO_RESURVEY', { variant: 'secondary' })].filter(
       (action) => action.key !== 'PHOTO_APPROVE' || canApproveFixFromPhoto({ status, fix_verification_mode: request.fix_verification_mode })
     );
   }
 
 
-  if (request.request_type === 'METER_30_100_1P') {
+  if (['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type)) {
     if (status === 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL') {
       return [toAction('APPROVE_PRE_KRABI', { variant: 'primary' })];
     }
@@ -345,7 +346,7 @@ export function getAvailableRequestActions(
     }
   }
 
-  if (status === 'WAIT_MANAGER_REVIEW' && ['METER', 'METER_30_100_1P', 'METER_TO_3PHASE'].includes(request.request_type) && canMoveToManagerReview(request)) {
+  if (status === 'WAIT_MANAGER_REVIEW' && ['METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE'].includes(request.request_type) && canMoveToManagerReview(request)) {
     return [toAction('MANAGER_APPROVE', { variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติปิดงาน?' })];
   }
 
