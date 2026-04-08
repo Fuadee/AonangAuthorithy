@@ -1028,6 +1028,12 @@ export async function markThreePhaseCapabilitySupportedAction(formData: FormData
   const surveyNote = optionalField(formData, 'survey_note');
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
+  console.info('[meter-3phase-supported-action-start]', {
+    requestId,
+    hasSurveyNote: Boolean(surveyNote),
+    returnTo: formData.get('return_to')?.toString() ?? null,
+    stayOnQueue: formData.get('stay_on_queue')?.toString() === '1'
+  });
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
@@ -1036,6 +1042,25 @@ export async function markThreePhaseCapabilitySupportedAction(formData: FormData
     .single();
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  console.info('[meter-3phase-supported-action-transition]', {
+    requestId,
+    currentStatus: request.status,
+    requestType: request.request_type,
+    currentCapability: request.three_phase_capability_result ?? null,
+    targetStatus: 'IN_SURVEY',
+    targetCapability: 'SUPPORTED'
+  });
+
+  if (request.three_phase_capability_result === 'SUPPORTED') {
+    console.info('[meter-3phase-supported-action-success]', {
+      requestId,
+      skippedUpdate: true,
+      reason: 'already-supported'
+    });
+    finalizeWorkflowAction(requestId, formData);
+    return;
   }
 
   if (
@@ -1066,6 +1091,12 @@ export async function markThreePhaseCapabilitySupportedAction(formData: FormData
     throw new Error(error.message);
   }
 
+  console.info('[meter-3phase-supported-action-success]', {
+    requestId,
+    skippedUpdate: false,
+    nextStatus: 'IN_SURVEY',
+    nextCapability: 'SUPPORTED'
+  });
   finalizeWorkflowAction(requestId, formData);
 }
 

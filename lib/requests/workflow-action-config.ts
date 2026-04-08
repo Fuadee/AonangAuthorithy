@@ -195,6 +195,14 @@ export function getAvailableRequestActions(
   }
 
   if (status === 'IN_SURVEY') {
+    if (request.request_type === 'METER_TO_3PHASE') {
+      console.info('[meter-3phase-supported-render-resolve]', {
+        status,
+        requestType: request.request_type,
+        capabilityResult: request.three_phase_capability_result ?? null
+      });
+    }
+
     if (
       request.request_type === 'METER_TO_3PHASE' &&
       canEvaluateThreePhaseCapability({
