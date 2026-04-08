@@ -60,13 +60,17 @@ function resolveTimelineSortAt(value: string): number {
 }
 
 function getRequestTypeBadgeClass(requestType: RequestType): string {
-  if (requestType === 'METER') {
+  const normalizedRequestType = requestType as string;
+  if (normalizedRequestType === 'METER') {
+    return 'border-blue-200 bg-blue-50 text-blue-700';
+  }
+  if (normalizedRequestType === 'METER_30_100_1P') {
     return 'border-sky-200 bg-sky-50 text-sky-700';
   }
-  if (requestType === 'METER_TO_3PHASE') {
+  if (normalizedRequestType === 'METER_TO_3PHASE') {
     return 'border-violet-200 bg-violet-50 text-violet-700';
   }
-  if (requestType === 'EXPANSION') {
+  if (normalizedRequestType === 'EXPANSION') {
     return 'border-emerald-200 bg-emerald-50 text-emerald-700';
   }
   return 'border-slate-200 bg-slate-100 text-slate-700';
@@ -79,7 +83,7 @@ function getNextStepSummary(
 ): { nextStep: string; owner: string } {
   const normalizedStatus = normalizeSurveyWorkflowStatus(status);
 
-  if (requestType === 'METER') {
+  if (requestType === 'METER_30_100_1P') {
     switch (normalizedStatus) {
       case 'WAIT_DOCUMENT_REVIEW':
         return {
@@ -743,7 +747,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         </section>
       ) : null}
 
-      {requestType === 'METER' ? (
+      {['METER', 'METER_30_100_1P'].includes(requestType) ? (
         <section className="card p-6">
           <h3 className="text-lg font-semibold">ข้อมูลนัดสำรวจ</h3>
           <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -786,7 +790,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         </section>
       ) : null}
 
-      {requestType === 'METER' ? (
+      {['METER', 'METER_30_100_1P'].includes(requestType) ? (
         <section className="card p-6">
           <h3 className="text-lg font-semibold">สรุปผลหลังสำรวจ</h3>
           <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -824,7 +828,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         </section>
       ) : null}
 
-      {requestType === 'METER' ? (
+      {['METER', 'METER_30_100_1P'].includes(requestType) ? (
         <section className="card p-6">
           <h3 className="text-lg font-semibold">สรุปสถานะเอกสารหลังสำรวจ</h3>
           <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -851,7 +855,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         </section>
       ) : null}
 
-      {requestType === 'METER' ? (
+      {['METER', 'METER_30_100_1P'].includes(requestType) ? (
         <section className="card p-6">
           <h3 className="text-lg font-semibold">ข้อมูลใบแจ้งหนี้งานขอมิเตอร์</h3>
           <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -45,7 +45,7 @@ export const REQUEST_STATUSES = [
 ] as const;
 import { formatDateOnly, formatThaiDateTime } from '@/lib/datetime';
 
-export const REQUEST_TYPES = ['METER', 'METER_TO_3PHASE', 'EXPANSION'] as const;
+export const REQUEST_TYPES = ['METER', 'METER_30_100_1P', 'METER_TO_3PHASE', 'EXPANSION'] as const;
 export const REQUEST_QUEUE_GROUPS = ['SURVEY', 'DISPATCH', 'KRABI', 'BILLING', 'MANAGER', 'DONE', 'OTHER'] as const;
 export const DOCUMENT_STATUSES = ['COMPLETE', 'INCOMPLETE'] as const;
 export const SURVEY_RESULTS = ['PASS', 'FAIL'] as const;
@@ -66,7 +66,8 @@ export type ThreePhaseCapabilityResult = (typeof THREE_PHASE_CAPABILITY_RESULTS)
 export type DocumentReviewMode = 'BASIC' | 'DETAILED';
 
 export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
-  METER: 'ขอมิเตอร์ 30/100 1 เฟส',
+  METER: 'ขอมิเตอร์',
+  METER_30_100_1P: 'ขอมิเตอร์ 30/100 1 เฟส',
   METER_TO_3PHASE: 'งานเพิ่มเป็นมิเตอร์ 3 เฟส',
   EXPANSION: 'ขอขยายเขต'
 };
@@ -353,7 +354,7 @@ export function isThreePhaseRequestType(requestType: RequestType): boolean {
 }
 
 export function isMeterFamilyRequestType(requestType: RequestType): boolean {
-  return requestType === 'METER' || requestType === 'METER_TO_3PHASE';
+  return requestType === 'METER' || requestType === 'METER_30_100_1P' || requestType === 'METER_TO_3PHASE';
 }
 
 export const METER_LIKE_BILLING_STATUSES: ReadonlyArray<RequestStatus> = [
@@ -368,7 +369,7 @@ export function isMeterLikeBillingRequest(requestType: RequestType, status: Requ
     return false;
   }
 
-  return requestType === 'METER' || requestType === 'METER_TO_3PHASE';
+  return requestType === 'METER' || requestType === 'METER_30_100_1P' || requestType === 'METER_TO_3PHASE';
 }
 
 export const EXPANSION_WORKFLOW_STATUSES: RequestStatus[] = [
@@ -590,7 +591,7 @@ export function canMoveToBilling(request: Pick<ServiceRequest, 'collect_docs_on_
 }
 
 export function canMarkSurveyPassed(request: Pick<ServiceRequest, 'status' | 'request_type'>): boolean {
-  return ['METER', 'METER_TO_3PHASE'].includes(request.request_type) && request.status === 'IN_SURVEY';
+  return ['METER', 'METER_30_100_1P', 'METER_TO_3PHASE'].includes(request.request_type) && request.status === 'IN_SURVEY';
 }
 
 export function canEvaluateThreePhaseCapability(
@@ -600,7 +601,7 @@ export function canEvaluateThreePhaseCapability(
 }
 
 export function canMarkSurveyFailed(request: Pick<ServiceRequest, 'status' | 'request_type'>): boolean {
-  return ['METER', 'METER_TO_3PHASE'].includes(request.request_type) && request.status === 'IN_SURVEY';
+  return ['METER', 'METER_30_100_1P', 'METER_TO_3PHASE'].includes(request.request_type) && request.status === 'IN_SURVEY';
 }
 
 export function allowsPhotoApproval(
