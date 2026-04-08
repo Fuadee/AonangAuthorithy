@@ -147,7 +147,7 @@ function getNextStepSummary(
       case 'WAIT_ELIGIBILITY_REVIEW':
         return {
           nextStep: 'บันทึกผลตรวจสอบสิทธิ์ (ผ่าน = ส่งผู้จัดการอนุมัติ, ไม่ผ่าน = ไปออกใบแจ้งหนี้)',
-          owner: 'ทีมเอกสาร'
+          owner: 'การเงิน'
         };
       case 'WAIT_BILLING':
         return {
