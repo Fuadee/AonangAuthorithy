@@ -6,7 +6,8 @@ import {
   canStartSurvey,
   RequestStatus,
   RequestType,
-  ServiceRequest
+  ServiceRequest,
+  shouldUseExpansionActionSet
 } from '@/lib/requests/types';
 
 export type WorkflowActionKey =
@@ -242,34 +243,34 @@ export function getAvailableRequestActions(
     return [toAction('MANAGER_APPROVE', { variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติปิดงาน?' })];
   }
 
-  if (request.request_type === 'EXPANSION' && ['SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING'].includes(status)) {
+  if (shouldUseExpansionActionSet(request) && ['SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING'].includes(status)) {
     return [toAction('LAYOUT_DRAWING_DONE', { variant: 'primary', requiresConfirmation: 'ยืนยันวาดผังเสร็จแล้ว?' })];
   }
 
-  if (request.request_type === 'EXPANSION' && status === 'WAITING_TO_SEND_TO_KRABI') {
+  if (shouldUseExpansionActionSet(request) && status === 'WAITING_TO_SEND_TO_KRABI') {
     return [toAction('DISPATCHED_TO_KRABI', { variant: 'primary' })];
   }
 
-  if (request.request_type === 'EXPANSION' && ['SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK'].includes(status)) {
+  if (shouldUseExpansionActionSet(request) && ['SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK'].includes(status)) {
     return [
       toAction('KRABI_ACCEPT_AND_START', { variant: 'primary' }),
       toAction('KRABI_RETURN_FOR_FIX', { variant: 'secondary', intent: 'warning' })
     ];
   }
 
-  if (request.request_type === 'EXPANSION' && status === 'KRABI_NEEDS_DOCUMENT_FIX') {
+  if (shouldUseExpansionActionSet(request) && status === 'KRABI_NEEDS_DOCUMENT_FIX') {
     return [toAction('KRABI_FIX_COMPLETED', { variant: 'primary' })];
   }
 
-  if (request.request_type === 'EXPANSION' && status === 'KRABI_IN_PROGRESS') {
+  if (shouldUseExpansionActionSet(request) && status === 'KRABI_IN_PROGRESS') {
     return [toAction('KRABI_ESTIMATION_COMPLETED', { variant: 'primary' })];
   }
 
-  if (request.request_type === 'EXPANSION' && status === 'KRABI_ESTIMATION_COMPLETED') {
+  if (shouldUseExpansionActionSet(request) && status === 'KRABI_ESTIMATION_COMPLETED') {
     return [toAction('KRABI_BILL_ISSUED', { variant: 'primary' })];
   }
 
-  if (request.request_type === 'EXPANSION' && status === 'BILL_ISSUED') {
+  if (shouldUseExpansionActionSet(request) && status === 'BILL_ISSUED') {
     return [toAction('COORDINATED_WITH_CONSTRUCTION', { variant: 'primary' })];
   }
 
