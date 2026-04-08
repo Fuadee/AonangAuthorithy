@@ -15,7 +15,20 @@ set
   name = excluded.name,
   is_active = excluded.is_active;
 
-insert into public.survey_schedules (assignee_id, assignee_code, surveyor_name, area_id, area_code, area, weekday, max_jobs_per_day, active)
+create unique index if not exists survey_schedules_unique_assignee_area_weekday
+on public.survey_schedules (assignee_id, area_id, weekday);
+
+insert into public.survey_schedules (
+  assignee_id,
+  assignee_code,
+  surveyor_name,
+  area_id,
+  area_code,
+  area,
+  weekday,
+  max_jobs_per_day,
+  active
+)
 select
   assignees.id,
   assignees.code,
@@ -37,11 +50,11 @@ from (
 ) as seed(assignee_code, area_code, weekday, max_jobs_per_day)
 join public.assignees assignees on assignees.code = seed.assignee_code
 join public.areas areas on areas.code = seed.area_code
-on conflict (assignee_id, area_code, weekday) do update
+on conflict (assignee_id, area_id, weekday) do update
 set
   assignee_code = excluded.assignee_code,
   surveyor_name = excluded.surveyor_name,
-  area_id = excluded.area_id,
+  area_code = excluded.area_code,
   area = excluded.area,
   max_jobs_per_day = excluded.max_jobs_per_day,
   active = excluded.active,
@@ -54,10 +67,6 @@ set area_id = areas.id,
     updated_at = now()
 from public.areas areas
 where (schedules.area_id = areas.id or schedules.area_code = areas.code)
-  and not (
-    coalesce(schedules.area_code, areas.code) = 'AREA_2'
-    and coalesce(schedules.area, '') = 'พื้นที่ 2'
-  )
   and (
     schedules.area_id is distinct from areas.id
     or schedules.area_code is distinct from areas.code
@@ -70,11 +79,10 @@ set area_code = areas.code,
     updated_at = now()
 from public.areas areas
 where requests.area_id = areas.id
-  and not (
-    coalesce(requests.area_code, areas.code) = 'AREA_2'
-    and coalesce(requests.area_name, '') = 'พื้นที่ 2'
-  )
-  and (requests.area_code is distinct from areas.code or requests.area_name is distinct from areas.name);
+  and (
+    requests.area_code is distinct from areas.code
+    or requests.area_name is distinct from areas.name
+  );
 
 update public.service_requests
 set request_type = 'METER'
