@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, MouseEvent, ReactNode, useEffect, useState, useTransition } from 'react';
+import { FormEvent, MouseEvent, ReactNode, useEffect, useRef, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   approveFixFromPhotoAction,
@@ -110,6 +110,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
   const [isPending, startTransition] = useTransition();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [krabiRejectReason, setKrabiRejectReason] = useState('');
+  const submissionLockedRef = useRef(false);
 
   useEffect(() => {
     setSubmitError(null);
@@ -123,11 +124,16 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
   const onSubmitWorkflowAction = (submitActionKey: WorkflowActionKey) => (event: FormEvent<HTMLFormElement>) => {
     event.preventDefault();
     event.stopPropagation();
+    if (submissionLockedRef.current || isPending) {
+      return;
+    }
+    submissionLockedRef.current = true;
     setSubmitError(null);
     const formData = new FormData(event.currentTarget);
     const executor = ACTION_EXECUTORS[submitActionKey];
 
     if (!executor) {
+      submissionLockedRef.current = false;
       setSubmitError('ไม่พบการทำรายการที่ต้องการ กรุณาลองใหม่อีกครั้ง');
       return;
     }
@@ -139,8 +145,13 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
         onClose();
         router.refresh();
       } catch (error) {
-        const message = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดที่ไม่คาดคิด';
+        const rawMessage = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดที่ไม่คาดคิด';
+        const message = rawMessage.includes('An error occurred in the Server Components render')
+          ? 'บันทึกไม่สำเร็จจากฝั่งเซิร์ฟเวอร์ กรุณาลองใหม่อีกครั้ง หรือตรวจสอบสถานะคำร้องล่าสุด'
+          : rawMessage;
         setSubmitError(message || 'ไม่สามารถบันทึกรายการได้ กรุณาลองใหม่อีกครั้ง');
+      } finally {
+        submissionLockedRef.current = false;
       }
     });
   };
