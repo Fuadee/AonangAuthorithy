@@ -68,7 +68,7 @@ export type DocumentReviewMode = 'BASIC' | 'DETAILED';
 
 export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   METER: 'ขอมิเตอร์',
-  METER_30_100_1P: 'ขอมิเตอร์ 30/100 1 เฟส',
+  METER_30_100_1P: 'ขอมิเตอร์ 30/100 (1 เฟส)',
   METER_TO_3PHASE: 'งานเพิ่มเป็นมิเตอร์ 3 เฟส',
   EXPANSION: 'ขอขยายเขต'
 };
