@@ -35,6 +35,7 @@ const STATUS_TONE: Record<RequestStatus, string> = {
   RESENT_TO_KRABI: 'bg-sky-100 text-sky-800',
   KRABI_APPROVED: 'bg-emerald-100 text-emerald-800',
   WAIT_RECEIVE_FROM_KRABI: 'bg-cyan-100 text-cyan-800',
+  WAIT_ELIGIBILITY_REVIEW: 'bg-cyan-100 text-cyan-800',
   WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'bg-fuchsia-100 text-fuchsia-800',
   CHECK_3PHASE_CAPABILITY: 'bg-violet-100 text-violet-800',
   NEEDS_EXPANSION: 'bg-orange-100 text-orange-800',

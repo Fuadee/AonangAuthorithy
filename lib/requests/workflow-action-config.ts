@@ -52,7 +52,9 @@ export type WorkflowActionKey =
   | 'START_DOCUMENT_FIX'
   | 'RESENT_TO_KRABI'
   | 'RECEIVE_FROM_KRABI'
-  | 'SKIP_BILLING'
+  | 'SEND_TO_ELIGIBILITY_REVIEW'
+  | 'ELIGIBILITY_PASS'
+  | 'ELIGIBILITY_FAIL'
   | 'MOVE_TO_FINAL_MANAGER_APPROVAL'
   | 'FINAL_MANAGER_APPROVE'
   | 'COMPLETE_WORK';
@@ -103,7 +105,9 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   START_DOCUMENT_FIX: 'แก้ไขเอกสาร',
   RESENT_TO_KRABI: 'ส่งเอกสารไปกระบี่ใหม่',
   RECEIVE_FROM_KRABI: 'รับเอกสารกลับจากกระบี่',
-  SKIP_BILLING: 'ข้ามใบแจ้งหนี้',
+  SEND_TO_ELIGIBILITY_REVIEW: 'ส่งเข้าตรวจสอบสิทธิ์',
+  ELIGIBILITY_PASS: 'บันทึกว่าตรวจสอบสิทธิ์ผ่าน',
+  ELIGIBILITY_FAIL: 'บันทึกว่าตรวจสอบสิทธิ์ไม่ผ่าน',
   MOVE_TO_FINAL_MANAGER_APPROVAL: 'ส่งให้ ผจก.อ่าวนางอนุมัติรอบสุดท้าย',
   FINAL_MANAGER_APPROVE: 'อนุมัติปิดงาน',
   COMPLETE_WORK: 'ปิดงานเสร็จสิ้น'
@@ -133,7 +137,9 @@ const STATUS_INSTRUCTION: Partial<Record<RequestStatus, string>> = {
   DOCUMENT_FIX: 'กรุณาส่งเอกสารไปกระบี่ใหม่',
   RESENT_TO_KRABI: 'กรุณายืนยันเข้าคิวรอกระบี่อนุมัติ',
   KRABI_APPROVED: 'กรุณาบันทึกรับเอกสารกลับจากกระบี่',
-  WAIT_RECEIVE_FROM_KRABI: 'กรุณาเลือกออกใบแจ้งหนี้หรือข้ามใบแจ้งหนี้',
+  WAIT_RECEIVE_FROM_KRABI: 'กรุณาส่งงานเข้าตรวจสอบสิทธิ์',
+  WAIT_ELIGIBILITY_REVIEW: 'กรุณาเลือกผลการตรวจสอบสิทธิ์',
+  WAIT_BILLING: 'กรุณาออกใบแจ้งหนี้',
   WAIT_ACTION_CONFIRMATION: 'กรุณาส่งให้ผู้จัดการอ่าวนางอนุมัติรอบสุดท้าย',
   WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'กรุณาอนุมัติปิดงาน',
   WAIT_MANAGER_REVIEW: 'กรุณาตรวจสอบและอนุมัติปิดงาน'
@@ -312,7 +318,22 @@ export function getAvailableRequestActions(
     }
 
     if (status === 'WAIT_RECEIVE_FROM_KRABI') {
-      return [toAction('ISSUE_BILL', { variant: 'primary' }), toAction('SKIP_BILLING', { variant: 'secondary' })];
+      return [toAction('SEND_TO_ELIGIBILITY_REVIEW', { variant: 'primary' })];
+    }
+
+    if (status === 'WAIT_ELIGIBILITY_REVIEW') {
+      return [
+        toAction('ELIGIBILITY_PASS', { variant: 'primary' }),
+        toAction('ELIGIBILITY_FAIL', { variant: 'secondary', intent: 'warning' })
+      ];
+    }
+
+    if (status === 'WAIT_BILLING') {
+      return [toAction('ISSUE_BILL', { variant: 'primary' })];
+    }
+
+    if (status === 'WAIT_PAYMENT') {
+      return [toAction('MOVE_TO_FINAL_MANAGER_APPROVAL', { variant: 'primary' })];
     }
 
     if (status === 'WAIT_ACTION_CONFIRMATION') {

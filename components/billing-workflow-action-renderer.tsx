@@ -2,7 +2,7 @@
 
 import { FormEvent, MouseEvent, ReactNode, useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { confirmBillingSurveyorSignAction, confirmPaymentReceivedAction, issueBillingAction } from '@/app/actions';
+import { confirmBillingSurveyorSignAction, confirmPaymentReceivedAction, issueBillingAction, moveToFinalManagerApprovalAction } from '@/app/actions';
 import { getWorkflowActionLabel } from '@/lib/requests/workflow-action-config';
 import { RequestStatus } from '@/lib/requests/types';
 
@@ -14,7 +14,7 @@ type BillingWorkflowActionRendererProps = {
   compact?: boolean;
 };
 
-type BillingAction = 'ISSUE_BILL' | 'SURVEYOR_SIGN' | 'CONFIRM_PAYMENT';
+type BillingAction = 'ISSUE_BILL' | 'SURVEYOR_SIGN' | 'CONFIRM_PAYMENT' | 'MOVE_TO_MANAGER';
 
 function Modal({ children, title, onClose }: { children: ReactNode; title: string; onClose: () => void }) {
   const onBackdropClick = (event: MouseEvent<HTMLDivElement>) => {
@@ -103,7 +103,9 @@ export function BillingWorkflowActionRenderer({
         ? issueBillingAction
         : action === 'SURVEYOR_SIGN'
           ? confirmBillingSurveyorSignAction
-          : confirmPaymentReceivedAction;
+          : action === 'CONFIRM_PAYMENT'
+            ? confirmPaymentReceivedAction
+            : moveToFinalManagerApprovalAction;
 
     try {
       await actionFn(formData);
@@ -127,7 +129,7 @@ export function BillingWorkflowActionRenderer({
     }
   };
 
-  if (!['WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION'].includes(currentStatus)) {
+  if (!['WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION', 'WAIT_PAYMENT'].includes(currentStatus)) {
     return null;
   }
 
@@ -161,6 +163,27 @@ export function BillingWorkflowActionRenderer({
               onClick={(event) => handleActionTriggerClick(event, 'CONFIRM_PAYMENT')}
             >
               {isPaid ? 'ชำระเงินแล้ว' : getWorkflowActionLabel('CONFIRM_PAYMENT')}
+            </button>
+          </>
+        ) : null}
+
+        {currentStatus === 'WAIT_PAYMENT' ? (
+          <>
+            <button
+              className={`btn-primary disabled:cursor-not-allowed disabled:opacity-50 ${compactClass}`}
+              disabled={isPaid}
+              type="button"
+              onClick={(event) => handleActionTriggerClick(event, 'CONFIRM_PAYMENT')}
+            >
+              {isPaid ? 'ชำระเงินแล้ว' : getWorkflowActionLabel('CONFIRM_PAYMENT')}
+            </button>
+            <button
+              className={`btn-secondary disabled:cursor-not-allowed disabled:opacity-50 ${compactClass}`}
+              disabled={!isPaid}
+              type="button"
+              onClick={(event) => handleActionTriggerClick(event, 'MOVE_TO_MANAGER')}
+            >
+              ส่งให้ผู้จัดการอ่าวนางอนุมัติ
             </button>
           </>
         ) : null}
@@ -222,6 +245,26 @@ export function BillingWorkflowActionRenderer({
             <div className="flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
               <button className="btn-primary" disabled={isSubmitting || isPending || pendingAction === 'CONFIRM_PAYMENT'} type="submit">ยืนยัน</button>
+            </div>
+          </form>
+        </Modal>
+      ) : null}
+
+      {activeAction === 'MOVE_TO_MANAGER' ? (
+        <Modal title="ส่งให้ผู้จัดการอ่าวนางอนุมัติ" onClose={closeModal}>
+          <form
+            className="space-y-3"
+            onClick={(event) => event.stopPropagation()}
+            onSubmit={(event) => handleSubmit(event, 'MOVE_TO_MANAGER')}
+          >
+            <input name="request_id" type="hidden" value={requestId} />
+            <input name="stay_on_queue" type="hidden" value="1" />
+            <input name="return_to" type="hidden" value="/billing" />
+            <p className="text-sm text-slate-600">ยืนยันส่งคำร้องให้ผู้จัดการอ่าวนางอนุมัติรอบสุดท้าย</p>
+            {actionError ? <p className="text-sm text-rose-600">{actionError}</p> : null}
+            <div className="flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={closeModal}>ยกเลิก</button>
+              <button className="btn-primary" disabled={isSubmitting || isPending || pendingAction === 'MOVE_TO_MANAGER'} type="submit">ยืนยัน</button>
             </div>
           </form>
         </Modal>

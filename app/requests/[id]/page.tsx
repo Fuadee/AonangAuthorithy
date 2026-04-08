@@ -141,18 +141,23 @@ function getNextStepSummary(
       case 'KRABI_APPROVED':
       case 'WAIT_RECEIVE_FROM_KRABI':
         return {
-          nextStep: 'รับเอกสารกลับจากกระบี่ แล้วตัดสินใจออกใบแจ้งหนี้หรือข้ามใบแจ้งหนี้',
-          owner: 'ทีมเอกสาร / การเงิน'
+          nextStep: 'รับเอกสารกลับจากกระบี่ แล้วส่งงานเข้าขั้นตรวจสอบสิทธิ์',
+          owner: 'ทีมเอกสาร'
+        };
+      case 'WAIT_ELIGIBILITY_REVIEW':
+        return {
+          nextStep: 'บันทึกผลตรวจสอบสิทธิ์ (ผ่าน = ส่งผู้จัดการอนุมัติ, ไม่ผ่าน = ไปออกใบแจ้งหนี้)',
+          owner: 'ทีมเอกสาร'
         };
       case 'WAIT_BILLING':
         return {
           nextStep: 'เจ้าหน้าที่ออกใบแจ้งหนี้และบันทึกผู้ดำเนินการ',
           owner: 'การเงิน'
         };
-      case 'WAIT_ACTION_CONFIRMATION':
+      case 'WAIT_PAYMENT':
         return {
-          nextStep: 'บันทึก “เซ็นใบแจ้งหนี้” และ “ชำระเงิน” ให้ครบทั้งสองรายการ (ทำสลับลำดับกันได้)',
-          owner: 'นักสำรวจ / การเงิน'
+          nextStep: 'รอบันทึกชำระเงิน จากนั้นส่งให้ผู้จัดการอ่าวนางอนุมัติรอบสุดท้าย',
+          owner: 'การเงิน'
         };
       case 'WAIT_AONANG_MANAGER_FINAL_APPROVAL':
       case 'WAIT_MANAGER_REVIEW':
