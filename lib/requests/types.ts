@@ -31,6 +31,7 @@ export const REQUEST_STATUSES = [
   'RESENT_TO_KRABI',
   'KRABI_APPROVED',
   'WAIT_RECEIVE_FROM_KRABI',
+  'WAIT_ELIGIBILITY_REVIEW',
   'WAIT_AONANG_MANAGER_FINAL_APPROVAL',
   'CHECK_3PHASE_CAPABILITY',
   'NEEDS_EXPANSION',
@@ -102,11 +103,12 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   RESENT_TO_KRABI: 'ส่งเอกสารไปกระบี่ใหม่',
   KRABI_APPROVED: 'กระบี่อนุมัติแล้ว',
   WAIT_RECEIVE_FROM_KRABI: 'รับเอกสารกลับจากกระบี่',
-  WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'รอผู้จัดการอ่าวนางอนุมัติรอบสุดท้าย',
+  WAIT_ELIGIBILITY_REVIEW: 'ตรวจสอบสิทธิ์',
+  WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'รอผู้จัดการอ่าวนางอนุมัติ',
   CHECK_3PHASE_CAPABILITY: 'รอตรวจว่าระบบรองรับ 3 เฟสหรือไม่',
   NEEDS_EXPANSION: 'ต้องขยายเขต (รอส่งต่อ)',
   DESIGN_AND_ESTIMATE: 'ออกแบบ / ประเมิน',
-  WAIT_BILLING: 'รอออกใบแจ้งหนี้',
+  WAIT_BILLING: 'ออกใบแจ้งหนี้',
   WAIT_PAYMENT: 'รอชำระเงิน',
   INSTALLATION: 'ดำเนินการติดตั้งเปลี่ยนมิเตอร์',
   INSPECTION: 'ตรวจสอบหลังติดตั้ง',
@@ -212,6 +214,7 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   RESENT_TO_KRABI: 'DISPATCH',
   KRABI_APPROVED: 'KRABI',
   WAIT_RECEIVE_FROM_KRABI: 'DISPATCH',
+  WAIT_ELIGIBILITY_REVIEW: 'DISPATCH',
   WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'MANAGER',
   CHECK_3PHASE_CAPABILITY: 'SURVEY',
   NEEDS_EXPANSION: 'DISPATCH',
@@ -359,6 +362,7 @@ export function isMeterFamilyRequestType(requestType: RequestType): boolean {
 
 export const METER_LIKE_BILLING_STATUSES: ReadonlyArray<RequestStatus> = [
   'WAIT_BILLING',
+  'WAIT_PAYMENT',
   'WAIT_ACTION_CONFIRMATION',
   'WAIT_AONANG_MANAGER_FINAL_APPROVAL',
   'WAIT_MANAGER_REVIEW'
@@ -366,6 +370,10 @@ export const METER_LIKE_BILLING_STATUSES: ReadonlyArray<RequestStatus> = [
 
 export function isMeterLikeBillingRequest(requestType: RequestType, status: RequestStatus): boolean {
   if (!METER_LIKE_BILLING_STATUSES.includes(status)) {
+    return false;
+  }
+
+  if (requestType === 'METER_TO_3PHASE' && status === 'WAIT_PAYMENT') {
     return false;
   }
 

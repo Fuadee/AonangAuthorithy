@@ -60,7 +60,9 @@ export function MeterWorkflowActions({
       'RESENT_TO_KRABI',
       'KRABI_APPROVED',
       'WAIT_RECEIVE_FROM_KRABI',
+      'WAIT_ELIGIBILITY_REVIEW',
       'WAIT_BILLING',
+      'WAIT_PAYMENT',
       'WAIT_ACTION_CONFIRMATION',
       'WAIT_AONANG_MANAGER_FINAL_APPROVAL',
       'COMPLETED'

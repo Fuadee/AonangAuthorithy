@@ -139,7 +139,9 @@ const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>
   DOCUMENT_FIX: ['RESENT_TO_KRABI'],
   RESENT_TO_KRABI: ['WAIT_KRABI_APPROVAL'],
   KRABI_APPROVED: ['WAIT_RECEIVE_FROM_KRABI'],
-  WAIT_RECEIVE_FROM_KRABI: ['WAIT_BILLING', 'WAIT_AONANG_MANAGER_FINAL_APPROVAL'],
+  WAIT_RECEIVE_FROM_KRABI: ['WAIT_ELIGIBILITY_REVIEW'],
+  WAIT_ELIGIBILITY_REVIEW: ['WAIT_BILLING', 'WAIT_AONANG_MANAGER_FINAL_APPROVAL'],
+  WAIT_PAYMENT: ['WAIT_AONANG_MANAGER_FINAL_APPROVAL'],
   WAIT_AONANG_MANAGER_FINAL_APPROVAL: ['COMPLETED']
 };
 
@@ -1594,8 +1596,8 @@ export async function issueBillingAction(formData: FormData) {
 
   assertMeterLoopAllowed(request.request_type as RequestType);
 
-  if ((request.request_type as RequestType) === 'METER_30_100_1P' && request.status !== 'WAIT_RECEIVE_FROM_KRABI') {
-    throw new Error('ออกใบแจ้งหนี้ได้เฉพาะงานขอมิเตอร์ที่รับเอกสารกลับจากกระบี่แล้ว');
+  if ((request.request_type as RequestType) === 'METER_30_100_1P' && request.status !== 'WAIT_BILLING') {
+    throw new Error('ออกใบแจ้งหนี้ได้เฉพาะงานขอมิเตอร์ที่อยู่สถานะออกใบแจ้งหนี้');
   }
 
   if ((request.request_type as RequestType) !== 'METER_30_100_1P' && request.status !== 'WAIT_BILLING') {
@@ -1605,7 +1607,7 @@ export async function issueBillingAction(formData: FormData) {
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: 'WAIT_ACTION_CONFIRMATION',
+      status: (request.request_type as RequestType) === 'METER_30_100_1P' ? 'WAIT_PAYMENT' : 'WAIT_ACTION_CONFIRMATION',
       billing_note: billingNote,
       billed_at: nowIso,
       billed_by: billedBy,
@@ -1682,9 +1684,7 @@ export async function confirmBillingSurveyorSignAction(formData: FormData) {
 
 
 function resolveMeterPostBillingStatus(requestType: RequestType, invoiceSignedAt: string | null, paidAt: string | null): RequestStatus {
-  if (requestType === 'METER_30_100_1P') {
-    return invoiceSignedAt && paidAt ? 'WAIT_AONANG_MANAGER_FINAL_APPROVAL' : 'WAIT_ACTION_CONFIRMATION';
-  }
+  if (requestType === 'METER_30_100_1P') return paidAt ? 'WAIT_AONANG_MANAGER_FINAL_APPROVAL' : 'WAIT_PAYMENT';
 
   return resolvePostBillingPhase({ invoice_signed_at: invoiceSignedAt, paid_at: paidAt });
 }
@@ -1775,14 +1775,38 @@ export async function receiveFromKrabiForMeterAction(formData: FormData) {
   finalizeWorkflowAction(requestId, formData);
 }
 
-export async function skipBillingForMeterAction(formData: FormData) {
+export async function sendToEligibilityReviewForMeterAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
   const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
   if (requestError || !request) throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
-  if ((request.request_type as RequestType) !== 'METER_30_100_1P' || request.status !== 'WAIT_RECEIVE_FROM_KRABI') throw new Error('ข้ามใบแจ้งหนี้ได้เฉพาะงานขอมิเตอร์ที่รอรับเอกสารกลับจากกระบี่');
+  if ((request.request_type as RequestType) !== 'METER_30_100_1P' || request.status !== 'WAIT_RECEIVE_FROM_KRABI') throw new Error('ส่งเข้าตรวจสอบสิทธิ์ได้เฉพาะงานขอมิเตอร์ที่รับเอกสารกลับจากกระบี่แล้ว');
+  const { error } = await supabase.from('service_requests').update({ status: 'WAIT_ELIGIBILITY_REVIEW', updated_at: nowIso }).eq('id', requestId);
+  if (error) throw new Error(error.message);
+  finalizeWorkflowAction(requestId, formData);
+}
+
+export async function markEligibilityPassedForMeterAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  if (requestError || !request) throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  if ((request.request_type as RequestType) !== 'METER_30_100_1P' || request.status !== 'WAIT_ELIGIBILITY_REVIEW') throw new Error('บันทึกผลตรวจสอบสิทธิ์ได้เฉพาะงานขอมิเตอร์ที่อยู่ขั้นตรวจสอบสิทธิ์');
   const { error } = await supabase.from('service_requests').update({ status: 'WAIT_AONANG_MANAGER_FINAL_APPROVAL', updated_at: nowIso }).eq('id', requestId);
+  if (error) throw new Error(error.message);
+  finalizeWorkflowAction(requestId, formData);
+}
+
+export async function markEligibilityFailedForMeterAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  if (requestError || !request) throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  if ((request.request_type as RequestType) !== 'METER_30_100_1P' || request.status !== 'WAIT_ELIGIBILITY_REVIEW') throw new Error('บันทึกผลตรวจสอบสิทธิ์ได้เฉพาะงานขอมิเตอร์ที่อยู่ขั้นตรวจสอบสิทธิ์');
+  const { error } = await supabase.from('service_requests').update({ status: 'WAIT_BILLING', updated_at: nowIso }).eq('id', requestId);
   if (error) throw new Error(error.message);
   finalizeWorkflowAction(requestId, formData);
 }
@@ -1793,8 +1817,14 @@ export async function moveToFinalManagerApprovalAction(formData: FormData) {
   const nowIso = new Date().toISOString();
   const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type,invoice_signed_at,paid_at').eq('id', requestId).single();
   if (requestError || !request) throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
-  if ((request.request_type as RequestType) !== 'METER_30_100_1P' || request.status !== 'WAIT_ACTION_CONFIRMATION') throw new Error('ส่งให้ผู้จัดการอนุมัติรอบสุดท้ายได้เฉพาะงานขอมิเตอร์ที่รอเซ็น/ชำระเงิน');
-  if (!canMoveToManagerReview(request)) throw new Error('ยังส่งอนุมัติรอบสุดท้ายไม่ได้ เพราะยังไม่ครบเงื่อนไขเซ็นใบแจ้งหนี้และชำระเงิน');
+  if ((request.request_type as RequestType) === 'METER_30_100_1P') {
+    if (request.status !== 'WAIT_PAYMENT') throw new Error('ส่งให้ผู้จัดการอนุมัติรอบสุดท้ายได้เฉพาะงานขอมิเตอร์ที่รอชำระเงิน');
+    if (!request.paid_at) throw new Error('ยังส่งอนุมัติรอบสุดท้ายไม่ได้ เพราะยังไม่บันทึกการชำระเงิน');
+  } else if (request.status !== 'WAIT_ACTION_CONFIRMATION') {
+    throw new Error('ส่งให้ผู้จัดการอนุมัติรอบสุดท้ายได้เฉพาะงานขอมิเตอร์ที่รอเซ็น/ชำระเงิน');
+  } else if (!canMoveToManagerReview(request)) {
+    throw new Error('ยังส่งอนุมัติรอบสุดท้ายไม่ได้ เพราะยังไม่ครบเงื่อนไขเซ็นใบแจ้งหนี้และชำระเงิน');
+  }
   const { error } = await supabase.from('service_requests').update({ status: 'WAIT_AONANG_MANAGER_FINAL_APPROVAL', updated_at: nowIso }).eq('id', requestId);
   if (error) throw new Error(error.message);
   finalizeWorkflowAction(requestId, formData);
@@ -1887,7 +1917,7 @@ export async function confirmPaymentReceivedAction(formData: FormData) {
 
   assertMeterLoopAllowed(request.request_type as RequestType);
 
-  if (request.status !== 'WAIT_ACTION_CONFIRMATION') {
+  if (request.status !== 'WAIT_ACTION_CONFIRMATION' && request.status !== 'WAIT_PAYMENT') {
     throw new Error('ยืนยันชำระเงินได้เฉพาะงานที่อยู่ช่วงรอชำระเงินหลังแจ้งหนี้');
   }
 
@@ -1895,7 +1925,10 @@ export async function confirmPaymentReceivedAction(formData: FormData) {
     throw new Error('มีการบันทึกการชำระเงินแล้ว');
   }
 
-  const resolvedStatus = resolveMeterPostBillingStatus(request.request_type as RequestType, request.invoice_signed_at, nowIso);
+  const resolvedStatus =
+    (request.request_type as RequestType) === 'METER_30_100_1P'
+      ? 'WAIT_PAYMENT'
+      : resolveMeterPostBillingStatus(request.request_type as RequestType, request.invoice_signed_at, nowIso);
 
   const { error } = await supabase
     .from('service_requests')
