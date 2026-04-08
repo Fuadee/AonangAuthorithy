@@ -26,7 +26,7 @@ export default async function ManagerPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold">{REQUEST_QUEUE_GROUP_META.MANAGER.label}</h2>
-        <p className="mt-1 text-sm text-slate-500">แสดงงานที่รอผู้จัดการตรวจเพื่ออนุมัติ</p>
+        <p className="mt-1 text-sm text-slate-500">แสดงงานที่รอผู้จัดการตรวจเพื่ออนุมัติจ่ายมิเตอร์</p>
       </div>
 
       <ManagerRequestsPanel requests={typedRequests} />
