@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useMemo, useState } from 'react';
 import { DashboardSummary } from '@/components/dashboard-summary';
 import { RequestTable } from '@/components/request-table';
@@ -9,6 +10,7 @@ import {
   getDashboardQueueGroups,
   getRequestQueueGroup,
   REQUEST_QUEUE_GROUP_META,
+  REQUEST_TYPES,
   RequestQueueGroup,
   RequestType,
   ServiceRequest
@@ -20,6 +22,7 @@ type QueueFilter = 'ALL' | RequestQueueGroup;
 type DashboardRequestsPanelProps = {
   requests: ServiceRequest[];
   defaultQueue?: string | null;
+  defaultType?: string | null;
 };
 
 type FilterChipProps = {
@@ -58,7 +61,8 @@ function resolveFilterLabel(value: string, label: string | null | undefined): st
 const FILTER_OPTIONS: Array<FilterGroupOption<RequestTypeFilter>> = [
   { value: 'ALL', label: 'ทั้งหมด' },
   { value: 'METER', label: 'ขอมิเตอร์' },
-  { value: 'EXPANSION', label: 'ขยายเขต' }
+  { value: 'EXPANSION', label: 'ขยายเขต' },
+  { value: 'METER_TO_3PHASE', label: 'เพิ่มเป็นมิเตอร์ 3 เฟส' }
 ];
 
 const STATUS_STYLES = {
@@ -133,8 +137,14 @@ function FilterGroup<T extends string>({ label, options, activeValue, onChange }
   );
 }
 
-export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequestsPanelProps) {
-  const [activeFilter, setActiveFilter] = useState<RequestTypeFilter>('ALL');
+export function DashboardRequestsPanel({ requests, defaultQueue, defaultType }: DashboardRequestsPanelProps) {
+  const router = useRouter();
+  const pathname = usePathname();
+  const searchParams = useSearchParams();
+  const currentQuery = searchParams.toString();
+  const defaultTypeFilter: RequestTypeFilter =
+    defaultType && REQUEST_TYPES.includes(defaultType as RequestType) ? (defaultType as RequestType) : 'ALL';
+  const [activeFilter, setActiveFilter] = useState<RequestTypeFilter>(defaultTypeFilter);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
   const [serverFilteredRequests, setServerFilteredRequests] = useState<ServiceRequest[] | null>(null);
@@ -145,6 +155,26 @@ export function DashboardRequestsPanel({ requests, defaultQueue }: DashboardRequ
       ? (defaultQueue as RequestQueueGroup)
       : 'ALL';
   const [queueFilter, setQueueFilter] = useState<QueueFilter>(defaultQueueFilter);
+
+  useEffect(() => {
+    const params = new URLSearchParams(currentQuery);
+    if (activeFilter === 'ALL') {
+      params.delete('type');
+    } else {
+      params.set('type', activeFilter);
+    }
+    if (queueFilter === 'ALL') {
+      params.delete('queue');
+    } else {
+      params.set('queue', queueFilter);
+    }
+    const nextQuery = params.toString();
+    if (nextQuery === currentQuery) {
+      return;
+    }
+    const nextUrl = nextQuery ? `${pathname}?${nextQuery}` : pathname;
+    router.replace(nextUrl, { scroll: false });
+  }, [activeFilter, currentQuery, pathname, queueFilter, router]);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
