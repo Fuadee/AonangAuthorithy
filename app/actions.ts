@@ -134,6 +134,10 @@ export async function createRequestAction(formData: FormData) {
   const requestType = requiredField(formData, 'request_type');
   const assignedSurveyor = optionalField(formData, 'assigned_surveyor');
   const scheduledSurveyDate = requiredField(formData, 'scheduled_survey_date');
+  const houseNumber = optionalField(formData, 'house_number');
+  const villageNo = optionalField(formData, 'village_no');
+  const road = optionalField(formData, 'road');
+  const landmark = optionalField(formData, 'landmark');
   const latitude = parseOptionalCoordinate(formData, 'latitude');
   const longitude = parseOptionalCoordinate(formData, 'longitude');
   const locationNote = optionalField(formData, 'location_note');
@@ -154,8 +158,10 @@ export async function createRequestAction(formData: FormData) {
     throw new Error('กรุณาระบุพิกัด latitude และ longitude ให้ครบทั้งคู่');
   }
 
-  if (latitude === null || longitude === null) {
-    throw new Error('กรุณาปักหมุดตำแหน่งก่อนบันทึกคำร้อง');
+  const hasFlexibleAddress = [houseNumber, villageNo, road, landmark].some((value) => !!value);
+  const hasMapPin = latitude !== null && longitude !== null;
+  if (!hasFlexibleAddress && !hasMapPin) {
+    throw new Error('กรุณาระบุข้อมูลตำแหน่งอย่างน้อย 1 รายการ');
   }
 
   if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
@@ -216,6 +222,10 @@ export async function createRequestAction(formData: FormData) {
     survey_date_current: scheduledSurveyDate,
     status: initialStatus,
     request_type: requestType,
+    house_number: houseNumber,
+    village_no: villageNo,
+    road,
+    landmark,
     latitude,
     longitude,
     location_note: locationNote,
