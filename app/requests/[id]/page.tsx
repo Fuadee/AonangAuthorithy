@@ -67,6 +67,9 @@ function getRequestTypeBadgeClass(requestType: RequestType): string {
   if (normalizedRequestType === 'METER_30_100_1P') {
     return 'border-sky-200 bg-sky-50 text-sky-700';
   }
+  if (normalizedRequestType === 'METER_30_100_3P') {
+    return 'border-indigo-200 bg-indigo-50 text-indigo-700';
+  }
   if (normalizedRequestType === 'METER_TO_3PHASE') {
     return 'border-violet-200 bg-violet-50 text-violet-700';
   }
@@ -83,7 +86,7 @@ function getNextStepSummary(
 ): { nextStep: string; owner: string } {
   const normalizedStatus = normalizeSurveyWorkflowStatus(status);
 
-  if (requestType === 'METER_30_100_1P') {
+  if (requestType === 'METER_30_100_1P' || requestType === 'METER_30_100_3P') {
     switch (normalizedStatus) {
       case 'WAIT_DOCUMENT_REVIEW':
         return {
@@ -101,6 +104,13 @@ function getNextStepSummary(
           owner: 'นักสำรวจ'
         };
       case 'IN_SURVEY':
+      case 'CHECK_3PHASE_CAPABILITY':
+        if (requestType === 'METER_30_100_3P' && threePhaseCapabilityResult !== 'SUPPORTED') {
+          return {
+            nextStep: 'ตรวจว่า “ระบบรองรับ 3 เฟส” ก่อน แล้วจึงเลือกผลสำรวจผ่าน/ไม่ผ่านต่อทันที',
+            owner: 'นักสำรวจ'
+          };
+        }
         return {
           nextStep: 'เลือกผลสำรวจว่า “ผ่าน” หรือ “ไม่ผ่านและรอผู้ใช้ไฟแก้ไข”',
           owner: 'นักสำรวจ'
@@ -752,7 +762,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         </section>
       ) : null}
 
-      {['METER', 'METER_30_100_1P'].includes(requestType) ? (
+      {['METER', 'METER_30_100_1P', 'METER_30_100_3P'].includes(requestType) ? (
         <section className="card p-6">
           <h3 className="text-lg font-semibold">ข้อมูลนัดสำรวจ</h3>
           <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -795,7 +805,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         </section>
       ) : null}
 
-      {['METER', 'METER_30_100_1P'].includes(requestType) ? (
+      {['METER', 'METER_30_100_1P', 'METER_30_100_3P'].includes(requestType) ? (
         <section className="card p-6">
           <h3 className="text-lg font-semibold">สรุปผลหลังสำรวจ</h3>
           <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -833,7 +843,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         </section>
       ) : null}
 
-      {['METER', 'METER_30_100_1P'].includes(requestType) ? (
+      {['METER', 'METER_30_100_1P', 'METER_30_100_3P'].includes(requestType) ? (
         <section className="card p-6">
           <h3 className="text-lg font-semibold">สรุปสถานะเอกสารหลังสำรวจ</h3>
           <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
@@ -860,7 +870,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
         </section>
       ) : null}
 
-      {['METER', 'METER_30_100_1P'].includes(requestType) ? (
+      {['METER', 'METER_30_100_1P', 'METER_30_100_3P'].includes(requestType) ? (
         <section className="card p-6">
           <h3 className="text-lg font-semibold">ข้อมูลใบแจ้งหนี้งานขอมิเตอร์</h3>
           <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">

@@ -62,6 +62,7 @@ const FILTER_OPTIONS: Array<FilterGroupOption<RequestTypeFilter>> = [
   { value: 'ALL', label: 'ทั้งหมด' },
   { value: 'METER', label: 'ขอมิเตอร์' },
   { value: 'METER_30_100_1P', label: 'ขอมิเตอร์ 30/100 (1 เฟส)' },
+  { value: 'METER_30_100_3P', label: 'ขอมิเตอร์ 30/100 (3 เฟส)' },
   { value: 'EXPANSION', label: 'ขยายเขต' },
   { value: 'METER_TO_3PHASE', label: 'เพิ่มเป็นมิเตอร์ 3 เฟส' }
 ];
