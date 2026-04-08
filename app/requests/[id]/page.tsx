@@ -26,7 +26,6 @@ import {
   RequestStatus,
   RequestType
 } from '@/lib/requests/types';
-import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { buildFullAddress } from '@/lib/requests/address';
 import { formatDateOnly, formatThaiDateTime, formatThaiTimelineDate, safeParseDate } from '@/lib/datetime';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -56,16 +55,6 @@ function formatDateTime(value: string | null): string {
 function resolveTimelineSortAt(value: string): number {
   const parsed = safeParseDate(value);
   return parsed ? parsed.getTime() : 0;
-}
-
-function getRequestTypeBadgeClass(requestType: RequestType): string {
-  if (requestType === 'METER') {
-    return 'border-sky-200 bg-sky-50 text-sky-700';
-  }
-  if (requestType === 'EXPANSION') {
-    return 'border-emerald-200 bg-emerald-50 text-emerald-700';
-  }
-  return 'border-slate-200 bg-slate-100 text-slate-700';
 }
 
 function getNextStepSummary(status: RequestStatus, requestType: RequestType): { nextStep: string; owner: string } {
@@ -544,15 +533,11 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
+      <div className="flex items-start justify-between gap-4">
         <div>
           <p className="text-sm text-slate-500">รายละเอียดคำร้อง</p>
-          <div className="mt-1 flex flex-wrap items-center gap-2">
-            <h2 className="text-2xl font-semibold text-slate-900">{requestTypeLabel}</h2>
-            <span className={`inline-flex items-center rounded-full border px-2.5 py-1 text-xs font-semibold ${getRequestTypeBadgeClass(requestType)}`}>
-              {request.request_no}
-            </span>
-          </div>
+          <h2 className="mt-1 text-3xl font-bold tracking-tight text-slate-900">{requestTypeLabel}</h2>
+          <p className="mt-1 text-sm font-medium text-slate-500">{request.request_no}</p>
         </div>
         <Link className="btn-secondary" href="/dashboard">
           กลับไป Dashboard
@@ -561,7 +546,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
 
       <section className="card p-6">
         <h3 className="text-lg font-semibold">ข้อมูลผู้ยื่นคำร้อง</h3>
-        <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+        <dl className="mt-4 grid gap-4 sm:grid-cols-2">
           <div>
             <dt className="text-sm text-slate-500">ชื่อลูกค้า</dt>
             <dd className="mt-1 font-medium">{request.customer_name}</dd>
@@ -571,10 +556,6 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
             <dd className="mt-1">
               <RequestPhoneAction phone={request.phone} />
             </dd>
-          </div>
-          <div>
-            <dt className="text-sm text-slate-500">พื้นที่ (ตำบล)</dt>
-            <dd className="mt-1 truncate font-medium" title={resolveAreaDisplayName(request.area_name)}>{resolveAreaDisplayName(request.area_name)}</dd>
           </div>
           <div className="sm:col-span-2">
             <dt className="text-sm text-slate-500">ที่อยู่</dt>
