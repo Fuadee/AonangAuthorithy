@@ -20,7 +20,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
     if (request.status === 'WAIT_AONANG_MANAGER_FINAL_APPROVAL') {
       return {
         action: approveAonangManagerFinalAction,
-        label: 'อนุมัติปิดงาน'
+        label: 'อนุมัติ'
       };
     }
 
