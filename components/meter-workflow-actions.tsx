@@ -15,6 +15,7 @@ type MeterWorkflowActionsProps = {
   isInvoiceSigned: boolean;
   isPaid: boolean;
   isDocumentReady: boolean;
+  threePhaseCapabilityResult: 'SUPPORTED' | 'UNSUPPORTED' | null;
 };
 
 export function MeterWorkflowActions({
@@ -26,7 +27,8 @@ export function MeterWorkflowActions({
   surveyDateCurrent,
   isInvoiceSigned,
   isPaid,
-  isDocumentReady
+  isDocumentReady,
+  threePhaseCapabilityResult
 }: MeterWorkflowActionsProps) {
   const resolvedActions = getWorkflowActionsForRequest({
     status: currentStatus,
@@ -36,7 +38,8 @@ export function MeterWorkflowActions({
     survey_date_current: surveyDateCurrent,
     invoice_signed_at: isInvoiceSigned ? 'signed' : null,
     paid_at: isPaid ? 'paid' : null,
-    is_document_ready: isDocumentReady
+    is_document_ready: isDocumentReady,
+    three_phase_capability_result: threePhaseCapabilityResult
   });
 
   if (

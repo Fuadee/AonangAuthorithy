@@ -147,8 +147,15 @@ function toAction(
 export function getAvailableRequestActions(
   request: Pick<
     ServiceRequest,
-    'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at' | 'is_document_ready'
-  >
+    | 'status'
+    | 'request_type'
+    | 'fix_verification_mode'
+    | 'scheduled_survey_date'
+    | 'survey_date_current'
+    | 'invoice_signed_at'
+    | 'paid_at'
+    | 'is_document_ready'
+  > & { three_phase_capability_result?: ServiceRequest['three_phase_capability_result'] }
 ): AvailableRequestAction[] {
   const status = request.status;
 
@@ -187,42 +194,29 @@ export function getAvailableRequestActions(
   }
 
   if (status === 'IN_SURVEY') {
-    if (request.request_type === 'METER' && canMarkSurveyPassed({ status, request_type: request.request_type })) {
-      return [
-        toAction('SURVEY_PASS', { variant: 'primary', requiresConfirmation: 'ยืนยันผลสำรวจผ่าน?' }),
-        toAction('SURVEY_FAIL', { variant: 'secondary', intent: 'warning', handlerType: 'survey_fail_dialog' })
-      ];
-    }
-
-
-    if (request.request_type === 'METER_TO_3PHASE' && canEvaluateThreePhaseCapability({ status, request_type: request.request_type })) {
+    if (
+      request.request_type === 'METER_TO_3PHASE' &&
+      canEvaluateThreePhaseCapability({
+        status,
+        request_type: request.request_type,
+        three_phase_capability_result: request.three_phase_capability_result ?? null
+      })
+    ) {
       return [
         toAction('THREE_PHASE_CAPABLE', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าระบบรองรับ 3 เฟส?' }),
         toAction('THREE_PHASE_NEEDS_EXPANSION', { variant: 'secondary', intent: 'warning', requiresConfirmation: 'ยืนยันส่งต่องานเดิมเข้าสู่ flow ขยายเขตที่ WAIT_LAYOUT_DRAWING?' })
       ];
     }
 
+    if (canMarkSurveyPassed({ status, request_type: request.request_type })) {
+      return [
+        toAction('SURVEY_PASS', { variant: 'primary', requiresConfirmation: 'ยืนยันผลสำรวจผ่าน?' }),
+        toAction('SURVEY_FAIL', { variant: 'secondary', intent: 'warning', handlerType: 'survey_fail_dialog' })
+      ];
+    }
+
     return [toAction('COMPLETE_SURVEY', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าการสำรวจเสร็จสิ้นแล้ว?' })];
   }
-
-  if (status === 'WAIT_CUSTOMER_FIX' && request.request_type === 'METER') {
-    return [
-      toAction('REPORT_CUSTOMER_FIX', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าลูกค้าแจ้งแก้ไขแล้ว?' }),
-      toAction('SCHEDULE_RESURVEY', { variant: 'secondary', requiresConfirmation: 'นัดตรวจซ้ำทันทีใช่หรือไม่?' })
-    ];
-  }
-
-  if (status === 'WAIT_FIX_REVIEW' && request.request_type === 'METER') {
-    return [toAction('PHOTO_APPROVE', { variant: 'primary' }), toAction('PHOTO_REJECT_TO_RESURVEY', { variant: 'secondary' })].filter(
-      (action) => action.key !== 'PHOTO_APPROVE' || canApproveFixFromPhoto({ status, fix_verification_mode: request.fix_verification_mode })
-    );
-  }
-
-  if (status === 'WAIT_MANAGER_REVIEW' && request.request_type === 'METER' && canMoveToManagerReview(request)) {
-    return [toAction('MANAGER_APPROVE', { variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติปิดงาน?' })];
-  }
-
-
 
   if (request.request_type === 'METER_TO_3PHASE' && status === 'CHECK_3PHASE_CAPABILITY') {
     return [
@@ -231,24 +225,21 @@ export function getAvailableRequestActions(
     ];
   }
 
-  if (request.request_type === 'METER_TO_3PHASE' && status === 'DESIGN_AND_ESTIMATE') {
-    return [toAction('COMPLETE_DESIGN_ESTIMATE', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าออกแบบและประเมินเรียบร้อยแล้ว?' })];
+  if (status === 'WAIT_CUSTOMER_FIX' && ['METER', 'METER_TO_3PHASE'].includes(request.request_type)) {
+    return [
+      toAction('REPORT_CUSTOMER_FIX', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าลูกค้าแจ้งแก้ไขแล้ว?' }),
+      toAction('SCHEDULE_RESURVEY', { variant: 'secondary', requiresConfirmation: 'นัดตรวจซ้ำทันทีใช่หรือไม่?' })
+    ];
   }
 
-  if (request.request_type === 'METER_TO_3PHASE' && status === 'WAIT_BILLING') {
-    return [toAction('ISSUE_3PHASE_BILL', { variant: 'primary' })];
+  if (status === 'WAIT_FIX_REVIEW' && ['METER', 'METER_TO_3PHASE'].includes(request.request_type)) {
+    return [toAction('PHOTO_APPROVE', { variant: 'primary' }), toAction('PHOTO_REJECT_TO_RESURVEY', { variant: 'secondary' })].filter(
+      (action) => action.key !== 'PHOTO_APPROVE' || canApproveFixFromPhoto({ status, fix_verification_mode: request.fix_verification_mode })
+    );
   }
 
-  if (request.request_type === 'METER_TO_3PHASE' && status === 'WAIT_PAYMENT') {
-    return [toAction('CONFIRM_3PHASE_PAYMENT', { variant: 'primary' })];
-  }
-
-  if (request.request_type === 'METER_TO_3PHASE' && status === 'INSTALLATION') {
-    return [toAction('COMPLETE_INSTALLATION', { variant: 'primary' })];
-  }
-
-  if (request.request_type === 'METER_TO_3PHASE' && status === 'INSPECTION') {
-    return [toAction('COMPLETE_INSPECTION', { variant: 'primary' })];
+  if (status === 'WAIT_MANAGER_REVIEW' && ['METER', 'METER_TO_3PHASE'].includes(request.request_type) && canMoveToManagerReview(request)) {
+    return [toAction('MANAGER_APPROVE', { variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติปิดงาน?' })];
   }
 
   if (request.request_type === 'EXPANSION' && ['SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING'].includes(status)) {
@@ -288,8 +279,15 @@ export function getAvailableRequestActions(
 export function getQueueWorkflowActions(
   request: Pick<
     ServiceRequest,
-    'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at' | 'is_document_ready'
-  >
+    | 'status'
+    | 'request_type'
+    | 'fix_verification_mode'
+    | 'scheduled_survey_date'
+    | 'survey_date_current'
+    | 'invoice_signed_at'
+    | 'paid_at'
+    | 'is_document_ready'
+  > & { three_phase_capability_result?: ServiceRequest['three_phase_capability_result'] }
 ): QueueWorkflowAction[] {
   return dedupeWorkflowActions(getAvailableRequestActions(request));
 }
@@ -297,8 +295,15 @@ export function getQueueWorkflowActions(
 export function getWorkflowActionsForRequest(
   request: Pick<
     ServiceRequest,
-    'status' | 'request_type' | 'fix_verification_mode' | 'scheduled_survey_date' | 'survey_date_current' | 'invoice_signed_at' | 'paid_at' | 'is_document_ready'
-  >
+    | 'status'
+    | 'request_type'
+    | 'fix_verification_mode'
+    | 'scheduled_survey_date'
+    | 'survey_date_current'
+    | 'invoice_signed_at'
+    | 'paid_at'
+    | 'is_document_ready'
+  > & { three_phase_capability_result?: ServiceRequest['three_phase_capability_result'] }
 ): AvailableRequestAction[] {
   return dedupeWorkflowActions(getAvailableRequestActions(request));
 }

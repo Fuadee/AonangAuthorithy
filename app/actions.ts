@@ -78,8 +78,8 @@ function isValidRequestStatus(status: string): status is RequestStatus {
 
 
 function assertMeterLoopAllowed(requestType: RequestType): void {
-  if (requestType !== 'METER') {
-    throw new Error('รองรับ workflow ออกใบแจ้งหนี้เฉพาะคำร้องขอมิเตอร์เท่านั้น');
+  if (!['METER', 'METER_TO_3PHASE'].includes(requestType)) {
+    throw new Error('รองรับ workflow ออกใบแจ้งหนี้เฉพาะคำร้องขอมิเตอร์และงานเพิ่มเป็นมิเตอร์ 3 เฟสเท่านั้น');
   }
 }
 
@@ -119,12 +119,7 @@ const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>
   WAITING_TO_SEND_TO_KRABI: ['SENT_TO_KRABI'],
   SENT_TO_KRABI: ['WAIT_KRABI_DOCUMENT_CHECK'],
   WAIT_KRABI_DOCUMENT_CHECK: ['KRABI_IN_PROGRESS', 'KRABI_NEEDS_DOCUMENT_FIX'],
-  CHECK_3PHASE_CAPABILITY: ['DESIGN_AND_ESTIMATE', 'WAIT_LAYOUT_DRAWING'],
-  DESIGN_AND_ESTIMATE: ['WAIT_BILLING'],
   WAIT_BILLING: ['WAIT_ACTION_CONFIRMATION', 'WAIT_PAYMENT'],
-  WAIT_PAYMENT: ['INSTALLATION'],
-  INSTALLATION: ['INSPECTION'],
-  INSPECTION: ['COMPLETED'],
   KRABI_NEEDS_DOCUMENT_FIX: ['WAITING_TO_SEND_TO_KRABI'],
   KRABI_IN_PROGRESS: ['KRABI_ESTIMATION_COMPLETED'],
   KRABI_ESTIMATION_COMPLETED: ['BILL_ISSUED'],
@@ -803,7 +798,11 @@ export async function markKrabiInProgressAction(formData: FormData) {
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,three_phase_capability_result')
+    .eq('id', requestId)
+    .single();
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
@@ -837,7 +836,11 @@ export async function markKrabiNeedsDocumentFixAction(formData: FormData) {
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,three_phase_capability_result')
+    .eq('id', requestId)
+    .single();
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
@@ -870,7 +873,11 @@ export async function markKrabiDocumentFixCompletedAction(formData: FormData) {
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,three_phase_capability_result')
+    .eq('id', requestId)
+    .single();
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
@@ -908,7 +915,11 @@ export async function markKrabiEstimationCompletedAction(formData: FormData) {
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,three_phase_capability_result')
+    .eq('id', requestId)
+    .single();
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
@@ -934,7 +945,11 @@ export async function markExpansionBillIssuedAction(formData: FormData) {
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,three_phase_capability_result')
+    .eq('id', requestId)
+    .single();
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
@@ -960,7 +975,11 @@ export async function markCoordinatedWithConstructionAction(formData: FormData) 
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,three_phase_capability_result')
+    .eq('id', requestId)
+    .single();
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
@@ -988,22 +1007,35 @@ export async function markThreePhaseCapabilitySupportedAction(formData: FormData
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,three_phase_capability_result,survey_note')
+    .eq('id', requestId)
+    .single();
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
-  if (!canEvaluateThreePhaseCapability({ status: request.status as RequestStatus, request_type: request.request_type as RequestType })) {
+  if (
+    !canEvaluateThreePhaseCapability({
+      status: request.status as RequestStatus,
+      request_type: request.request_type as RequestType,
+      three_phase_capability_result: request.three_phase_capability_result
+    })
+  ) {
     throw new Error('ยืนยันความพร้อมระบบ 3 เฟสได้เฉพาะงานเพิ่มเป็นมิเตอร์ 3 เฟสที่กำลังสำรวจอยู่');
   }
+
+  const capabilityNote = 'ตรวจสอบแล้วระบบรองรับ 3 เฟส';
+  const mergedSurveyNote = [request.survey_note, surveyNote, capabilityNote].filter(Boolean).join('\n');
 
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: 'DESIGN_AND_ESTIMATE',
-      survey_result: 'PASS',
-      survey_note: surveyNote,
-      survey_completed_at: nowIso,
+      status: 'IN_SURVEY',
+      three_phase_capability_result: 'SUPPORTED',
+      three_phase_capability_checked_at: nowIso,
+      survey_note: mergedSurveyNote || null,
       updated_at: nowIso
     })
     .eq('id', requestId);
@@ -1020,12 +1052,16 @@ export async function forwardThreePhaseToExpansionAction(formData: FormData) {
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type,survey_note').eq('id', requestId).single();
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,survey_note,three_phase_capability_result')
+    .eq('id', requestId)
+    .single();
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
-  if ((request.request_type as RequestType) !== 'METER_TO_3PHASE' || request.status !== 'IN_SURVEY') {
+  if ((request.request_type as RequestType) !== 'METER_TO_3PHASE' || request.status !== 'IN_SURVEY' || request.three_phase_capability_result === 'SUPPORTED') {
     throw new Error('ส่งต่อไปงานขยายเขตได้เฉพาะงานเพิ่มเป็นมิเตอร์ 3 เฟสที่อยู่ขั้นกำลังสำรวจ');
   }
 
@@ -1039,6 +1075,8 @@ ${timelineNote}` : timelineNote;
       status: 'WAIT_LAYOUT_DRAWING',
       survey_result: 'FAIL',
       survey_completed_at: nowIso,
+      three_phase_capability_result: 'UNSUPPORTED',
+      three_phase_capability_checked_at: nowIso,
       forwarded_to_expansion_at: nowIso,
       forwarded_to_expansion_note: timelineNote,
       survey_note: mergedNote,
@@ -1128,14 +1166,21 @@ export async function markSurveyPassedAction(formData: FormData) {
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,three_phase_capability_result')
+    .eq('id', requestId)
+    .single();
 
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
   if (!canMarkSurveyPassed({ status: request.status as RequestStatus, request_type: request.request_type as RequestType })) {
-    throw new Error('ยืนยันสำรวจผ่านได้เฉพาะงานขอมิเตอร์ที่กำลังสำรวจอยู่');
+    throw new Error('ยืนยันสำรวจผ่านได้เฉพาะงานขอมิเตอร์/เพิ่มเป็นมิเตอร์ 3 เฟส ที่กำลังสำรวจอยู่');
+  }
+  if ((request.request_type as RequestType) === 'METER_TO_3PHASE' && request.three_phase_capability_result !== 'SUPPORTED') {
+    throw new Error('ต้องยืนยันว่าระบบรองรับ 3 เฟสก่อน จึงจะสรุปผลสำรวจผ่าน/ไม่ผ่านได้');
   }
 
   const { error } = await supabase
@@ -1172,14 +1217,21 @@ export async function markSurveyFailedAction(formData: FormData) {
     throw new Error('รูปแบบการตรวจหลังแก้ไขไม่ถูกต้อง');
   }
 
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,request_type,three_phase_capability_result')
+    .eq('id', requestId)
+    .single();
 
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
   if (!canMarkSurveyFailed({ status: request.status as RequestStatus, request_type: request.request_type as RequestType })) {
-    throw new Error('บันทึกผลสำรวจไม่ผ่านได้เฉพาะงานขอมิเตอร์ที่กำลังสำรวจอยู่');
+    throw new Error('บันทึกผลสำรวจไม่ผ่านได้เฉพาะงานขอมิเตอร์/เพิ่มเป็นมิเตอร์ 3 เฟส ที่กำลังสำรวจอยู่');
+  }
+  if ((request.request_type as RequestType) === 'METER_TO_3PHASE' && request.three_phase_capability_result !== 'SUPPORTED') {
+    throw new Error('ต้องยืนยันว่าระบบรองรับ 3 เฟสก่อน จึงจะสรุปผลสำรวจผ่าน/ไม่ผ่านได้');
   }
 
   const { error } = await supabase
@@ -1223,8 +1275,8 @@ export async function reportCustomerFixAction(formData: FormData) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
-  if ((request.request_type as RequestType) !== 'METER') {
-    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์');
+  if (!['METER', 'METER_TO_3PHASE'].includes(request.request_type as RequestType)) {
+    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์และงานเพิ่มเป็นมิเตอร์ 3 เฟส');
   }
 
   if (request.status !== 'WAIT_CUSTOMER_FIX') {
@@ -1261,8 +1313,8 @@ export async function moveToResurveyAction(formData: FormData) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
-  if ((request.request_type as RequestType) !== 'METER') {
-    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์');
+  if (!['METER', 'METER_TO_3PHASE'].includes(request.request_type as RequestType)) {
+    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์และงานเพิ่มเป็นมิเตอร์ 3 เฟส');
   }
 
   if (!['WAIT_CUSTOMER_FIX', 'WAIT_FIX_REVIEW'].includes(request.status)) {
@@ -1292,8 +1344,8 @@ export async function approveFixFromPhotoAction(formData: FormData) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
-  if ((request.request_type as RequestType) !== 'METER') {
-    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์');
+  if (!['METER', 'METER_TO_3PHASE'].includes(request.request_type as RequestType)) {
+    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์และงานเพิ่มเป็นมิเตอร์ 3 เฟส');
   }
 
   if (!canApproveFixFromPhoto({ status: request.status as RequestStatus, fix_verification_mode: request.fix_verification_mode })) {
@@ -1331,8 +1383,8 @@ export async function rejectFixPhotoAndRequireResurveyAction(formData: FormData)
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
-  if ((request.request_type as RequestType) !== 'METER') {
-    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์');
+  if (!['METER', 'METER_TO_3PHASE'].includes(request.request_type as RequestType)) {
+    throw new Error('action นี้รองรับเฉพาะงานขอมิเตอร์และงานเพิ่มเป็นมิเตอร์ 3 เฟส');
   }
 
   if (request.status !== 'WAIT_FIX_REVIEW') {
