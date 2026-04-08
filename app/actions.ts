@@ -164,8 +164,10 @@ export async function createRequestAction(formData: FormData) {
     throw new Error('กรุณาระบุข้อมูลตำแหน่งอย่างน้อย 1 รายการ');
   }
 
-  if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
-    throw new Error('ค่าพิกัดไม่ถูกต้อง');
+  if (latitude !== null && longitude !== null) {
+    if (latitude < -90 || latitude > 90 || longitude < -180 || longitude > 180) {
+      throw new Error('ค่าพิกัดไม่ถูกต้อง');
+    }
   }
 
   const supabase = createServerSupabaseClient();
