@@ -1695,6 +1695,7 @@ export async function approveAonangManagerPreKrabiAction(formData: FormData) {
   const nowIso = new Date().toISOString();
   const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
   if (requestError || !request) throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  console.info('[manager-action] approveAonangManagerPreKrabiAction', { requestId, currentStatus: request.status, requestType: request.request_type });
   if ((request.request_type as RequestType) !== 'METER_30_100_1P' || request.status !== 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL') throw new Error('อนุมัติก่อนส่งกระบี่ได้เฉพาะงานขอมิเตอร์ 30/100 1 เฟส ที่รอผู้จัดการอ่าวนาง');
   const { error } = await supabase.from('service_requests').update({ status: 'SENT_TO_KRABI', updated_at: nowIso }).eq('id', requestId);
   if (error) throw new Error(error.message);
@@ -1927,6 +1928,12 @@ export async function approveManagerReviewAction(formData: FormData) {
   if (requestError || !request) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
+
+  console.info('[manager-action] approveManagerReviewAction', {
+    requestId,
+    currentStatus: request.status,
+    requestType: request.request_type
+  });
 
   if (!isValidRequestStatus(request.status)) {
     throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
