@@ -9,6 +9,7 @@ import {
   approveManagerOverloadForwardAction,
   approveManagerReviewAction
 } from '@/app/actions';
+import { QueueFilterChips } from '@/components/queue/queue-filter-chips';
 import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
@@ -19,12 +20,12 @@ type ManagerRequestsPanelProps = {
   requests: ServiceRequest[];
 };
 
-const MANAGER_FILTERS: Array<{ key: 'ALL' | RequestStatus; label: string }> = [
-  { key: 'ALL', label: 'ทั้งหมด' },
-  { key: 'SURVEY_OVERLOAD_REPORTED', label: 'รออนุมัติบันทึกโหลดเกิน' },
-  { key: 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL', label: 'อนุมัติก่อนส่งกระบี่' },
-  { key: 'WAIT_AONANG_MANAGER_FINAL_APPROVAL', label: 'อนุมัติปิดงาน' },
-  { key: 'WAIT_MANAGER_REVIEW', label: 'รอผู้จัดการตรวจ' }
+const MANAGER_FILTERS: Array<{ value: 'ALL' | RequestStatus; label: string }> = [
+  { value: 'ALL', label: 'ทั้งหมด' },
+  { value: 'SURVEY_OVERLOAD_REPORTED', label: 'รออนุมัติบันทึกโหลดเกิน' },
+  { value: 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL', label: 'อนุมัติก่อนส่งกระบี่' },
+  { value: 'WAIT_AONANG_MANAGER_FINAL_APPROVAL', label: 'อนุมัติปิดงาน' },
+  { value: 'WAIT_MANAGER_REVIEW', label: 'รอผู้จัดการตรวจ' }
 ];
 
 export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
@@ -106,33 +107,20 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
 
   return (
     <section className="space-y-4">
-      <div className="grid gap-3 sm:grid-cols-2">
-        <article className="rounded-xl border border-slate-200 bg-white p-4">
-          <p className="text-sm text-slate-500">งานรอผู้จัดการทั้งหมด</p>
-          <p className="mt-1 text-2xl font-semibold text-slate-900">{summary.all}</p>
+      <div className="grid gap-4 sm:grid-cols-2">
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-medium text-slate-500">งานรอผู้จัดการทั้งหมด</p>
+          <p className="mt-2 text-3xl font-semibold text-brand-700">{summary.all}</p>
           <p className="text-xs text-slate-500">เจ้าของคิว: ผู้จัดการอ่าวนาง</p>
         </article>
-        <article className="rounded-xl border border-fuchsia-200 bg-fuchsia-50 p-4">
-          <p className="text-sm text-fuchsia-700">รออนุมัติบันทึกโหลดเกิน</p>
-          <p className="mt-1 text-2xl font-semibold text-fuchsia-900">{summary.overload}</p>
-          <p className="text-xs text-fuchsia-700">สถานะ: รออนุมัติบันทึกโหลดเกิน</p>
+        <article className="rounded-xl border border-slate-200 bg-white p-5 shadow-sm">
+          <p className="text-sm font-medium text-slate-500">รออนุมัติบันทึกโหลดเกิน</p>
+          <p className="mt-2 text-3xl font-semibold text-amber-700">{summary.overload}</p>
+          <p className="text-xs text-slate-500">สถานะ: รออนุมัติบันทึกโหลดเกิน</p>
         </article>
       </div>
 
-      <div className="flex flex-wrap gap-2">
-        {MANAGER_FILTERS.map((filter) => (
-          <button
-            key={filter.key}
-            className={`rounded-full border px-3 py-1.5 text-sm ${
-              activeFilter === filter.key ? 'border-indigo-600 bg-indigo-600 text-white' : 'border-slate-300 bg-white text-slate-700'
-            }`}
-            type="button"
-            onClick={() => setActiveFilter(filter.key)}
-          >
-            {filter.label}
-          </button>
-        ))}
-      </div>
+      <QueueFilterChips active={activeFilter} onChange={setActiveFilter} options={MANAGER_FILTERS} />
 
       <div className="card overflow-hidden">
         {actionError ? <p className="border-b border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{actionError}</p> : null}
