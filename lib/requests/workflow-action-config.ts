@@ -163,6 +163,34 @@ export type AvailableRequestAction = {
 
 export type QueueWorkflowAction = AvailableRequestAction;
 
+type WorkflowActionResolverRequest = Pick<
+  ServiceRequest,
+  | 'status'
+  | 'request_type'
+  | 'fix_verification_mode'
+  | 'scheduled_survey_date'
+  | 'survey_date_current'
+  | 'invoice_signed_at'
+  | 'paid_at'
+  | 'is_document_ready'
+> &
+  Partial<Pick<ServiceRequest, 'id' | 'flow_type' | 'three_phase_capability_result'>>;
+
+const DOCUMENT_WORKFLOW_DEBUG_STATUSES: RequestStatus[] = [
+  'WAIT_LAYOUT_DRAWING',
+  'WAITING_TO_SEND_TO_KRABI',
+  'SENT_TO_KRABI',
+  'WAIT_KRABI_DOCUMENT_CHECK',
+  'KRABI_NEEDS_DOCUMENT_FIX',
+  'KRABI_IN_PROGRESS',
+  'KRABI_ESTIMATION_COMPLETED',
+  'KRABI_NEEDS_CORRECTION',
+  'DOCUMENT_FIX',
+  'RESENT_TO_KRABI',
+  'KRABI_APPROVED',
+  'WAIT_RECEIVE_FROM_KRABI'
+];
+
 function dedupeWorkflowActions(actions: AvailableRequestAction[]): AvailableRequestAction[] {
   return Array.from(new Map(actions.map((action) => [action.key, action])).values());
 }
@@ -189,19 +217,10 @@ function toAction(
 }
 
 export function getAvailableRequestActions(
-  request: Pick<
-    ServiceRequest,
-    | 'status'
-    | 'request_type'
-    | 'fix_verification_mode'
-    | 'scheduled_survey_date'
-    | 'survey_date_current'
-    | 'invoice_signed_at'
-    | 'paid_at'
-    | 'is_document_ready'
-  > & { three_phase_capability_result?: ServiceRequest['three_phase_capability_result'] }
+  request: WorkflowActionResolverRequest
 ): AvailableRequestAction[] {
   const status = request.status;
+  const inExpansionWorkflow = shouldUseExpansionActionSet(request);
 
   if (status === 'WAIT_DOCUMENT_REVIEW') {
     return [
@@ -292,7 +311,38 @@ export function getAvailableRequestActions(
   }
 
 
-  if (['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type)) {
+  if (inExpansionWorkflow && ['SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING'].includes(status)) {
+    return [toAction('LAYOUT_DRAWING_DONE', { variant: 'primary', requiresConfirmation: 'ยืนยันวาดผังเสร็จแล้ว?' })];
+  }
+
+  if (inExpansionWorkflow && status === 'WAITING_TO_SEND_TO_KRABI') {
+    return [toAction('DISPATCHED_TO_KRABI', { variant: 'primary' })];
+  }
+
+  if (inExpansionWorkflow && ['SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK'].includes(status)) {
+    return [
+      toAction('KRABI_ACCEPT_AND_START', { variant: 'primary' }),
+      toAction('KRABI_RETURN_FOR_FIX', { variant: 'secondary', intent: 'warning' })
+    ];
+  }
+
+  if (inExpansionWorkflow && status === 'KRABI_NEEDS_DOCUMENT_FIX') {
+    return [toAction('KRABI_FIX_COMPLETED', { variant: 'primary' })];
+  }
+
+  if (inExpansionWorkflow && status === 'KRABI_IN_PROGRESS') {
+    return [toAction('KRABI_ESTIMATION_COMPLETED', { variant: 'primary' })];
+  }
+
+  if (inExpansionWorkflow && status === 'KRABI_ESTIMATION_COMPLETED') {
+    return [toAction('KRABI_BILL_ISSUED', { variant: 'primary' })];
+  }
+
+  if (inExpansionWorkflow && status === 'BILL_ISSUED') {
+    return [toAction('COORDINATED_WITH_CONSTRUCTION', { variant: 'primary' })];
+  }
+
+  if (!inExpansionWorkflow && ['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type)) {
     if (status === 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL') {
       return [toAction('APPROVE_PRE_KRABI', { variant: 'primary' })];
     }
@@ -357,68 +407,53 @@ export function getAvailableRequestActions(
     return [toAction('MANAGER_APPROVE_OVERLOAD_FORWARD', { variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติบันทึกให้กระบี่รับเรื่องปรับปรุงระบบจำหน่าย?' })];
   }
 
-  if (shouldUseExpansionActionSet(request) && ['SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING'].includes(status)) {
-    return [toAction('LAYOUT_DRAWING_DONE', { variant: 'primary', requiresConfirmation: 'ยืนยันวาดผังเสร็จแล้ว?' })];
-  }
-
-  if (shouldUseExpansionActionSet(request) && status === 'WAITING_TO_SEND_TO_KRABI') {
-    return [toAction('DISPATCHED_TO_KRABI', { variant: 'primary' })];
-  }
-
-  if (shouldUseExpansionActionSet(request) && ['SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK'].includes(status)) {
-    return [
-      toAction('KRABI_ACCEPT_AND_START', { variant: 'primary' }),
-      toAction('KRABI_RETURN_FOR_FIX', { variant: 'secondary', intent: 'warning' })
-    ];
-  }
-
-  if (shouldUseExpansionActionSet(request) && status === 'KRABI_NEEDS_DOCUMENT_FIX') {
-    return [toAction('KRABI_FIX_COMPLETED', { variant: 'primary' })];
-  }
-
-  if (shouldUseExpansionActionSet(request) && status === 'KRABI_IN_PROGRESS') {
-    return [toAction('KRABI_ESTIMATION_COMPLETED', { variant: 'primary' })];
-  }
-
-  if (shouldUseExpansionActionSet(request) && status === 'KRABI_ESTIMATION_COMPLETED') {
-    return [toAction('KRABI_BILL_ISSUED', { variant: 'primary' })];
-  }
-
-  if (shouldUseExpansionActionSet(request) && status === 'BILL_ISSUED') {
-    return [toAction('COORDINATED_WITH_CONSTRUCTION', { variant: 'primary' })];
-  }
-
   return [];
 }
 
+function logDocumentWorkflowResolution(request: WorkflowActionResolverRequest, actions: AvailableRequestAction[]): void {
+  if (!DOCUMENT_WORKFLOW_DEBUG_STATUSES.includes(request.status)) {
+    return;
+  }
+
+  const resolvedPrimaryAction = actions.find((action) => action.variant === 'primary')?.key ?? null;
+  const documentStage = request.status;
+
+  console.info('[document-workflow-primary-action-resolved]', {
+    requestId: request.id ?? null,
+    requestType: request.request_type,
+    currentStatus: request.status,
+    flowType: request.flow_type ?? null,
+    expansionActionSet: shouldUseExpansionActionSet(request),
+    threePhaseCapabilityResult: request.three_phase_capability_result ?? null,
+    isDocumentReady: request.is_document_ready,
+    documentStage,
+    resolvedPrimaryAction,
+    resolvedActions: actions.map((action) => action.key)
+  });
+}
+
+export function resolveDocumentWorkflowAction(request: WorkflowActionResolverRequest): QueueWorkflowAction | null {
+  const actions = dedupeWorkflowActions(getAvailableRequestActions(request));
+  logDocumentWorkflowResolution(request, actions);
+  return actions.find((action) => action.variant === 'primary') ?? null;
+}
+
+export function getPrimaryDocumentAction(request: WorkflowActionResolverRequest): QueueWorkflowAction | null {
+  return resolveDocumentWorkflowAction(request);
+}
+
 export function getQueueWorkflowActions(
-  request: Pick<
-    ServiceRequest,
-    | 'status'
-    | 'request_type'
-    | 'fix_verification_mode'
-    | 'scheduled_survey_date'
-    | 'survey_date_current'
-    | 'invoice_signed_at'
-    | 'paid_at'
-    | 'is_document_ready'
-  > & { three_phase_capability_result?: ServiceRequest['three_phase_capability_result'] }
+  request: WorkflowActionResolverRequest
 ): QueueWorkflowAction[] {
-  return dedupeWorkflowActions(getAvailableRequestActions(request));
+  const dedupedActions = dedupeWorkflowActions(getAvailableRequestActions(request));
+  logDocumentWorkflowResolution(request, dedupedActions);
+  return dedupedActions;
 }
 
 export function getWorkflowActionsForRequest(
-  request: Pick<
-    ServiceRequest,
-    | 'status'
-    | 'request_type'
-    | 'fix_verification_mode'
-    | 'scheduled_survey_date'
-    | 'survey_date_current'
-    | 'invoice_signed_at'
-    | 'paid_at'
-    | 'is_document_ready'
-  > & { three_phase_capability_result?: ServiceRequest['three_phase_capability_result'] }
+  request: WorkflowActionResolverRequest
 ): AvailableRequestAction[] {
-  return dedupeWorkflowActions(getAvailableRequestActions(request));
+  const dedupedActions = dedupeWorkflowActions(getAvailableRequestActions(request));
+  logDocumentWorkflowResolution(request, dedupedActions);
+  return dedupedActions;
 }

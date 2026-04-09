@@ -31,6 +31,7 @@ export function MeterWorkflowActions({
   threePhaseCapabilityResult
 }: MeterWorkflowActionsProps) {
   const resolvedActions = getWorkflowActionsForRequest({
+    id: requestId,
     status: currentStatus,
     request_type: requestType,
     fix_verification_mode: fixVerificationMode,
