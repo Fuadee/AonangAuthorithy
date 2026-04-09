@@ -94,7 +94,7 @@ function assertMeterLoopAllowed(requestType: RequestType): void {
 
 function assertExpansionWorkflowAllowed(request: { request_type: RequestType; status: RequestStatus; three_phase_capability_result?: 'SUPPORTED' | 'UNSUPPORTED' | null }): void {
   if (!shouldUseExpansionActionSet(request)) {
-    throw new Error('action นี้รองรับเฉพาะงานขยายเขต หรือ งานเพิ่มเป็นมิเตอร์ 3 เฟสที่ถูกส่งต่อ flow ขยายเขตแล้ว');
+    throw new Error('action นี้รองรับเฉพาะงานขยายเขต หรือคำร้อง 3 เฟสที่ถูกส่งต่อเข้า flow ขยายเขตแล้ว');
   }
 }
 

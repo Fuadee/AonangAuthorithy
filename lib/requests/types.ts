@@ -421,7 +421,7 @@ export function shouldUseExpansionActionSet(
     return true;
   }
 
-  if (request.request_type !== 'METER_TO_3PHASE') {
+  if (!['METER_TO_3PHASE', 'METER_30_100_3P'].includes(request.request_type)) {
     return false;
   }
 
