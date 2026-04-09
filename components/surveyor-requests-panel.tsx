@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { AreaResponsibleCell } from '@/components/area-responsible-cell';
+import { QueueFilterChips } from '@/components/queue/queue-filter-chips';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { getAvailableRequestActions } from '@/lib/requests/workflow-action-config';
@@ -91,39 +92,6 @@ function WorkloadSummary({ activeSurveyor, workloadBySurveyor }: { activeSurveyo
       <p className="text-base font-semibold text-slate-800">
         {activeSurveyor === ALL_SURVEYORS ? `รวม ${focusedWorkload} งาน` : `${getSurveyorDisplayName(activeSurveyor)} • ${focusedWorkload} งาน`}
       </p>
-    </div>
-  );
-}
-
-function StatusChips<T extends string>({
-  options,
-  active,
-  onChange
-}: {
-  options: StatusOption<T>[];
-  active: string;
-  onChange: (value: T) => void;
-}) {
-  return (
-    <div className="flex flex-wrap gap-2">
-      {options.map((option) => {
-        const isActive = active === option.value;
-
-        return (
-          <button
-            key={option.value}
-            className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-sm transition ${
-              isActive
-                ? 'border-brand-600 bg-brand-50 text-brand-700'
-                : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
-            }`}
-            type="button"
-            onClick={() => onChange(option.value)}
-          >
-            {option.label}
-          </button>
-        );
-      })}
     </div>
   );
 }
@@ -235,7 +203,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
 
           <div className="space-y-1">
             <p className="text-sm text-slate-500">สถานะหลัก</p>
-            <StatusChips options={MAIN_FILTER_OPTIONS} active={activeFilter} onChange={setActiveFilter} />
+            <QueueFilterChips options={MAIN_FILTER_OPTIONS} active={activeFilter} onChange={setActiveFilter} />
           </div>
 
           <div className="space-y-2">
@@ -249,7 +217,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
             {isExpanded ? (
               <div className="space-y-1">
                 <p className="text-sm text-slate-500">สถานะย่อย</p>
-                <StatusChips options={DETAIL_FILTER_OPTIONS} active={activeFilter} onChange={setActiveFilter} />
+                <QueueFilterChips options={DETAIL_FILTER_OPTIONS} active={activeFilter} onChange={setActiveFilter} />
               </div>
             ) : null}
           </div>

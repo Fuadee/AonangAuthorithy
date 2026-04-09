@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { BillingWorkflowActionRenderer } from '@/components/billing-workflow-action-renderer';
+import { QueueFilterChips } from '@/components/queue/queue-filter-chips';
 import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
@@ -84,27 +85,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
       </section>
 
       <section className="card p-4">
-        <div className="flex flex-wrap items-center gap-2">
-          {FILTER_OPTIONS.map((option) => {
-            const isActive = activeFilter === option.value;
-
-            return (
-              <button
-                key={option.value}
-                className={`rounded-full border px-3 py-1.5 text-sm transition ${
-                  isActive
-                    ? 'border-brand-600 bg-brand-50 text-brand-700'
-                    : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
-                }`}
-                type="button"
-                onClick={() => setActiveFilter(option.value)}
-                title={option.label}
-              >
-                <span className="block max-w-full truncate whitespace-nowrap">{option.label}</span>
-              </button>
-            );
-          })}
-        </div>
+        <QueueFilterChips active={activeFilter} onChange={setActiveFilter} options={FILTER_OPTIONS} />
       </section>
 
       <section className="card overflow-hidden">
