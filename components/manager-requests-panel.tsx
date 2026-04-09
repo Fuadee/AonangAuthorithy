@@ -8,10 +8,11 @@ import {
   approveManagerOverloadForwardAction,
   approveManagerReviewAction
 } from '@/app/actions';
+import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
 import { formatThaiDateTime } from '@/lib/datetime';
-import { REQUEST_TYPE_LABELS, RequestStatus, ServiceRequest } from '@/lib/requests/types';
+import { RequestStatus, ServiceRequest } from '@/lib/requests/types';
 
 type ManagerRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -120,7 +121,9 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                   <tr key={request.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 font-medium text-brand-700">{request.request_no}</td>
                     <td className="px-4 py-3">{request.customer_name}</td>
-                    <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
+                    <td className="px-4 py-3 align-top">
+                      <RequestTypeFlowCell className="max-w-[240px]" request={request} />
+                    </td>
                     <td className="max-w-0 px-4 py-3" title={resolveAreaDisplayName(request.area_name)}>
                       <p className="truncate whitespace-nowrap">{resolveAreaDisplayName(request.area_name)}</p>
                     </td>

@@ -3,6 +3,7 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { BillingWorkflowActionRenderer } from '@/components/billing-workflow-action-renderer';
+import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
@@ -10,7 +11,6 @@ import {
   getCurrentSurveyDate,
   getRequestStatusLabel,
   isMeterLikeBillingRequest,
-  REQUEST_TYPE_LABELS,
   RequestStatus,
   ServiceRequest
 } from '@/lib/requests/types';
@@ -133,7 +133,9 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                     </Link>
                   </td>
                   <td className="px-4 py-3">{request.customer_name}</td>
-                  <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
+                  <td className="px-4 py-3 align-top">
+                    <RequestTypeFlowCell className="max-w-[240px]" request={request} />
+                  </td>
                   <td className="max-w-0 px-4 py-3" title={resolveAreaDisplayName(request.area_name)}><p className="truncate whitespace-nowrap">{resolveAreaDisplayName(request.area_name)}</p></td>
                   <td className="px-4 py-3">{getSurveyorDisplayName(request.assigned_surveyor)}</td>
                   <td className="px-4 py-3">{formatDateOnly(getCurrentSurveyDate(request))}</td>
