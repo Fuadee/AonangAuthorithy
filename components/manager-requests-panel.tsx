@@ -140,7 +140,14 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                 const requiresConfirm = request.status === 'SURVEY_OVERLOAD_REPORTED';
                 return (
                   <tr key={request.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-brand-700">{request.request_no}</td>
+                    <td className="px-4 py-3 font-medium text-brand-700">
+                      <Link
+                        className="cursor-pointer transition-colors hover:text-brand-800 hover:underline"
+                        href={`/requests/${request.id}`}
+                      >
+                        {request.request_no}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3">{request.customer_name}</td>
                     <td className="px-4 py-3 align-top">
                       <div className="max-w-[360px] space-y-1.5 leading-relaxed">
@@ -153,9 +160,6 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
-                        <Link className="btn-secondary" href={`/requests/${request.id}`}>
-                          เปิดดู
-                        </Link>
                         {requiresConfirm ? (
                           <button
                             className="btn-primary"
