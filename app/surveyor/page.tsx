@@ -27,10 +27,14 @@ export default async function SurveyorPage({ searchParams }: SurveyorPageProps) 
     .order('created_at', { ascending: false });
 
   if (error) {
-    throw new Error(error.message);
+    console.error('[surveyor/page] failed to load survey queue', {
+      message: error.message,
+      selectedSurveyor,
+      statuses: surveyQueueStatuses
+    });
   }
 
-  const typedRequests = (requests ?? []) as ServiceRequest[];
+  const typedRequests = ((error ? [] : requests) ?? []) as ServiceRequest[];
   const mapParams = new URLSearchParams({
     status: surveyQueueStatuses.join(',')
   });
@@ -56,6 +60,11 @@ export default async function SurveyorPage({ searchParams }: SurveyorPageProps) 
       </div>
 
       <SurveyorRequestsPanel requests={typedRequests} defaultSurveyor={selectedSurveyor} />
+      {error ? (
+        <p className="rounded-lg border border-amber-200 bg-amber-50 px-4 py-3 text-sm text-amber-900">
+          ไม่สามารถโหลดคิวสำรวจล่าสุดได้ชั่วคราว กรุณารีเฟรชหน้าอีกครั้ง
+        </p>
+      ) : null}
     </div>
   );
 }
