@@ -8,10 +8,13 @@ type RequestTypeFlowCellProps = {
 
 export function RequestTypeFlowCell({ request, className }: RequestTypeFlowCellProps) {
   const flowType = getFlowType(request);
+  const requestTypeLabel = REQUEST_TYPE_LABELS[request.request_type];
 
   return (
     <div className={className}>
-      <p className="text-sm leading-5 text-slate-700">{REQUEST_TYPE_LABELS[request.request_type]}</p>
+      <p className="truncate whitespace-nowrap text-sm leading-5 text-slate-700" title={requestTypeLabel}>
+        {requestTypeLabel}
+      </p>
       <div className="mt-1">
         <FlowTypeBadge flowType={flowType} />
       </div>

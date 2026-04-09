@@ -115,8 +115,8 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
               <tr>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">เลขคำร้อง</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">ชื่อลูกค้า</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">ประเภทคำร้อง</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">พื้นที่</th>
+                <th className="w-[220px] max-w-[220px] whitespace-nowrap px-4 py-3 font-medium">ประเภทคำร้อง</th>
+                <th className="min-w-[140px] whitespace-nowrap px-4 py-3 font-medium">พื้นที่</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">วันนัดล่าสุด</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">สถานะ</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">จัดการ</th>
@@ -131,10 +131,12 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                     </Link>
                   </td>
                   <td className="px-4 py-3">{request.customer_name}</td>
-                  <td className="px-4 py-3 align-top">
-                    <RequestTypeFlowCell className="max-w-[240px]" request={request} />
+                  <td className="w-[220px] max-w-[220px] px-4 py-3 align-top">
+                    <RequestTypeFlowCell className="max-w-[220px]" request={request} />
                   </td>
-                  <td className="max-w-0 px-4 py-3" title={resolveAreaDisplayName(request.area_name)}><p className="truncate whitespace-nowrap">{resolveAreaDisplayName(request.area_name)}</p></td>
+                  <td className="min-w-[140px] whitespace-nowrap px-4 py-3" title={resolveAreaDisplayName(request.area_name)}>
+                    {resolveAreaDisplayName(request.area_name)}
+                  </td>
                   <td className="px-4 py-3">{formatDateOnly(getCurrentSurveyDate(request))}</td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
