@@ -1,6 +1,6 @@
 'use client';
 
-import { MouseEvent, ReactNode, useMemo, useState } from 'react';
+import { FormEvent, MouseEvent, ReactNode, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { markSurveyFailedAction } from '@/app/actions';
 
@@ -31,20 +31,47 @@ function Modal({ children, title, onClose }: { children: ReactNode; title: strin
 export function SurveyFailActionDialog({ open, requestId, onClose, stayOnQueue = false }: SurveyFailActionDialogProps) {
   const router = useRouter();
   const [failureType, setFailureType] = useState<'NORMAL_FIX_REQUIRED' | 'OVERLOAD_REPORTED'>('NORMAL_FIX_REQUIRED');
+  const [submitError, setSubmitError] = useState<string | null>(null);
+  const [isSubmitting, startTransition] = useTransition();
+
   if (!open) {
     return null;
   }
 
+  const handleSubmit = (event: FormEvent<HTMLFormElement>) => {
+    event.preventDefault();
+    setSubmitError(null);
 
-  const handleQueueSubmit = () => {
-    if (!stayOnQueue) {
-      return;
-    }
+    const formData = new FormData(event.currentTarget);
+    const actionBranch = failureType === 'OVERLOAD_REPORTED' ? 'OVERLOAD_REPORTED' : 'NORMAL_FIX_REQUIRED';
+    formData.set('action_intent', 'SURVEY_FAIL');
+    formData.set('action_branch', actionBranch);
 
-    window.setTimeout(() => {
-      onClose();
-      router.refresh();
-    }, 0);
+    console.info('[survey-fail-dialog] submitting payload', {
+      request_id: formData.get('request_id'),
+      survey_failure_type: formData.get('survey_failure_type'),
+      customer_fix_note: formData.get('customer_fix_note'),
+      overload_report_reason: formData.get('overload_report_reason'),
+      survey_note: formData.get('survey_note'),
+      overload_report_note: formData.get('overload_report_note'),
+      action_intent: formData.get('action_intent'),
+      action_branch: formData.get('action_branch'),
+      stay_on_queue: formData.get('stay_on_queue')
+    });
+
+    startTransition(async () => {
+      try {
+        await markSurveyFailedAction(formData);
+        onClose();
+        if (stayOnQueue) {
+          router.refresh();
+        }
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'เกิดข้อผิดพลาดที่ไม่คาดคิด';
+        console.error('[survey-fail-dialog] submit failed', { message, error });
+        setSubmitError(message || 'ไม่สามารถบันทึกผลสำรวจไม่ผ่านได้ กรุณาลองใหม่อีกครั้ง');
+      }
+    });
   };
 
   const isOverloadMode = failureType === 'OVERLOAD_REPORTED';
@@ -52,7 +79,7 @@ export function SurveyFailActionDialog({ open, requestId, onClose, stayOnQueue =
 
   return (
     <Modal title="บันทึกผลสำรวจไม่ผ่าน" onClose={onClose}>
-      <form action={markSurveyFailedAction} className="space-y-3" onSubmitCapture={handleQueueSubmit}>
+      <form className="space-y-3" onSubmit={handleSubmit}>
         <input name="request_id" type="hidden" value={requestId} />
         <input name="survey_failure_type" type="hidden" value={failureType} />
         <input name="overload_reported_by" type="hidden" value="เจ้าหน้าที่สำรวจ" />
@@ -123,13 +150,14 @@ export function SurveyFailActionDialog({ open, requestId, onClose, stayOnQueue =
           )}
         </div>
         <div className="flex justify-end gap-2">
-          <button className="btn-secondary" type="button" onClick={onClose}>
+          <button className="btn-secondary" disabled={isSubmitting} type="button" onClick={onClose}>
             ยกเลิก
           </button>
-          <button className="btn-primary" type="submit">
-            {submitLabel}
+          <button className="btn-primary" disabled={isSubmitting} type="submit">
+            {isSubmitting ? 'กำลังบันทึก...' : submitLabel}
           </button>
         </div>
+        {submitError ? <p className="rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
       </form>
     </Modal>
   );
