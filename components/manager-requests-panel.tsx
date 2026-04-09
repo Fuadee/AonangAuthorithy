@@ -9,12 +9,12 @@ import {
   approveManagerOverloadForwardAction,
   approveManagerReviewAction
 } from '@/app/actions';
+import { AreaResponsibleCell } from '@/components/area-responsible-cell';
 import { QueueFilterChips } from '@/components/queue/queue-filter-chips';
 import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
-import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
 import { formatThaiDateTime } from '@/lib/datetime';
-import { RequestStatus, ServiceRequest } from '@/lib/requests/types';
+import { getResponsiblePersonName, RequestStatus, ServiceRequest } from '@/lib/requests/types';
 
 type ManagerRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -127,11 +127,11 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
       <div className="card overflow-hidden">
         {actionError ? <p className="border-b border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{actionError}</p> : null}
         <div className="overflow-x-auto">
-          <table className="min-w-full divide-y divide-slate-200 text-sm">
+          <table className="min-w-full table-fixed divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-100 text-left text-slate-600">
               <tr>
                 {MANAGER_TABLE_COLUMNS.map((column) => (
-                  <th key={column} className="whitespace-nowrap px-4 py-3 font-medium">
+                  <th key={column} className={column === 'พื้นที่' ? 'w-64 px-4 py-3 font-medium' : 'whitespace-nowrap px-4 py-3 font-medium'}>
                     {column}
                   </th>
                 ))}
@@ -141,6 +141,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
               {filteredRequests.map((request) => {
                 const resolvedAction = resolveManagerAction(request);
                 const requiresConfirm = request.status === 'SURVEY_OVERLOAD_REPORTED';
+                const responsiblePersonName = getResponsiblePersonName(request);
                 return (
                   <tr key={request.id} className="hover:bg-slate-50">
                     <td className="px-4 py-3 font-medium text-brand-700">
@@ -153,8 +154,8 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                     </td>
                     <td className="px-4 py-3">{request.customer_name}</td>
                     <td className="px-4 py-3 align-top"><RequestTypeFlowCell request={request} /></td>
-                    <td className="px-4 py-3 align-top" title={resolveAreaDisplayName(request.area_name)}>
-                      <p className="max-w-[320px] whitespace-normal break-words leading-relaxed">{resolveAreaDisplayName(request.area_name)}</p>
+                    <td className="max-w-0 px-4 py-3 align-top">
+                      <AreaResponsibleCell areaName={request.area_name} responsiblePersonName={responsiblePersonName} />
                     </td>
                     <td className="px-4 py-3">
                       <RequestStatusBadge status={request.status} />
