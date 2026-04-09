@@ -150,10 +150,10 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                     </td>
                     <td className="px-4 py-3">{request.customer_name}</td>
                     <td className="px-4 py-3 align-top">
-                      <div className="max-w-[360px] space-y-1.5 leading-relaxed">
-                        <p className="text-sm font-medium text-slate-800">{REQUEST_TYPE_LABELS[request.request_type]}</p>
-                        <p className="text-sm text-slate-500">{resolveAreaDisplayName(request.area_name)}</p>
-                      </div>
+                      <RequestTypeFlowCell className="max-w-[240px]" request={request} />
+                    </td>
+                    <td className="px-4 py-3 align-top" title={resolveAreaDisplayName(request.area_name)}>
+                      <p className="max-w-[320px] whitespace-normal break-words leading-relaxed">{resolveAreaDisplayName(request.area_name)}</p>
                     </td>
                     <td className="px-4 py-3">
                       <RequestStatusBadge status={request.status} />
@@ -189,7 +189,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
               })}
               {!filteredRequests.length && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-slate-500" colSpan={5}>
+                  <td className="px-4 py-6 text-center text-slate-500" colSpan={6}>
                     ไม่มีงานที่ตรงกับตัวกรอง
                   </td>
                 </tr>
