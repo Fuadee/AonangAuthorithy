@@ -1,7 +1,8 @@
 'use client';
 
 import Link from 'next/link';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useTransition } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   approveAonangManagerFinalAction,
   approveAonangManagerPreKrabiAction,
@@ -27,8 +28,12 @@ const MANAGER_FILTERS: Array<{ key: 'ALL' | RequestStatus; label: string }> = [
 ];
 
 export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
+  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [activeFilter, setActiveFilter] = useState<'ALL' | RequestStatus>('ALL');
   const [confirmRequest, setConfirmRequest] = useState<ServiceRequest | null>(null);
+  const [actionError, setActionError] = useState<string | null>(null);
+  const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
 
   const filteredRequests = useMemo(
     () => (activeFilter === 'ALL' ? requests : requests.filter((request) => request.status === activeFilter)),
@@ -69,6 +74,36 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
     };
   };
 
+  const runManagerAction = (requestId: string, action: (formData: FormData) => Promise<void>, extraFields?: Record<string, string>) => {
+    setActionError(null);
+    setPendingRequestId(requestId);
+
+    startTransition(async () => {
+      const formData = new FormData();
+      formData.set('request_id', requestId);
+      formData.set('stay_on_queue', '1');
+      if (extraFields) {
+        for (const [key, value] of Object.entries(extraFields)) {
+          formData.set(key, value);
+        }
+      }
+
+      try {
+        await action(formData);
+        if (process.env.NODE_ENV === 'development') {
+          console.info('[manager-queue] action success with stay_on_queue, no navigation expected', { requestId });
+        }
+        setConfirmRequest(null);
+        router.refresh();
+      } catch (error) {
+        const message = error instanceof Error ? error.message : 'ไม่สามารถบันทึกการอนุมัติได้ กรุณาลองใหม่อีกครั้ง';
+        setActionError(message || 'ไม่สามารถบันทึกการอนุมัติได้ กรุณาลองใหม่อีกครั้ง');
+      } finally {
+        setPendingRequestId(null);
+      }
+    });
+  };
+
   return (
     <section className="space-y-4">
       <div className="grid gap-3 sm:grid-cols-2">
@@ -100,6 +135,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
       </div>
 
       <div className="card overflow-hidden">
+        {actionError ? <p className="border-b border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{actionError}</p> : null}
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-100 text-left text-slate-600">
@@ -137,16 +173,26 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                           เปิดดู
                         </Link>
                         {requiresConfirm ? (
-                          <button className="btn-primary" type="button" onClick={() => setConfirmRequest(request)}>
+                          <button
+                            className="btn-primary"
+                            disabled={isPending}
+                            type="button"
+                            onClick={() => {
+                              setActionError(null);
+                              setConfirmRequest(request);
+                            }}
+                          >
                             {resolvedAction.label}
                           </button>
                         ) : (
-                          <form action={resolvedAction.action}>
-                            <input name="request_id" type="hidden" value={request.id} />
-                            <button className="btn-primary" type="submit">
-                              {resolvedAction.label}
-                            </button>
-                          </form>
+                          <button
+                            className="btn-primary"
+                            disabled={isPending && pendingRequestId === request.id}
+                            type="button"
+                            onClick={() => runManagerAction(request.id, resolvedAction.action)}
+                          >
+                            {isPending && pendingRequestId === request.id ? 'กำลังบันทึก...' : resolvedAction.label}
+                          </button>
                         )}
                       </div>
                     </td>
@@ -187,16 +233,23 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
               </div>
             </dl>
 
-            <form action={approveManagerOverloadForwardAction} className="mt-5 flex justify-end gap-2">
-              <input name="request_id" type="hidden" value={confirmRequest.id} />
-              <input name="manager_overload_approved_by" type="hidden" value="ผู้จัดการอ่าวนาง" />
+            <div className="mt-5 flex justify-end gap-2">
               <button className="btn-secondary" type="button" onClick={() => setConfirmRequest(null)}>
                 ยกเลิก
               </button>
-              <button className="btn-primary" type="submit">
-                อนุมัติบันทึกให้กระบี่ปรับปรุงระบบจำหน่าย
+              <button
+                className="btn-primary"
+                disabled={isPending && pendingRequestId === confirmRequest.id}
+                type="button"
+                onClick={() =>
+                  runManagerAction(confirmRequest.id, approveManagerOverloadForwardAction, {
+                    manager_overload_approved_by: 'ผู้จัดการอ่าวนาง'
+                  })
+                }
+              >
+                {isPending && pendingRequestId === confirmRequest.id ? 'กำลังบันทึก...' : 'อนุมัติบันทึกให้กระบี่ปรับปรุงระบบจำหน่าย'}
               </button>
-            </form>
+            </div>
           </div>
         </div>
       ) : null}
