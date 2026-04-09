@@ -10,11 +10,10 @@ import {
   approveManagerReviewAction
 } from '@/app/actions';
 import { QueueFilterChips } from '@/components/queue/queue-filter-chips';
-import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
 import { formatThaiDateTime } from '@/lib/datetime';
-import { RequestStatus, ServiceRequest } from '@/lib/requests/types';
+import { REQUEST_TYPE_LABELS, RequestStatus, ServiceRequest } from '@/lib/requests/types';
 
 type ManagerRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -131,9 +130,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                 <th className="whitespace-nowrap px-4 py-3 font-medium">เลขคำร้อง</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">ลูกค้า</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">ประเภทคำร้อง</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">พื้นที่</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">สถานะ</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">อัปเดตล่าสุด</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">จัดการ</th>
               </tr>
             </thead>
@@ -146,15 +143,14 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                     <td className="px-4 py-3 font-medium text-brand-700">{request.request_no}</td>
                     <td className="px-4 py-3">{request.customer_name}</td>
                     <td className="px-4 py-3 align-top">
-                      <RequestTypeFlowCell className="max-w-[240px]" request={request} />
-                    </td>
-                    <td className="max-w-0 px-4 py-3" title={resolveAreaDisplayName(request.area_name)}>
-                      <p className="truncate whitespace-nowrap">{resolveAreaDisplayName(request.area_name)}</p>
+                      <div className="max-w-[360px] space-y-1.5 leading-relaxed">
+                        <p className="text-sm font-medium text-slate-800">{REQUEST_TYPE_LABELS[request.request_type]}</p>
+                        <p className="text-sm text-slate-500">{resolveAreaDisplayName(request.area_name)}</p>
+                      </div>
                     </td>
                     <td className="px-4 py-3">
                       <RequestStatusBadge status={request.status} />
                     </td>
-                    <td className="px-4 py-3">{formatThaiDateTime(request.updated_at)}</td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
                         <Link className="btn-secondary" href={`/requests/${request.id}`}>
@@ -189,7 +185,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
               })}
               {!filteredRequests.length && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-slate-500" colSpan={7}>
+                  <td className="px-4 py-6 text-center text-slate-500" colSpan={5}>
                     ไม่มีงานที่ตรงกับตัวกรอง
                   </td>
                 </tr>
