@@ -150,7 +150,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                     </td>
                     <td className="px-4 py-3">{request.customer_name}</td>
                     <td className="px-4 py-3 align-top">
-                      <RequestTypeFlowCell className="max-w-[240px]" request={request} />
+                      {REQUEST_TYPE_LABELS[request.request_type]}
                     </td>
                     <td className="px-4 py-3 align-top" title={resolveAreaDisplayName(request.area_name)}>
                       <p className="max-w-[320px] whitespace-normal break-words leading-relaxed">{resolveAreaDisplayName(request.area_name)}</p>
