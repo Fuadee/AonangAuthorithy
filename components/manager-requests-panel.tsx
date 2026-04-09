@@ -10,10 +10,11 @@ import {
   approveManagerReviewAction
 } from '@/app/actions';
 import { QueueFilterChips } from '@/components/queue/queue-filter-chips';
+import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
 import { formatThaiDateTime } from '@/lib/datetime';
-import { REQUEST_TYPE_LABELS, RequestStatus, ServiceRequest } from '@/lib/requests/types';
+import { RequestStatus, ServiceRequest } from '@/lib/requests/types';
 
 type ManagerRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -149,9 +150,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                       </Link>
                     </td>
                     <td className="px-4 py-3">{request.customer_name}</td>
-                    <td className="px-4 py-3 align-top">
-                      {REQUEST_TYPE_LABELS[request.request_type]}
-                    </td>
+                    <td className="px-4 py-3 align-top"><RequestTypeFlowCell request={request} /></td>
                     <td className="px-4 py-3 align-top" title={resolveAreaDisplayName(request.area_name)}>
                       <p className="max-w-[320px] whitespace-normal break-words leading-relaxed">{resolveAreaDisplayName(request.area_name)}</p>
                     </td>
