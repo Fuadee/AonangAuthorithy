@@ -2,7 +2,7 @@
 
 import { FormEvent, MouseEvent, ReactNode, useMemo, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
-import { markSurveyFailedAction } from '@/app/actions';
+import { markSurveyFailedActionSafe } from '@/app/actions';
 
 type SurveyFailActionDialogProps = {
   open: boolean;
@@ -61,7 +61,12 @@ export function SurveyFailActionDialog({ open, requestId, onClose, stayOnQueue =
 
     startTransition(async () => {
       try {
-        await markSurveyFailedAction(formData);
+        const result = await markSurveyFailedActionSafe(formData);
+        if (!result.ok) {
+          setSubmitError(result.error || 'ไม่สามารถบันทึกผลสำรวจไม่ผ่านได้ กรุณาลองใหม่อีกครั้ง');
+          return;
+        }
+
         onClose();
         if (stayOnQueue) {
           router.refresh();

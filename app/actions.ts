@@ -1449,6 +1449,27 @@ export async function markSurveyFailedAction(formData: FormData) {
   finalizeWorkflowAction(requestId, formData);
 }
 
+export async function markSurveyFailedActionSafe(
+  formData: FormData
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await markSurveyFailedAction(formData);
+    return { ok: true };
+  } catch (error) {
+    const redirectDigest = typeof error === 'object' && error && 'digest' in error ? (error as { digest?: unknown }).digest : null;
+    if (typeof redirectDigest === 'string' && redirectDigest.startsWith('NEXT_REDIRECT')) {
+      throw error;
+    }
+
+    const message = error instanceof Error ? error.message : 'ไม่สามารถบันทึกผลสำรวจไม่ผ่านได้';
+    console.error('[markSurveyFailedActionSafe] action failed', {
+      message,
+      payload: snapshotFormData(formData)
+    });
+    return { ok: false, error: message };
+  }
+}
+
 export async function reportCustomerFixAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
   const customerFixNote = optionalField(formData, 'customer_fix_note');
