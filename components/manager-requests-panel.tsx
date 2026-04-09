@@ -20,6 +20,8 @@ type ManagerRequestsPanelProps = {
   requests: ServiceRequest[];
 };
 
+const MANAGER_TABLE_COLUMNS = ['เลขคำร้อง', 'ลูกค้า', 'ประเภทคำร้อง', 'พื้นที่', 'สถานะ', 'จัดการ'] as const;
+
 const MANAGER_FILTERS: Array<{ value: 'ALL' | RequestStatus; label: string }> = [
   { value: 'ALL', label: 'ทั้งหมด' },
   { value: 'SURVEY_OVERLOAD_REPORTED', label: 'รออนุมัติบันทึกโหลดเกิน' },
@@ -128,11 +130,11 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-100 text-left text-slate-600">
               <tr>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">เลขคำร้อง</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">ลูกค้า</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">ประเภทคำร้อง</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">สถานะ</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">จัดการ</th>
+                {MANAGER_TABLE_COLUMNS.map((column) => (
+                  <th key={column} className="whitespace-nowrap px-4 py-3 font-medium">
+                    {column}
+                  </th>
+                ))}
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-100 bg-white text-slate-700">
@@ -188,7 +190,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
               })}
               {!filteredRequests.length && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-slate-500" colSpan={6}>
+                  <td className="px-4 py-6 text-center text-slate-500" colSpan={MANAGER_TABLE_COLUMNS.length}>
                     ไม่มีงานที่ตรงกับตัวกรอง
                   </td>
                 </tr>
