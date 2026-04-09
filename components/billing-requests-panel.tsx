@@ -6,7 +6,6 @@ import { BillingWorkflowActionRenderer } from '@/components/billing-workflow-act
 import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
-import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
 import {
   getCurrentSurveyDate,
   getRequestStatusLabel,
@@ -118,8 +117,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                 <th className="whitespace-nowrap px-4 py-3 font-medium">ชื่อลูกค้า</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">ประเภทคำร้อง</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">พื้นที่</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">นักสำรวจ</th>
-                                <th className="whitespace-nowrap px-4 py-3 font-medium">วันนัดล่าสุด</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">วันนัดล่าสุด</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">สถานะ</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">จัดการ</th>
               </tr>
@@ -137,7 +135,6 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                     <RequestTypeFlowCell className="max-w-[240px]" request={request} />
                   </td>
                   <td className="max-w-0 px-4 py-3" title={resolveAreaDisplayName(request.area_name)}><p className="truncate whitespace-nowrap">{resolveAreaDisplayName(request.area_name)}</p></td>
-                  <td className="px-4 py-3">{getSurveyorDisplayName(request.assigned_surveyor)}</td>
                   <td className="px-4 py-3">{formatDateOnly(getCurrentSurveyDate(request))}</td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
@@ -163,7 +160,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
               ))}
               {!filteredRequests.length && (
                 <tr>
-                  <td className="px-4 py-6 text-center text-slate-500" colSpan={8}>
+                  <td className="px-4 py-6 text-center text-slate-500" colSpan={7}>
                     ไม่พบรายการตามตัวกรองนี้
                   </td>
                 </tr>
