@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, MouseEvent, ReactNode, useMemo, useState, useTransition } from 'react';
+import { FormEvent, MouseEvent, ReactNode, useEffect, useState, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import { markSurveyFailedActionSafe } from '@/app/actions';
 
@@ -33,8 +33,30 @@ export function SurveyFailActionDialog({ open, requestId, onClose, stayOnQueue =
   const [failureType, setFailureType] = useState<'NORMAL_FIX_REQUIRED' | 'OVERLOAD_REPORTED'>('NORMAL_FIX_REQUIRED');
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [isSubmitting, startTransition] = useTransition();
+  const isOverloadMode = failureType === 'OVERLOAD_REPORTED';
+  const submitLabel = isOverloadMode ? 'ทำบันทึกต่อผู้จัดการ' : 'ยืนยัน';
+
+  useEffect(() => {
+    console.info('[survey-fail-dialog] open state changed', { open, requestId, stayOnQueue });
+  }, [open, requestId, stayOnQueue]);
+
+  useEffect(() => {
+    if (!open) {
+      return;
+    }
+    console.info('[survey-fail-dialog] render modal body', {
+      requestId,
+      failureType,
+      isOverloadMode
+    });
+  }, [failureType, isOverloadMode, open, requestId]);
 
   if (!open) {
+    return null;
+  }
+
+  if (!requestId) {
+    console.error('[survey-fail-dialog] missing requestId, cannot render submit form');
     return null;
   }
 
@@ -78,9 +100,6 @@ export function SurveyFailActionDialog({ open, requestId, onClose, stayOnQueue =
       }
     });
   };
-
-  const isOverloadMode = failureType === 'OVERLOAD_REPORTED';
-  const submitLabel = useMemo(() => (isOverloadMode ? 'ทำบันทึกต่อผู้จัดการ' : 'ยืนยัน'), [isOverloadMode]);
 
   return (
     <Modal title="บันทึกผลสำรวจไม่ผ่าน" onClose={onClose}>

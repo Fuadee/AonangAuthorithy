@@ -209,6 +209,7 @@ export function WorkflowActionButtons({
   const handleAction = (event: MouseEvent<HTMLButtonElement>, actionKey: WorkflowActionKey) => {
     event.preventDefault();
     event.stopPropagation();
+    console.info('[workflow-action-buttons] action button clicked', { actionKey, requestId, currentStatus });
     setActiveAction(actionKey);
   };
 
