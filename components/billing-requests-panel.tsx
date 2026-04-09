@@ -7,14 +7,13 @@ import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import {
-  getCurrentSurveyDate,
   getRequestStatusLabel,
   isMeterLikeBillingRequest,
   RequestStatus,
   ServiceRequest
 } from '@/lib/requests/types';
 import { getWorkflowActionsForRequest } from '@/lib/requests/workflow-action-config';
-import { formatDateOnly } from '@/lib/datetime';
+import { formatThaiDate } from '@/lib/datetime';
 
 type BillingRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -117,7 +116,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                 <th className="whitespace-nowrap px-4 py-3 font-medium">ชื่อลูกค้า</th>
                 <th className="w-[220px] max-w-[220px] whitespace-nowrap px-4 py-3 font-medium">ประเภทคำร้อง</th>
                 <th className="min-w-[140px] whitespace-nowrap px-4 py-3 font-medium">พื้นที่</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">วันนัดล่าสุด</th>
+                <th className="whitespace-nowrap px-4 py-3 font-medium">วันที่ออกใบแจ้งหนี้</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">สถานะ</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">จัดการ</th>
               </tr>
@@ -137,7 +136,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                   <td className="min-w-[140px] whitespace-nowrap px-4 py-3" title={resolveAreaDisplayName(request.area_name)}>
                     {resolveAreaDisplayName(request.area_name)}
                   </td>
-                  <td className="px-4 py-3">{formatDateOnly(getCurrentSurveyDate(request))}</td>
+                  <td className="px-4 py-3">{formatThaiDate(request.billed_at)}</td>
                   <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
                   <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
                     {isMeterLikeBillingRequest(request.request_type, request.status) ? (
