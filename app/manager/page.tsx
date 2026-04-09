@@ -11,7 +11,7 @@ export default async function ManagerPage() {
   const { data: requests, error } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,latitude,longitude,location_note,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,survey_failure_type,fix_verification_mode,customer_fix_note,customer_fix_reported_at,overload_report_reason,overload_report_note,overload_reported_at,overload_reported_by,manager_overload_approved_at,manager_overload_approved_by,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,latitude,longitude,location_note,created_at,updated_at'
     )
     .in('status', managerQueueStatuses)
     .order('updated_at', { ascending: false });
@@ -26,7 +26,7 @@ export default async function ManagerPage() {
     <div className="space-y-6">
       <div>
         <h2 className="text-2xl font-semibold">{REQUEST_QUEUE_GROUP_META.MANAGER.label}</h2>
-        <p className="mt-1 text-sm text-slate-500">แสดงงานที่รอผู้จัดการตรวจเพื่ออนุมัติจ่ายมิเตอร์</p>
+        <p className="mt-1 text-sm text-slate-500">แสดงงานที่รอผู้จัดการอ่าวนางอนุมัติ รวมถึงเคสบันทึกโหลดเกิน</p>
       </div>
 
       <ManagerRequestsPanel requests={typedRequests} />

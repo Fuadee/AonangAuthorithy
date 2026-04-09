@@ -6,6 +6,7 @@ import {
   approveFixFromPhotoAction,
   approveAonangManagerFinalAction,
   approveAonangManagerPreKrabiAction,
+  approveManagerOverloadForwardAction,
   approveManagerReviewAction,
   completeSurveyAction,
   completeLayoutDrawingAction,
@@ -96,6 +97,8 @@ const ACTION_EXECUTORS: Partial<Record<WorkflowActionKey, ActionExecutor>> = {
   MOVE_TO_FINAL_MANAGER_APPROVAL: moveToFinalManagerApprovalAction,
   FINAL_MANAGER_APPROVE: approveAonangManagerFinalAction,
   COMPLETE_WORK: approveAonangManagerFinalAction
+  ,
+  MANAGER_APPROVE_OVERLOAD_FORWARD: approveManagerOverloadForwardAction
 };
 
 function ModalShell({ children, title, onClose }: { children: ReactNode; title: string; onClose: () => void }) {
@@ -142,6 +145,8 @@ function getActionTitle(actionKey: WorkflowActionKey): string {
     MOVE_TO_FINAL_MANAGER_APPROVAL: 'ส่งให้ผู้จัดการอ่าวนางอนุมัติรอบสุดท้าย',
     FINAL_MANAGER_APPROVE: 'อนุมัติปิดงาน',
     COMPLETE_WORK: 'ปิดงานเสร็จสิ้น'
+    ,
+    MANAGER_APPROVE_OVERLOAD_FORWARD: 'อนุมัติบันทึกให้กระบี่ปรับปรุงระบบจำหน่าย'
   };
   return map[actionKey] ?? 'ยืนยันการทำรายการ';
 }
@@ -712,11 +717,12 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
 
 
 
-  if (['APPROVE_PRE_KRABI','MOVE_TO_WAIT_KRABI_APPROVAL','MARK_KRABI_APPROVED','START_DOCUMENT_FIX','RESENT_TO_KRABI','RECEIVE_FROM_KRABI','SEND_TO_ELIGIBILITY_REVIEW','ELIGIBILITY_PASS','ELIGIBILITY_FAIL','MOVE_TO_FINAL_MANAGER_APPROVAL','FINAL_MANAGER_APPROVE','COMPLETE_WORK'].includes(actionKey)) {
+  if (['APPROVE_PRE_KRABI','MOVE_TO_WAIT_KRABI_APPROVAL','MARK_KRABI_APPROVED','START_DOCUMENT_FIX','RESENT_TO_KRABI','RECEIVE_FROM_KRABI','SEND_TO_ELIGIBILITY_REVIEW','ELIGIBILITY_PASS','ELIGIBILITY_FAIL','MOVE_TO_FINAL_MANAGER_APPROVAL','FINAL_MANAGER_APPROVE','COMPLETE_WORK','MANAGER_APPROVE_OVERLOAD_FORWARD'].includes(actionKey)) {
     return (
       <ModalShell title={getActionTitle(actionKey)} onClose={onClose}>
         <form className="space-y-3" onSubmit={onSubmitWorkflowAction(actionKey)}>
           <input name="request_id" type="hidden" value={requestId} />
+          {actionKey === 'MANAGER_APPROVE_OVERLOAD_FORWARD' ? <input name="manager_overload_approved_by" type="hidden" value="ผู้จัดการอ่าวนาง" /> : null}
           <QueueStayInput stayOnQueue={stayOnQueue} />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
