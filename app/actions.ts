@@ -1105,6 +1105,7 @@ export async function markThreePhaseCapabilitySupportedAction(formData: FormData
     .update({
       status: 'IN_SURVEY',
       three_phase_capability_result: 'SUPPORTED',
+      flow_type: 'METER',
       three_phase_capability_checked_at: nowIso,
       survey_note: mergedSurveyNote || null,
       updated_at: nowIso
@@ -1150,6 +1151,7 @@ ${timelineNote}` : timelineNote;
     .from('service_requests')
     .update({
       status: 'WAIT_LAYOUT_DRAWING',
+      flow_type: 'EXPANSION',
       survey_result: 'FAIL',
       survey_completed_at: nowIso,
       three_phase_capability_result: 'UNSUPPORTED',

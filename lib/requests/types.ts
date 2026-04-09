@@ -49,6 +49,7 @@ export const REQUEST_STATUSES = [
 import { formatDateOnly, formatThaiDateTime } from '@/lib/datetime';
 
 export const REQUEST_TYPES = ['METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE', 'EXPANSION'] as const;
+export const FLOW_TYPES = ['METER', 'EXPANSION'] as const;
 export const REQUEST_QUEUE_GROUPS = ['SURVEY', 'DISPATCH', 'KRABI', 'BILLING', 'MANAGER', 'DONE', 'OTHER'] as const;
 export const DOCUMENT_STATUSES = ['COMPLETE', 'INCOMPLETE'] as const;
 export const SURVEY_RESULTS = ['PASS', 'FAIL'] as const;
@@ -60,6 +61,7 @@ export const SURVEY_FAILURE_TYPES = ['NORMAL_FIX_REQUIRED', 'OVERLOAD_REPORTED']
 
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 export type RequestType = (typeof REQUEST_TYPES)[number];
+export type FlowType = (typeof FLOW_TYPES)[number];
 export type RequestQueueGroup = (typeof REQUEST_QUEUE_GROUPS)[number];
 export type DocumentStatus = (typeof DOCUMENT_STATUSES)[number];
 export type SurveyResult = (typeof SURVEY_RESULTS)[number];
@@ -76,6 +78,11 @@ export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
   METER_30_100_3P: 'ขอมิเตอร์ 30/100 (3 เฟส)',
   METER_TO_3PHASE: 'งานเพิ่มเป็นมิเตอร์ 3 เฟส',
   EXPANSION: 'ขอขยายเขต'
+};
+
+export const FLOW_TYPE_LABELS: Record<FlowType, string> = {
+  METER: 'มิเตอร์',
+  EXPANSION: 'ขยายเขต'
 };
 
 export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
@@ -413,9 +420,35 @@ export function isExpansionWorkflowStatus(status: RequestStatus): boolean {
   return EXPANSION_WORKFLOW_STATUSES.includes(status);
 }
 
+export function getFlowType(
+  request: Pick<ServiceRequest, 'request_type' | 'status'> & Partial<Pick<ServiceRequest, 'flow_type' | 'three_phase_capability_result'>>
+): FlowType {
+  if (request.flow_type) {
+    return request.flow_type;
+  }
+
+  if (request.request_type === 'EXPANSION') {
+    return 'EXPANSION';
+  }
+
+  if (request.three_phase_capability_result === 'UNSUPPORTED') {
+    return 'EXPANSION';
+  }
+
+  if (request.status === 'NEEDS_EXPANSION' || isExpansionWorkflowStatus(request.status)) {
+    return 'EXPANSION';
+  }
+
+  return 'METER';
+}
+
+export function getFlowTypeLabel(flowType: FlowType): string {
+  return FLOW_TYPE_LABELS[flowType];
+}
+
 export function shouldUseExpansionActionSet(
   request: Pick<ServiceRequest, 'request_type' | 'status'> &
-    Partial<Pick<ServiceRequest, 'three_phase_capability_result'>>
+    Partial<Pick<ServiceRequest, 'flow_type' | 'three_phase_capability_result'>>
 ): boolean {
   if (request.request_type === 'EXPANSION') {
     return true;
@@ -425,7 +458,7 @@ export function shouldUseExpansionActionSet(
     return false;
   }
 
-  return isExpansionWorkflowStatus(request.status);
+  return getFlowType(request) === 'EXPANSION';
 }
 
 export function getRequiredDocuments(requestType: RequestType): string[] {
@@ -799,6 +832,7 @@ export type ServiceRequest = {
   awaiting_customer_documents_since: string | null;
   status: RequestStatus;
   request_type: RequestType;
+  flow_type?: FlowType | null;
   survey_note: string | null;
   survey_reschedule_date: string | null;
   survey_reviewed_at: string | null;

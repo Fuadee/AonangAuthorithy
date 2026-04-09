@@ -5,6 +5,7 @@ import { usePathname, useRouter, useSearchParams } from 'next/navigation';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { AreaResponsibleCell } from '@/components/area-responsible-cell';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
+import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { getAvailableRequestActions } from '@/lib/requests/workflow-action-config';
 import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
 import {
@@ -14,7 +15,6 @@ import {
   getRequestStatusLabel,
   isSurveyScheduledTodayInBangkok,
   RequestStatus,
-  REQUEST_TYPE_LABELS,
   ServiceRequest,
   SURVEYOR_PRIMARY_STATUS_MAP
 } from '@/lib/requests/types';
@@ -281,7 +281,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
                     </Link>
                   </td>
                   <td className="px-4 py-3">{request.customer_name}</td>
-                  <td className="px-4 py-3">{REQUEST_TYPE_LABELS[request.request_type]}</td>
+                  <td className="px-4 py-3"><RequestTypeFlowCell request={request} /></td>
                   <td className="max-w-0 px-4 py-3 align-top">
                     <AreaResponsibleCell areaName={request.area_name} responsiblePersonName={responsiblePersonName} />
                   </td>

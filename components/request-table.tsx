@@ -4,6 +4,7 @@ import Link from 'next/link';
 import { AreaResponsibleCell } from '@/components/area-responsible-cell';
 import { BillingWorkflowActionRenderer } from '@/components/billing-workflow-action-renderer';
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
+import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { getQueueWorkflowActions } from '@/lib/requests/workflow-action-config';
 import {
@@ -11,7 +12,6 @@ import {
   getDispatchSubStatus,
   isMeterLikeBillingRequest,
   getResponsiblePersonName,
-  REQUEST_TYPE_LABELS,
   RequestStatus,
   ServiceRequest
 } from '@/lib/requests/types';
@@ -119,7 +119,7 @@ export function RequestTable({
 
               <div className="min-h-14 space-y-1">
                 <p className="text-[11px] font-medium tracking-wide text-slate-500 uppercase lg:hidden">ประเภท</p>
-                <p className="text-sm text-slate-700">{REQUEST_TYPE_LABELS[request.request_type]}</p>
+                <RequestTypeFlowCell request={request} />
               </div>
 
               <div className="min-h-14 space-y-1">
@@ -254,10 +254,8 @@ export function RequestTable({
                   <td className="max-w-0 px-3 py-3 align-middle" title={request.customer_name}>
                     <p className="max-w-[180px] truncate text-[#0F172A] lg:max-w-[220px]">{request.customer_name}</p>
                   </td>
-                  <td className="max-w-0 px-3 py-3 align-middle" title={REQUEST_TYPE_LABELS[request.request_type]}>
-                    <p className="overflow-hidden text-pretty leading-5 text-[#64748B] [display:-webkit-box] [-webkit-box-orient:vertical] [-webkit-line-clamp:2]">
-                      {REQUEST_TYPE_LABELS[request.request_type]}
-                    </p>
+                  <td className="max-w-0 px-3 py-3 align-middle">
+                    <RequestTypeFlowCell request={request} className="max-w-[230px]" />
                   </td>
                   <td className={`max-w-0 px-3 py-3 ${responsibleColumnVariant === 'area_with_responsible' ? 'align-top' : 'align-middle'}`}>
                     {responsibleColumnVariant === 'area_with_responsible' ? (
