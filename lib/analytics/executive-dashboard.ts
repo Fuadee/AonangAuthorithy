@@ -160,7 +160,7 @@ function daysBetween(from: Date, to: Date): number {
 }
 
 function isCompleted(request: ServiceRequest): boolean {
-  return request.status === 'COMPLETED' || request.status === 'COORDINATED_WITH_CONSTRUCTION';
+  return request.status === 'COMPLETED' || request.status === 'COORDINATED_WITH_CONSTRUCTION' || request.status === 'COMPLETED_OVERLOAD_FORWARD';
 }
 
 export function getCompletedAt(request: ServiceRequest): Date | null {

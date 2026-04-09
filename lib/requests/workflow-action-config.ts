@@ -57,7 +57,8 @@ export type WorkflowActionKey =
   | 'ELIGIBILITY_FAIL'
   | 'MOVE_TO_FINAL_MANAGER_APPROVAL'
   | 'FINAL_MANAGER_APPROVE'
-  | 'COMPLETE_WORK';
+  | 'COMPLETE_WORK'
+  | 'MANAGER_APPROVE_OVERLOAD_FORWARD';
 
 export type WorkflowActionVariant = 'primary' | 'secondary';
 export type WorkflowActionIntent = 'progress' | 'warning' | 'neutral';
@@ -110,7 +111,8 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   ELIGIBILITY_FAIL: 'บันทึกว่าตรวจสอบสิทธิ์ไม่ผ่าน',
   MOVE_TO_FINAL_MANAGER_APPROVAL: 'ส่งให้ ผจก.อ่าวนางอนุมัติรอบสุดท้าย',
   FINAL_MANAGER_APPROVE: 'อนุมัติปิดงาน',
-  COMPLETE_WORK: 'ปิดงานเสร็จสิ้น'
+  COMPLETE_WORK: 'ปิดงานเสร็จสิ้น',
+  MANAGER_APPROVE_OVERLOAD_FORWARD: 'อนุมัติบันทึกให้กระบี่ปรับปรุงระบบจำหน่าย'
 };
 
 export function getWorkflowActionLabel(actionKey: WorkflowActionKey): string {
@@ -142,7 +144,8 @@ const STATUS_INSTRUCTION: Partial<Record<RequestStatus, string>> = {
   WAIT_BILLING: 'กรุณาออกใบแจ้งหนี้',
   WAIT_ACTION_CONFIRMATION: 'กรุณาส่งให้ผู้จัดการอ่าวนางอนุมัติรอบสุดท้าย',
   WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'กรุณาอนุมัติปิดงาน',
-  WAIT_MANAGER_REVIEW: 'กรุณาตรวจสอบและอนุมัติปิดงาน'
+  WAIT_MANAGER_REVIEW: 'กรุณาตรวจสอบและอนุมัติปิดงาน',
+  SURVEY_OVERLOAD_REPORTED: 'กรุณาตรวจสอบบันทึกโหลดเกินและอนุมัติส่งต่อกระบี่'
 };
 
 export function getWorkflowInstruction(status: RequestStatus): string {
@@ -348,6 +351,10 @@ export function getAvailableRequestActions(
 
   if (status === 'WAIT_MANAGER_REVIEW' && ['METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE'].includes(request.request_type) && canMoveToManagerReview(request)) {
     return [toAction('MANAGER_APPROVE', { variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติปิดงาน?' })];
+  }
+
+  if (status === 'SURVEY_OVERLOAD_REPORTED') {
+    return [toAction('MANAGER_APPROVE_OVERLOAD_FORWARD', { variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติบันทึกให้กระบี่รับเรื่องปรับปรุงระบบจำหน่าย?' })];
   }
 
   if (shouldUseExpansionActionSet(request) && ['SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING'].includes(status)) {

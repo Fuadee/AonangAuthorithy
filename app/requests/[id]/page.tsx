@@ -19,6 +19,7 @@ import {
   hasSurveyBeenRescheduled,
   normalizeSurveyWorkflowStatus,
   getRequestStatusLabel,
+  REQUEST_STATUS_DESCRIPTION,
   isInvoiceSigned,
   needsRescheduleAfterDocuments,
   isPaid,
@@ -175,6 +176,16 @@ function getNextStepSummary(
           nextStep: 'ผู้จัดการอ่าวนางอนุมัติรอบสุดท้ายก่อนปิดงาน',
           owner: 'ผู้จัดการอ่าวนาง'
         };
+      case 'SURVEY_OVERLOAD_REPORTED':
+        return {
+          nextStep: 'รอผู้จัดการอ่าวนางอนุมัติบันทึกโหลดเกิน',
+          owner: 'ผู้จัดการอ่าวนาง'
+        };
+      case 'COMPLETED_OVERLOAD_FORWARD':
+        return {
+          nextStep: 'ส่งต่อกระบี่รับเรื่องปรับปรุงระบบจำหน่ายแล้ว',
+          owner: 'เสร็จสิ้น'
+        };
       case 'COMPLETED':
         return {
           nextStep: 'ปิดงานเรียบร้อยแล้ว',
@@ -321,7 +332,14 @@ function getTimeline(request: {
   documents_received_at: string | null;
   awaiting_customer_documents_since: string | null;
   survey_result: 'PASS' | 'FAIL' | null;
+  survey_failure_type: 'NORMAL_FIX_REQUIRED' | 'OVERLOAD_REPORTED' | null;
   customer_fix_note: string | null;
+  overload_report_reason: string | null;
+  overload_report_note: string | null;
+  overload_reported_at: string | null;
+  overload_reported_by: string | null;
+  manager_overload_approved_at: string | null;
+  manager_overload_approved_by: string | null;
   customer_fix_reported_at: string | null;
   photo_review_status: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
   photo_reviewed_at: string | null;
@@ -419,6 +437,25 @@ function getTimeline(request: {
   }
 
   if (request.survey_completed_at) {
+    if (request.survey_failure_type === 'OVERLOAD_REPORTED') {
+      items.push({
+        key: 'survey-overload',
+        title: 'บันทึกผลสำรวจ: ตรวจสอบแล้วโหลดเกิน',
+        description: request.overload_report_reason ?? undefined,
+        at: request.survey_completed_at,
+        sortAt: resolveTimelineSortAt(request.survey_completed_at)
+      });
+      if (request.overload_reported_at) {
+        items.push({
+          key: 'survey-overload-forward',
+          title: 'ส่งบันทึกต่อผู้จัดการอ่าวนาง',
+          description: request.overload_reported_by ? `ผู้บันทึก: ${request.overload_reported_by}` : undefined,
+          at: request.overload_reported_at,
+          sortAt: resolveTimelineSortAt(request.overload_reported_at)
+        });
+      }
+    }
+
     items.push({
       key: 'completed',
       title: request.survey_result === 'FAIL' ? 'สำรวจไม่ผ่าน' : 'สำรวจหน้างานเสร็จ',
@@ -430,6 +467,22 @@ function getTimeline(request: {
             : 'ผลสำรวจไม่ผ่าน เข้าสู่ขั้นตอนแก้ไข/ตรวจซ้ำ',
       at: request.survey_completed_at,
       sortAt: resolveTimelineSortAt(request.survey_completed_at)
+    });
+  }
+
+  if (request.manager_overload_approved_at) {
+    items.push({
+      key: 'manager-approved-overload',
+      title: 'ผู้จัดการอ่าวนางอนุมัติบันทึกให้กระบี่ปรับปรุงระบบจำหน่าย',
+      description: request.manager_overload_approved_by ? `ผู้อนุมัติ: ${request.manager_overload_approved_by}` : undefined,
+      at: request.manager_overload_approved_at,
+      sortAt: resolveTimelineSortAt(request.manager_overload_approved_at)
+    });
+    items.push({
+      key: 'close-overload',
+      title: 'ปิดคำร้อง: ส่งต่อกระบี่รับเรื่องปรับปรุงระบบจำหน่ายแล้ว',
+      at: request.manager_overload_approved_at,
+      sortAt: resolveTimelineSortAt(request.manager_overload_approved_at)
     });
   }
 
@@ -578,7 +631,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,fix_verification_mode,customer_fix_note,customer_fix_reported_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,forwarded_to_expansion_at,forwarded_to_expansion_note,three_phase_capability_result,three_phase_capability_checked_at,house_number,village_no,road,landmark,latitude,longitude,location_note,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,area_name,assignee_id,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,survey_failure_type,fix_verification_mode,customer_fix_note,customer_fix_reported_at,overload_report_reason,overload_report_note,overload_reported_at,overload_reported_by,manager_overload_approved_at,manager_overload_approved_by,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,forwarded_to_expansion_at,forwarded_to_expansion_note,three_phase_capability_result,three_phase_capability_checked_at,house_number,village_no,road,landmark,latitude,longitude,location_note,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -639,7 +692,14 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     documents_received_at: request.documents_received_at,
     awaiting_customer_documents_since: request.awaiting_customer_documents_since,
     survey_result: request.survey_result,
+    survey_failure_type: request.survey_failure_type,
     customer_fix_note: request.customer_fix_note,
+    overload_report_reason: request.overload_report_reason,
+    overload_report_note: request.overload_report_note,
+    overload_reported_at: request.overload_reported_at,
+    overload_reported_by: request.overload_reported_by,
+    manager_overload_approved_at: request.manager_overload_approved_at,
+    manager_overload_approved_by: request.manager_overload_approved_by,
     customer_fix_reported_at: request.customer_fix_reported_at,
     photo_review_status: request.photo_review_status,
     photo_reviewed_at: request.photo_reviewed_at,
@@ -722,7 +782,10 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           </div>
           <div>
             <dt className="text-sm text-slate-500">สถานะปัจจุบัน</dt>
-            <dd className="mt-1 font-medium">{getRequestStatusLabel(requestStatus)}</dd>
+            <dd className="mt-1 font-medium">
+              {getRequestStatusLabel(requestStatus)}
+              {REQUEST_STATUS_DESCRIPTION[requestStatus] ? ` (${REQUEST_STATUS_DESCRIPTION[requestStatus]})` : ''}
+            </dd>
           </div>
           <div>
             <dt className="text-sm text-slate-500">ประเภทคำร้อง</dt>
@@ -838,6 +901,46 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
             <div>
               <dt className="text-sm text-slate-500">วิธีที่อนุมัติให้ผ่านสุดท้าย</dt>
               <dd className="mt-1 font-medium">{postSurveyFixSummary.finalApprovalSourceLabel}</dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
+
+      {request.survey_failure_type === 'OVERLOAD_REPORTED' ? (
+        <section className="card p-6">
+          <h3 className="text-lg font-semibold">บันทึกกรณีโหลดเกิน</h3>
+          <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div>
+              <dt className="text-sm text-slate-500">ผลสำรวจ</dt>
+              <dd className="mt-1 font-medium">โหลดเกิน</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">สถานะปัจจุบัน</dt>
+              <dd className="mt-1 font-medium">
+                {request.status === 'SURVEY_OVERLOAD_REPORTED'
+                  ? 'รอผู้จัดการอนุมัติบันทึกโหลดเกิน'
+                  : 'เสร็จสิ้น (ส่งกระบี่ปรับปรุงระบบจำหน่ายแล้ว)'}
+              </dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-sm text-slate-500">รายละเอียดบันทึก</dt>
+              <dd className="mt-1 whitespace-pre-wrap font-medium">{request.overload_report_reason ?? '-'}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-sm text-slate-500">หมายเหตุเพิ่มเติม</dt>
+              <dd className="mt-1 whitespace-pre-wrap font-medium">{request.overload_report_note ?? '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">ผู้บันทึก / วันที่บันทึก</dt>
+              <dd className="mt-1 font-medium">
+                {request.overload_reported_by ?? '-'} / {formatDateTime(request.overload_reported_at)}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">ผู้อนุมัติ / วันที่อนุมัติ</dt>
+              <dd className="mt-1 font-medium">
+                {request.manager_overload_approved_by ?? '-'} / {formatDateTime(request.manager_overload_approved_at)}
+              </dd>
             </div>
           </dl>
         </section>

@@ -56,7 +56,7 @@ create table if not exists public.service_requests (
   survey_date_current date,
   previous_survey_date date,
   request_type text not null default 'METER' check (request_type in ('METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE', 'EXPANSION')),
-  status text not null default 'NEW' check (status in ('NEW', 'PENDING_SURVEY_REVIEW', 'SURVEY_ACCEPTED', 'SURVEY_DOCS_INCOMPLETE', 'SURVEY_RESCHEDULE_REQUESTED', 'SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING', 'WAITING_TO_SEND_TO_KRABI', 'SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK', 'KRABI_NEEDS_DOCUMENT_FIX', 'KRABI_IN_PROGRESS', 'KRABI_ESTIMATION_COMPLETED', 'BILL_ISSUED', 'COORDINATED_WITH_CONSTRUCTION', 'WAIT_DOCUMENT_REVIEW', 'WAIT_DOCUMENT_FROM_CUSTOMER', 'READY_FOR_SURVEY', 'IN_SURVEY', 'WAIT_CUSTOMER_FIX', 'WAIT_FIX_REVIEW', 'READY_FOR_RESURVEY', 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL', 'WAIT_KRABI_APPROVAL', 'KRABI_NEEDS_CORRECTION', 'DOCUMENT_FIX', 'RESENT_TO_KRABI', 'KRABI_APPROVED', 'WAIT_RECEIVE_FROM_KRABI', 'WAIT_ELIGIBILITY_REVIEW', 'WAIT_AONANG_MANAGER_FINAL_APPROVAL', 'CHECK_3PHASE_CAPABILITY', 'NEEDS_EXPANSION', 'DESIGN_AND_ESTIMATE', 'WAIT_BILLING', 'WAIT_PAYMENT', 'INSTALLATION', 'INSPECTION', 'WAIT_ACTION_CONFIRMATION', 'WAIT_MANAGER_REVIEW', 'COMPLETED')),
+  status text not null default 'NEW' check (status in ('NEW', 'PENDING_SURVEY_REVIEW', 'SURVEY_ACCEPTED', 'SURVEY_DOCS_INCOMPLETE', 'SURVEY_RESCHEDULE_REQUESTED', 'SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING', 'WAITING_TO_SEND_TO_KRABI', 'SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK', 'KRABI_NEEDS_DOCUMENT_FIX', 'KRABI_IN_PROGRESS', 'KRABI_ESTIMATION_COMPLETED', 'BILL_ISSUED', 'COORDINATED_WITH_CONSTRUCTION', 'WAIT_DOCUMENT_REVIEW', 'WAIT_DOCUMENT_FROM_CUSTOMER', 'READY_FOR_SURVEY', 'IN_SURVEY', 'WAIT_CUSTOMER_FIX', 'WAIT_FIX_REVIEW', 'READY_FOR_RESURVEY', 'SURVEY_OVERLOAD_REPORTED', 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL', 'WAIT_KRABI_APPROVAL', 'KRABI_NEEDS_CORRECTION', 'DOCUMENT_FIX', 'RESENT_TO_KRABI', 'KRABI_APPROVED', 'WAIT_RECEIVE_FROM_KRABI', 'WAIT_ELIGIBILITY_REVIEW', 'WAIT_AONANG_MANAGER_FINAL_APPROVAL', 'CHECK_3PHASE_CAPABILITY', 'NEEDS_EXPANSION', 'DESIGN_AND_ESTIMATE', 'WAIT_BILLING', 'WAIT_PAYMENT', 'INSTALLATION', 'INSPECTION', 'WAIT_ACTION_CONFIRMATION', 'WAIT_MANAGER_REVIEW', 'COMPLETED', 'COMPLETED_OVERLOAD_FORWARD')),
   survey_note text,
   survey_reschedule_date date,
   survey_rescheduled_at timestamptz,
@@ -64,8 +64,15 @@ create table if not exists public.service_requests (
   survey_reviewed_at timestamptz,
   survey_completed_at timestamptz,
   survey_result text check (survey_result in ('PASS', 'FAIL')),
+  survey_failure_type text check (survey_failure_type in ('NORMAL_FIX_REQUIRED', 'OVERLOAD_REPORTED')),
   fix_verification_mode text check (fix_verification_mode in ('PHOTO_OR_RESURVEY', 'RESURVEY_ONLY')),
   customer_fix_note text,
+  overload_report_reason text,
+  overload_report_note text,
+  overload_reported_at timestamptz,
+  overload_reported_by text,
+  manager_overload_approved_at timestamptz,
+  manager_overload_approved_by text,
   customer_fix_reported_at timestamptz,
   photo_review_status text check (photo_review_status in ('PENDING', 'APPROVED', 'REJECTED')),
   photo_reviewed_at timestamptz,
@@ -122,4 +129,5 @@ create index if not exists idx_service_requests_assigned_surveyor_id_status_date
 create index if not exists idx_service_requests_wait_billing on public.service_requests (request_type, status) where status = 'WAIT_BILLING';
 create index if not exists idx_service_requests_wait_action_confirmation on public.service_requests (request_type, status) where status = 'WAIT_ACTION_CONFIRMATION';
 create index if not exists idx_service_requests_wait_manager_review on public.service_requests (request_type, status) where status = 'WAIT_MANAGER_REVIEW';
+create index if not exists idx_service_requests_overload_wait_manager on public.service_requests (status, overload_reported_at) where status = 'SURVEY_OVERLOAD_REPORTED';
 create index if not exists idx_service_requests_ready_to_send_krabi on public.service_requests (status, planned_dispatch_date, is_document_ready) where status = 'WAITING_TO_SEND_TO_KRABI';

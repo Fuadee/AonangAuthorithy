@@ -132,6 +132,7 @@ const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>
   BILL_ISSUED: ['COORDINATED_WITH_CONSTRUCTION'],
   WAIT_ACTION_CONFIRMATION: ['WAIT_MANAGER_REVIEW', 'WAIT_AONANG_MANAGER_FINAL_APPROVAL'],
   WAIT_MANAGER_REVIEW: ['COMPLETED'],
+  SURVEY_OVERLOAD_REPORTED: ['COMPLETED_OVERLOAD_FORWARD'],
   WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL: ['SENT_TO_KRABI'],
   SENT_TO_KRABI: ['WAIT_KRABI_DOCUMENT_CHECK', 'WAIT_KRABI_APPROVAL'],
   WAIT_KRABI_APPROVAL: ['KRABI_APPROVED', 'KRABI_NEEDS_CORRECTION'],
@@ -1223,9 +1224,14 @@ export async function completeThreePhaseInspectionAction(formData: FormData) {
 }
 
 type SurveyVerificationMode = 'PHOTO_OR_RESURVEY' | 'RESURVEY_ONLY';
+type SurveyFailureType = 'NORMAL_FIX_REQUIRED' | 'OVERLOAD_REPORTED';
 
 function isSurveyVerificationMode(value: string): value is SurveyVerificationMode {
   return ['PHOTO_OR_RESURVEY', 'RESURVEY_ONLY'].includes(value);
+}
+
+function isSurveyFailureType(value: string): value is SurveyFailureType {
+  return ['NORMAL_FIX_REQUIRED', 'OVERLOAD_REPORTED'].includes(value);
 }
 
 export async function markSurveyPassedAction(formData: FormData) {
@@ -1256,9 +1262,16 @@ export async function markSurveyPassedAction(formData: FormData) {
     .update({
       status: ['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type as RequestType) ? 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL' : 'WAIT_BILLING',
       survey_result: 'PASS',
+      survey_failure_type: null,
       fix_approved_via: 'RESURVEY',
       survey_note: surveyNote,
       survey_completed_at: nowIso,
+      overload_report_reason: null,
+      overload_report_note: null,
+      overload_reported_at: null,
+      overload_reported_by: null,
+      manager_overload_approved_at: null,
+      manager_overload_approved_by: null,
       photo_review_status: null,
       photo_reviewed_at: null,
       photo_reviewed_by: null,
@@ -1275,14 +1288,13 @@ export async function markSurveyPassedAction(formData: FormData) {
 
 export async function markSurveyFailedAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
-  const customerFixNote = requiredField(formData, 'customer_fix_note');
-  const fixVerificationMode = requiredField(formData, 'fix_verification_mode');
+  const surveyFailureTypeRaw = formData.get('survey_failure_type')?.toString().trim() ?? 'NORMAL_FIX_REQUIRED';
   const surveyNote = optionalField(formData, 'survey_note');
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
-  if (!isSurveyVerificationMode(fixVerificationMode)) {
-    throw new Error('รูปแบบการตรวจหลังแก้ไขไม่ถูกต้อง');
+  if (!isSurveyFailureType(surveyFailureTypeRaw)) {
+    throw new Error('ประเภทผลสำรวจไม่ผ่านไม่ถูกต้อง');
   }
 
   const { data: request, error: requestError } = await supabase
@@ -1302,13 +1314,63 @@ export async function markSurveyFailedAction(formData: FormData) {
     throw new Error('ต้องยืนยันว่าระบบรองรับ 3 เฟสก่อน จึงจะสรุปผลสำรวจผ่าน/ไม่ผ่านได้');
   }
 
+  if (surveyFailureTypeRaw === 'OVERLOAD_REPORTED') {
+    const overloadReportReason = requiredField(formData, 'overload_report_reason');
+    const overloadReportNote = optionalField(formData, 'overload_report_note');
+    const overloadReportedBy = requiredOneOfFields(formData, ['overload_reported_by', 'reported_by', 'actor_name']);
+    const { error } = await supabase
+      .from('service_requests')
+      .update({
+        status: 'SURVEY_OVERLOAD_REPORTED',
+        survey_result: 'FAIL',
+        survey_failure_type: 'OVERLOAD_REPORTED',
+        overload_report_reason: overloadReportReason,
+        overload_report_note: overloadReportNote,
+        overload_reported_at: nowIso,
+        overload_reported_by: overloadReportedBy,
+        manager_overload_approved_at: null,
+        manager_overload_approved_by: null,
+        survey_note: surveyNote,
+        survey_completed_at: nowIso,
+        customer_fix_note: null,
+        customer_fix_reported_at: null,
+        fix_verification_mode: null,
+        photo_review_status: null,
+        photo_reviewed_at: null,
+        photo_reviewed_by: null,
+        fix_approved_via: null,
+        updated_at: nowIso
+      })
+      .eq('id', requestId);
+
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    finalizeWorkflowAction(requestId, formData);
+    return;
+  }
+
+  const customerFixNote = requiredField(formData, 'customer_fix_note');
+  const fixVerificationMode = requiredField(formData, 'fix_verification_mode');
+  if (!isSurveyVerificationMode(fixVerificationMode)) {
+    throw new Error('รูปแบบการตรวจหลังแก้ไขไม่ถูกต้อง');
+  }
+
   const { error } = await supabase
     .from('service_requests')
     .update({
       status: 'WAIT_CUSTOMER_FIX',
       survey_result: 'FAIL',
+      survey_failure_type: 'NORMAL_FIX_REQUIRED',
       customer_fix_note: customerFixNote,
       fix_verification_mode: fixVerificationMode,
+      overload_report_reason: null,
+      overload_report_note: null,
+      overload_reported_at: null,
+      overload_reported_by: null,
+      manager_overload_approved_at: null,
+      manager_overload_approved_by: null,
       survey_note: surveyNote,
       survey_completed_at: nowIso,
       customer_fix_reported_at: null,
@@ -1993,6 +2055,47 @@ export async function approveManagerReviewAction(formData: FormData) {
     .from('service_requests')
     .update({
       status: 'COMPLETED',
+      updated_at: nowIso
+    })
+    .eq('id', requestId);
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  finalizeWorkflowAction(requestId, formData);
+}
+
+export async function approveManagerOverloadForwardAction(formData: FormData) {
+  const requestId = requiredField(formData, 'request_id');
+  const approvedBy = requiredOneOfFields(formData, ['manager_overload_approved_by', 'approved_by', 'actor_name']);
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,status,survey_failure_type,overload_report_reason')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if (request.status !== 'SURVEY_OVERLOAD_REPORTED') {
+    throw new Error('อนุมัติบันทึกโหลดเกินได้เฉพาะงานที่รออนุมัติบันทึกโหลดเกิน');
+  }
+
+  if (request.survey_failure_type !== 'OVERLOAD_REPORTED' || !request.overload_report_reason) {
+    throw new Error('ไม่พบข้อมูลบันทึกโหลดเกินของคำร้องนี้');
+  }
+
+  const { error } = await supabase
+    .from('service_requests')
+    .update({
+      status: 'COMPLETED_OVERLOAD_FORWARD',
+      manager_overload_approved_at: nowIso,
+      manager_overload_approved_by: approvedBy,
       updated_at: nowIso
     })
     .eq('id', requestId);

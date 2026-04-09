@@ -24,6 +24,7 @@ export const REQUEST_STATUSES = [
   'WAIT_CUSTOMER_FIX',
   'WAIT_FIX_REVIEW',
   'READY_FOR_RESURVEY',
+  'SURVEY_OVERLOAD_REPORTED',
   'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL',
   'WAIT_KRABI_APPROVAL',
   'KRABI_NEEDS_CORRECTION',
@@ -42,7 +43,8 @@ export const REQUEST_STATUSES = [
   'INSPECTION',
   'WAIT_ACTION_CONFIRMATION',
   'WAIT_MANAGER_REVIEW',
-  'COMPLETED'
+  'COMPLETED',
+  'COMPLETED_OVERLOAD_FORWARD'
 ] as const;
 import { formatDateOnly, formatThaiDateTime } from '@/lib/datetime';
 
@@ -54,6 +56,7 @@ export const FIX_VERIFICATION_MODES = ['PHOTO_OR_RESURVEY', 'RESURVEY_ONLY'] as 
 export const PHOTO_REVIEW_STATUSES = ['PENDING', 'APPROVED', 'REJECTED'] as const;
 export const FIX_APPROVAL_SOURCES = ['PHOTO', 'RESURVEY'] as const;
 export const THREE_PHASE_CAPABILITY_RESULTS = ['SUPPORTED', 'UNSUPPORTED'] as const;
+export const SURVEY_FAILURE_TYPES = ['NORMAL_FIX_REQUIRED', 'OVERLOAD_REPORTED'] as const;
 
 export type RequestStatus = (typeof REQUEST_STATUSES)[number];
 export type RequestType = (typeof REQUEST_TYPES)[number];
@@ -64,6 +67,7 @@ export type FixVerificationMode = (typeof FIX_VERIFICATION_MODES)[number];
 export type PhotoReviewStatus = (typeof PHOTO_REVIEW_STATUSES)[number];
 export type FixApprovalSource = (typeof FIX_APPROVAL_SOURCES)[number];
 export type ThreePhaseCapabilityResult = (typeof THREE_PHASE_CAPABILITY_RESULTS)[number];
+export type SurveyFailureType = (typeof SURVEY_FAILURE_TYPES)[number];
 export type DocumentReviewMode = 'BASIC' | 'DETAILED';
 
 export const REQUEST_TYPE_LABELS: Record<RequestType, string> = {
@@ -97,6 +101,7 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   WAIT_CUSTOMER_FIX: 'รอแก้ไขโดยลูกค้า',
   WAIT_FIX_REVIEW: 'ตรวจข้อมูล/แก้ไข',
   READY_FOR_RESURVEY: 'นัดสำรวจใหม่',
+  SURVEY_OVERLOAD_REPORTED: 'รออนุมัติบันทึกโหลดเกิน',
   WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL: 'รอผู้จัดการอ่าวนางอนุมัติก่อนส่งกระบี่',
   WAIT_KRABI_APPROVAL: 'รอกระบี่อนุมัติ',
   KRABI_NEEDS_CORRECTION: 'กระบี่ตีกลับให้แก้ไขเอกสาร',
@@ -115,7 +120,16 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   INSPECTION: 'ตรวจสอบหลังติดตั้ง',
   WAIT_ACTION_CONFIRMATION: 'รอชำระเงิน',
   WAIT_MANAGER_REVIEW: 'รอผู้จัดการตรวจ',
-  COMPLETED: 'เสร็จสิ้น'
+  COMPLETED: 'เสร็จสิ้น',
+  COMPLETED_OVERLOAD_FORWARD: 'เสร็จสิ้น'
+};
+
+export const REQUEST_STATUS_DESCRIPTION: Partial<Record<RequestStatus, string>> = {
+  COMPLETED_OVERLOAD_FORWARD: 'กระบี่รับเรื่องปรับปรุงระบบจำหน่ายแล้ว'
+};
+
+export const REQUEST_STATUS_OWNER_LABELS: Partial<Record<RequestStatus, string>> = {
+  SURVEY_OVERLOAD_REPORTED: 'ผู้จัดการอ่าวนาง'
 };
 
 export const REQUEST_QUEUE_GROUP_LABELS: Record<RequestQueueGroup, string> = {
@@ -208,6 +222,7 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   WAIT_CUSTOMER_FIX: 'SURVEY',
   WAIT_FIX_REVIEW: 'SURVEY',
   READY_FOR_RESURVEY: 'SURVEY',
+  SURVEY_OVERLOAD_REPORTED: 'MANAGER',
   WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL: 'MANAGER',
   WAIT_KRABI_APPROVAL: 'KRABI',
   KRABI_NEEDS_CORRECTION: 'DISPATCH',
@@ -226,7 +241,8 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   INSPECTION: 'SURVEY',
   WAIT_ACTION_CONFIRMATION: 'BILLING',
   WAIT_MANAGER_REVIEW: 'MANAGER',
-  COMPLETED: 'DONE'
+  COMPLETED: 'DONE',
+  COMPLETED_OVERLOAD_FORWARD: 'DONE'
 };
 
 export function getRequestQueueGroup(status: RequestStatus): RequestQueueGroup {
@@ -459,7 +475,7 @@ export const SURVEYOR_PRIMARY_STATUS_MAP: Record<'WAITING_REVIEW' | 'READY' | 'I
   WAITING_REVIEW: ['WAIT_DOCUMENT_REVIEW', 'PENDING_SURVEY_REVIEW'],
   READY: ['READY_FOR_SURVEY', 'SURVEY_ACCEPTED', 'SURVEY_RESCHEDULE_REQUESTED'],
   IN_PROGRESS: ['IN_SURVEY'],
-  DONE: ['SURVEY_COMPLETED']
+  DONE: ['SURVEY_COMPLETED', 'SURVEY_OVERLOAD_REPORTED']
 };
 
 function parseDateOnlyFromIsoLike(value: string): string | null {
@@ -788,8 +804,15 @@ export type ServiceRequest = {
   survey_reviewed_at: string | null;
   survey_completed_at: string | null;
   survey_result: SurveyResult | null;
+  survey_failure_type: SurveyFailureType | null;
   fix_verification_mode: FixVerificationMode | null;
   customer_fix_note: string | null;
+  overload_report_reason: string | null;
+  overload_report_note: string | null;
+  overload_reported_at: string | null;
+  overload_reported_by: string | null;
+  manager_overload_approved_at: string | null;
+  manager_overload_approved_by: string | null;
   customer_fix_reported_at: string | null;
   photo_review_status: PhotoReviewStatus | null;
   photo_reviewed_at: string | null;
