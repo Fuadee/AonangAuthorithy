@@ -46,6 +46,14 @@ function requiredOneOfFields(formData: FormData, keys: string[]): string {
   throw new Error(`Missing required field: ${keys[0]}`);
 }
 
+function snapshotFormData(formData: FormData): Record<string, string> {
+  const snapshot: Record<string, string> = {};
+  for (const [key, value] of formData.entries()) {
+    snapshot[key] = value.toString();
+  }
+  return snapshot;
+}
+
 function getEffectiveSurveyDate(request: { survey_date_current?: string | null; scheduled_survey_date?: string | null }): string | null {
   return request.scheduled_survey_date ?? null;
 }
@@ -1287,11 +1295,21 @@ export async function markSurveyPassedAction(formData: FormData) {
 }
 
 export async function markSurveyFailedAction(formData: FormData) {
+  const payload = snapshotFormData(formData);
+  console.info('[markSurveyFailedAction] incoming payload', payload);
+
   const requestId = requiredField(formData, 'request_id');
   const surveyFailureTypeRaw = formData.get('survey_failure_type')?.toString().trim() ?? 'NORMAL_FIX_REQUIRED';
   const surveyNote = optionalField(formData, 'survey_note');
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
+  console.info('[markSurveyFailedAction] parsed base fields', {
+    requestId,
+    surveyFailureTypeRaw,
+    hasSurveyNote: Boolean(surveyNote),
+    actionIntent: formData.get('action_intent')?.toString() ?? null,
+    actionBranch: formData.get('action_branch')?.toString() ?? null
+  });
 
   if (!isSurveyFailureType(surveyFailureTypeRaw)) {
     throw new Error('ประเภทผลสำรวจไม่ผ่านไม่ถูกต้อง');
@@ -1307,6 +1325,13 @@ export async function markSurveyFailedAction(formData: FormData) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
+  console.info('[markSurveyFailedAction] current request state', {
+    requestId: request.id,
+    status: request.status,
+    requestType: request.request_type,
+    threePhaseCapabilityResult: request.three_phase_capability_result
+  });
+
   if (!canMarkSurveyFailed({ status: request.status as RequestStatus, request_type: request.request_type as RequestType })) {
     throw new Error('บันทึกผลสำรวจไม่ผ่านได้เฉพาะงานขอมิเตอร์/เพิ่มเป็นมิเตอร์ 3 เฟส ที่กำลังสำรวจอยู่');
   }
@@ -1318,6 +1343,18 @@ export async function markSurveyFailedAction(formData: FormData) {
     const overloadReportReason = requiredField(formData, 'overload_report_reason');
     const overloadReportNote = optionalField(formData, 'overload_report_note');
     const overloadReportedBy = requiredOneOfFields(formData, ['overload_reported_by', 'reported_by', 'actor_name']);
+    console.info('[markSurveyFailedAction] branch OVERLOAD_REPORTED', {
+      requestId,
+      overloadReportedBy,
+      hasOverloadReportReason: Boolean(overloadReportReason),
+      hasOverloadReportNote: Boolean(overloadReportNote)
+    });
+
+    console.info('[markSurveyFailedAction] updating DB for OVERLOAD_REPORTED', {
+      requestId,
+      nextStatus: 'SURVEY_OVERLOAD_REPORTED'
+    });
+
     const { error } = await supabase
       .from('service_requests')
       .update({
@@ -1347,15 +1384,32 @@ export async function markSurveyFailedAction(formData: FormData) {
       throw new Error(error.message);
     }
 
+    console.info('[markSurveyFailedAction] DB update success', {
+      requestId,
+      nextStatus: 'SURVEY_OVERLOAD_REPORTED',
+      nextSurveyFailureType: 'OVERLOAD_REPORTED'
+    });
+    console.info('[markSurveyFailedAction] finalizing workflow action', { requestId });
     finalizeWorkflowAction(requestId, formData);
     return;
   }
 
   const customerFixNote = requiredField(formData, 'customer_fix_note');
   const fixVerificationMode = requiredField(formData, 'fix_verification_mode');
+  console.info('[markSurveyFailedAction] branch NORMAL_FIX_REQUIRED', {
+    requestId,
+    hasCustomerFixNote: Boolean(customerFixNote),
+    fixVerificationMode
+  });
+
   if (!isSurveyVerificationMode(fixVerificationMode)) {
     throw new Error('รูปแบบการตรวจหลังแก้ไขไม่ถูกต้อง');
   }
+
+  console.info('[markSurveyFailedAction] updating DB for NORMAL_FIX_REQUIRED', {
+    requestId,
+    nextStatus: 'WAIT_CUSTOMER_FIX'
+  });
 
   const { error } = await supabase
     .from('service_requests')
@@ -1386,7 +1440,34 @@ export async function markSurveyFailedAction(formData: FormData) {
     throw new Error(error.message);
   }
 
+  console.info('[markSurveyFailedAction] DB update success', {
+    requestId,
+    nextStatus: 'WAIT_CUSTOMER_FIX',
+    nextSurveyFailureType: 'NORMAL_FIX_REQUIRED'
+  });
+  console.info('[markSurveyFailedAction] finalizing workflow action', { requestId });
   finalizeWorkflowAction(requestId, formData);
+}
+
+export async function markSurveyFailedActionSafe(
+  formData: FormData
+): Promise<{ ok: true } | { ok: false; error: string }> {
+  try {
+    await markSurveyFailedAction(formData);
+    return { ok: true };
+  } catch (error) {
+    const redirectDigest = typeof error === 'object' && error && 'digest' in error ? (error as { digest?: unknown }).digest : null;
+    if (typeof redirectDigest === 'string' && redirectDigest.startsWith('NEXT_REDIRECT')) {
+      throw error;
+    }
+
+    const message = error instanceof Error ? error.message : 'ไม่สามารถบันทึกผลสำรวจไม่ผ่านได้';
+    console.error('[markSurveyFailedActionSafe] action failed', {
+      message,
+      payload: snapshotFormData(formData)
+    });
+    return { ok: false, error: message };
+  }
 }
 
 export async function reportCustomerFixAction(formData: FormData) {
