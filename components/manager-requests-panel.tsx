@@ -10,11 +10,10 @@ import {
   approveManagerReviewAction
 } from '@/app/actions';
 import { QueueFilterChips } from '@/components/queue/queue-filter-chips';
-import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
 import { formatThaiDateTime } from '@/lib/datetime';
-import { RequestStatus, ServiceRequest } from '@/lib/requests/types';
+import { REQUEST_TYPE_LABELS, RequestStatus, ServiceRequest } from '@/lib/requests/types';
 
 type ManagerRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -131,7 +130,6 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                 <th className="whitespace-nowrap px-4 py-3 font-medium">เลขคำร้อง</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">ลูกค้า</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">ประเภทคำร้อง</th>
-                <th className="whitespace-nowrap px-4 py-3 font-medium">พื้นที่</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">สถานะ</th>
                 <th className="whitespace-nowrap px-4 py-3 font-medium">จัดการ</th>
               </tr>
@@ -142,7 +140,14 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                 const requiresConfirm = request.status === 'SURVEY_OVERLOAD_REPORTED';
                 return (
                   <tr key={request.id} className="hover:bg-slate-50">
-                    <td className="px-4 py-3 font-medium text-brand-700">{request.request_no}</td>
+                    <td className="px-4 py-3 font-medium text-brand-700">
+                      <Link
+                        className="cursor-pointer transition-colors hover:text-brand-800 hover:underline"
+                        href={`/requests/${request.id}`}
+                      >
+                        {request.request_no}
+                      </Link>
+                    </td>
                     <td className="px-4 py-3">{request.customer_name}</td>
                     <td className="px-4 py-3 align-top">
                       <RequestTypeFlowCell className="max-w-[240px]" request={request} />
@@ -155,9 +160,6 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
-                        <Link className="btn-secondary" href={`/requests/${request.id}`}>
-                          เปิดดู
-                        </Link>
                         {requiresConfirm ? (
                           <button
                             className="btn-primary"
