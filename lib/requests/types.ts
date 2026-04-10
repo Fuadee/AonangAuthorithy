@@ -134,7 +134,7 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
 };
 
 export const REQUEST_STATUS_DESCRIPTION: Partial<Record<RequestStatus, string>> = {
-  COMPLETED_OVERLOAD_FORWARD: 'ส่งต่อกระบี่เพื่อปรับปรุงระบบแล้ว'
+  COMPLETED_OVERLOAD_FORWARD: 'เสร็จสิ้น (ส่งต่อปรับปรุงระบบ)'
 };
 
 export const REQUEST_STATUS_OWNER_LABELS: Partial<Record<RequestStatus, string>> = {
@@ -309,8 +309,8 @@ export const WAITING_KRABI_DISPLAY_STATUS: DisplayStatus = 'WAITING_KRABI';
 export type DisplayStatusContext = 'AONANG_INTERNAL' | 'CUSTOMER';
 
 export const WAITING_KRABI_DISPLAY_LABELS: Record<DisplayStatusContext, string> = {
-  AONANG_INTERNAL: 'เสร็จสิ้น (ส่งต่อกระบี่เพื่อปรับปรุงระบบแล้ว)',
-  CUSTOMER: 'รอการปรับปรุงระบบไฟฟ้าจากกระบี่'
+  AONANG_INTERNAL: 'เสร็จสิ้น (ส่งต่อปรับปรุงระบบ)',
+  CUSTOMER: 'รอการปรับปรุงระบบไฟฟ้า'
 };
 
 export function isOverloadCompletedAwaitingKrabi(request: OverloadCompletedDisplayRequest): boolean {
