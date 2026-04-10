@@ -22,6 +22,8 @@ import {
   getFlowType,
   getFlowTypeLabel,
   getRequestStatusLabel,
+  getRequestStatusLabelForDisplay,
+  isOverloadCompletedAwaitingKrabi,
   REQUEST_STATUS_DESCRIPTION,
   isInvoiceSigned,
   needsRescheduleAfterDocuments,
@@ -648,7 +650,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,request_intent,meter_size,phase,flow_type,area_name,assignee_id,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,survey_failure_type,fix_verification_mode,customer_fix_note,customer_fix_reported_at,overload_report_reason,overload_report_note,overload_reported_at,overload_reported_by,manager_overload_approved_at,manager_overload_approved_by,manager_return_reason,manager_return_checklist,manager_returned_by,manager_returned_at,survey_round,resurvey_note,resurvey_completed_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,forwarded_to_expansion_at,forwarded_to_expansion_note,three_phase_capability_result,three_phase_capability_checked_at,house_number,village_no,road,landmark,latitude,longitude,location_note,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,request_intent,meter_size,phase,flow_type,area_name,assignee_id,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,survey_failure_type,fix_verification_mode,customer_fix_note,customer_fix_reported_at,overload_report_reason,overload_report_note,overload_reported_at,overload_reported_by,manager_overload_approved_at,manager_overload_approved_by,krabi_reference_no,krabi_submitted_at,krabi_submitted_by,manager_return_reason,manager_return_checklist,manager_returned_by,manager_returned_at,survey_round,resurvey_note,resurvey_completed_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,forwarded_to_expansion_at,forwarded_to_expansion_note,three_phase_capability_result,three_phase_capability_checked_at,house_number,village_no,road,landmark,latitude,longitude,location_note,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -686,6 +688,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const customerDelaySummary = getCustomerDelaySummary(request);
   const showRescheduleNotice =
     hasSurveyBeenRescheduled(request) && request.survey_reschedule_reason?.includes('รอเอกสารจากผู้ใช้ไฟ');
+  const isOverloadAwaitingKrabi = isOverloadCompletedAwaitingKrabi(request);
   const timeline = getTimeline({
     created_at: request.created_at,
     survey_reviewed_at: request.survey_reviewed_at,
@@ -817,10 +820,22 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           <div>
             <dt className="text-sm text-slate-500">สถานะปัจจุบัน</dt>
             <dd className="mt-1 font-medium">
-              {getRequestStatusLabel(requestStatus)}
+              {getRequestStatusLabelForDisplay(request)}
               {REQUEST_STATUS_DESCRIPTION[requestStatus] ? ` (${REQUEST_STATUS_DESCRIPTION[requestStatus]})` : ''}
             </dd>
           </div>
+          {isOverloadAwaitingKrabi ? (
+            <>
+              <div>
+                <dt className="text-sm text-slate-500">สถานะ (อ่าวนาง)</dt>
+                <dd className="mt-1 font-medium">เสร็จสิ้น</dd>
+              </div>
+              <div>
+                <dt className="text-sm text-slate-500">สถานะ (ลูกค้า)</dt>
+                <dd className="mt-1 font-medium text-amber-700">รอการปรับปรุงระบบจากกระบี่</dd>
+              </div>
+            </>
+          ) : null}
           <div>
             <dt className="text-sm text-slate-500">ประเภทคำร้อง</dt>
             <dd className="mt-1 font-medium">{requestTypeLabel}</dd>
@@ -961,9 +976,19 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
               <dd className="mt-1 font-medium">
                 {request.status === 'SURVEY_OVERLOAD_REPORTED'
                   ? 'รอผู้จัดการอนุมัติบันทึกโหลดเกิน'
-                  : 'เสร็จสิ้น (ส่งกระบี่ปรับปรุงระบบจำหน่ายแล้ว)'}
+                  : 'เสร็จสิ้น (รอกระบี่)'}
               </dd>
             </div>
+            {request.krabi_reference_no ? (
+              <div>
+                <dt className="text-sm text-slate-500">สถานะเอกสารส่งกระบี่</dt>
+                <dd className="mt-1">
+                  <span className="inline-flex rounded-full bg-emerald-100 px-2.5 py-1 text-xs font-semibold text-emerald-700">
+                    มีเลขอ้างอิงแล้ว
+                  </span>
+                </dd>
+              </div>
+            ) : null}
             <div className="sm:col-span-2">
               <dt className="text-sm text-slate-500">รายละเอียดบันทึก</dt>
               <dd className="mt-1 whitespace-pre-wrap font-medium">{request.overload_report_reason ?? '-'}</dd>
@@ -983,6 +1008,26 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
               <dd className="mt-1 font-medium">
                 {request.manager_overload_approved_by ?? '-'} / {formatDateTime(request.manager_overload_approved_at)}
               </dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
+
+      {request.survey_failure_type === 'OVERLOAD_REPORTED' ? (
+        <section className="card p-6">
+          <h3 className="text-lg font-semibold">ข้อมูลการส่งกระบี่</h3>
+          <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+            <div>
+              <dt className="text-sm text-slate-500">เลขที่หนังสือ</dt>
+              <dd className="mt-1 font-medium">{request.krabi_reference_no ?? '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">วันที่ส่ง</dt>
+              <dd className="mt-1 font-medium">{formatDateTime(request.krabi_submitted_at)}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">ผู้ส่ง</dt>
+              <dd className="mt-1 font-medium">{request.manager_overload_approved_by ?? request.krabi_submitted_by ?? '-'}</dd>
             </div>
           </dl>
         </section>

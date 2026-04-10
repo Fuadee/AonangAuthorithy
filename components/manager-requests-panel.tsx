@@ -42,6 +42,8 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
   const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
   const [returnActionError, setReturnActionError] = useState<string | null>(null);
   const [returnReason, setReturnReason] = useState('');
+  const [krabiReferenceNo, setKrabiReferenceNo] = useState('');
+  const [krabiReferenceError, setKrabiReferenceError] = useState<string | null>(null);
 
   const filteredRequests = useMemo(
     () => (activeFilter === 'ALL' ? requests : requests.filter((request) => request.status === activeFilter)),
@@ -102,6 +104,8 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
           console.info('[manager-queue] action success with stay_on_queue, no navigation expected', { requestId });
         }
         setConfirmRequest(null);
+        setKrabiReferenceNo('');
+        setKrabiReferenceError(null);
         setIsReturnModalOpen(false);
         setReturnRequest(null);
         setReturnReason('');
@@ -171,7 +175,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                       <AreaResponsibleCell areaName={request.area_name} responsiblePersonName={responsiblePersonName} />
                     </td>
                     <td className="px-4 py-3">
-                      <RequestStatusBadge status={request.status} />
+                      <RequestStatusBadge status={request.status} surveyFailureType={request.survey_failure_type} />
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex flex-wrap gap-2">
@@ -183,6 +187,8 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                             onClick={() => {
                               setActionError(null);
                               setConfirmRequest(request);
+                              setKrabiReferenceNo('');
+                              setKrabiReferenceError(null);
                             }}
                           >
                             {resolvedAction.label}
@@ -253,20 +259,53 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                 </dd>
               </div>
             </dl>
+            <div className="mt-4">
+              <label className="text-sm font-medium text-slate-700" htmlFor="krabi-reference-no">
+                เลขที่หนังสือส่งกระบี่
+              </label>
+              <input
+                className="input mt-2"
+                id="krabi-reference-no"
+                placeholder="เช่น กบ.123/2569"
+                value={krabiReferenceNo}
+                onChange={(event) => {
+                  setKrabiReferenceNo(event.target.value);
+                  if (krabiReferenceError) {
+                    setKrabiReferenceError(null);
+                  }
+                }}
+              />
+              {krabiReferenceError ? <p className="mt-2 text-sm text-rose-700">{krabiReferenceError}</p> : null}
+            </div>
 
             <div className="mt-5 flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={() => setConfirmRequest(null)}>
+              <button
+                className="btn-secondary"
+                type="button"
+                onClick={() => {
+                  setConfirmRequest(null);
+                  setKrabiReferenceNo('');
+                  setKrabiReferenceError(null);
+                }}
+              >
                 ยกเลิก
               </button>
               <button
                 className="btn-primary"
                 disabled={isPending && pendingRequestId === confirmRequest.id}
                 type="button"
-                onClick={() =>
+                onClick={() => {
+                  const trimmedReferenceNo = krabiReferenceNo.trim();
+                  if (!trimmedReferenceNo) {
+                    setKrabiReferenceError('กรุณากรอกเลขที่หนังสือก่อนอนุมัติ');
+                    return;
+                  }
+
                   runManagerAction(confirmRequest.id, approveManagerOverloadForwardAction, {
-                    manager_overload_approved_by: 'ผู้จัดการอ่าวนาง'
-                  })
-                }
+                    manager_overload_approved_by: 'ผู้จัดการอ่าวนาง',
+                    krabi_reference_no: trimmedReferenceNo
+                  });
+                }}
               >
                 {isPending && pendingRequestId === confirmRequest.id ? 'กำลังบันทึก...' : 'อนุมัติบันทึกให้กระบี่ปรับปรุงระบบจำหน่าย'}
               </button>

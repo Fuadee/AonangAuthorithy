@@ -162,11 +162,13 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
   const [isPending, startTransition] = useTransition();
   const [submitError, setSubmitError] = useState<string | null>(null);
   const [krabiRejectReason, setKrabiRejectReason] = useState('');
+  const [krabiReferenceNo, setKrabiReferenceNo] = useState('');
   const submissionLockedRef = useRef(false);
 
   useEffect(() => {
     setSubmitError(null);
     setKrabiRejectReason('');
+    setKrabiReferenceNo('');
   }, [actionKey]);
 
   if (!actionKey) {
@@ -729,6 +731,22 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
         <form className="space-y-3" onSubmit={onSubmitWorkflowAction(actionKey)}>
           <input name="request_id" type="hidden" value={requestId} />
           {actionKey === 'MANAGER_APPROVE_OVERLOAD_FORWARD' ? <input name="manager_overload_approved_by" type="hidden" value="ผู้จัดการอ่าวนาง" /> : null}
+          {actionKey === 'MANAGER_APPROVE_OVERLOAD_FORWARD' ? (
+            <div>
+              <label className="text-sm font-medium text-slate-700" htmlFor="workflow-krabi-reference-no">
+                เลขที่หนังสือส่งกระบี่
+              </label>
+              <input
+                className="input mt-2"
+                id="workflow-krabi-reference-no"
+                name="krabi_reference_no"
+                placeholder="เช่น กบ.123/2569"
+                required
+                value={krabiReferenceNo}
+                onChange={(event) => setKrabiReferenceNo(event.target.value)}
+              />
+            </div>
+          ) : null}
           <QueueStayInput stayOnQueue={stayOnQueue} />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
