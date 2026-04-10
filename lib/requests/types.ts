@@ -317,6 +317,14 @@ export function isOverloadCompletedAwaitingKrabi(request: OverloadCompletedDispl
   return request.survey_failure_type === 'OVERLOAD_REPORTED' && ['COMPLETED', 'COMPLETED_OVERLOAD_FORWARD'].includes(request.status);
 }
 
+export function getDashboardSummaryQueueGroup(request: OverloadCompletedDisplayRequest): RequestQueueGroup {
+  if (isOverloadCompletedAwaitingKrabi(request)) {
+    return 'DONE';
+  }
+
+  return getRequestQueueGroup(request.status);
+}
+
 export function resolveDisplayStatus(request: OverloadCompletedDisplayRequest): DisplayStatus {
   if (isOverloadCompletedAwaitingKrabi(request)) {
     return WAITING_KRABI_DISPLAY_STATUS;

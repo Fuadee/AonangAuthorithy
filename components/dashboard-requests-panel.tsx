@@ -9,6 +9,7 @@ import { buildFullAddress } from '@/lib/requests/address';
 import { REQUEST_INTENT_LABELS, REQUEST_INTENTS, RequestIntent } from '@/lib/requests/request-intent';
 import { getPrimaryRequestType } from '@/lib/requests/request-display';
 import {
+  getDashboardSummaryQueueGroup,
   getDashboardQueueGroups,
   getRequestQueueGroup,
   isOverloadCompletedAwaitingKrabi,
@@ -296,23 +297,15 @@ export function DashboardRequestsPanel({ requests, defaultQueue, defaultType }: 
   }, [activeFilter, queueFilter, requests, serverFilteredRequests]);
 
   const queueItems = useMemo<QueueSummaryItem[]>(() => {
-    const baseItems: QueueSummaryItem[] = getDashboardQueueGroups().map((queue) => {
+    return getDashboardQueueGroups().map((queue) => {
         const meta = REQUEST_QUEUE_GROUP_META[queue];
         return {
           queue,
           label: meta.label,
           href: meta.href,
           toneClass: meta.toneClass,
-          count: requests.filter((request) => !isOverloadCompletedAwaitingKrabi(request) && getRequestQueueGroup(request.status) === queue).length
+          count: requests.filter((request) => getDashboardSummaryQueueGroup(request) === queue).length
         };
-      });
-
-    return baseItems.concat({
-        queue: 'WAITING_KRABI',
-        label: WAITING_KRABI_DISPLAY_LABELS.AONANG_INTERNAL,
-        href: '/dashboard?queue=WAITING_KRABI',
-        toneClass: 'text-amber-600',
-        count: requests.filter((request) => isOverloadCompletedAwaitingKrabi(request)).length
       });
   }, [requests]);
 
@@ -323,7 +316,12 @@ export function DashboardRequestsPanel({ requests, defaultQueue, defaultType }: 
         value: item.queue,
         label: resolveFilterLabel(item.queue, item.label),
         tone: item.queue === 'WAITING_KRABI' ? WAITING_KRABI_STYLE_KEY : (QUEUE_STYLE_KEY[item.queue] ?? 'default')
-      }))
+      })),
+      {
+        value: 'WAITING_KRABI',
+        label: WAITING_KRABI_DISPLAY_LABELS.AONANG_INTERNAL,
+        tone: WAITING_KRABI_STYLE_KEY
+      }
     ],
     [queueItems]
   );
