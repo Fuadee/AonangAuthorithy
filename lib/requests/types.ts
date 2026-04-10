@@ -306,7 +306,12 @@ export function getRequestStatusLabel(status: RequestStatus): string {
 type OverloadCompletedDisplayRequest = Pick<ServiceRequest, 'status' | 'survey_failure_type'>;
 export type DisplayStatus = RequestStatus | 'WAITING_KRABI';
 export const WAITING_KRABI_DISPLAY_STATUS: DisplayStatus = 'WAITING_KRABI';
-export const WAITING_KRABI_DISPLAY_LABEL = 'รอกระบี่ปรับปรุงระบบไฟฟ้า';
+export type DisplayStatusContext = 'AONANG_INTERNAL' | 'CUSTOMER';
+
+export const WAITING_KRABI_DISPLAY_LABELS: Record<DisplayStatusContext, string> = {
+  AONANG_INTERNAL: 'เสร็จสิ้น (ส่งต่อกระบี่แล้ว)',
+  CUSTOMER: 'รอการปรับปรุงระบบไฟฟ้าจากกระบี่'
+};
 
 export function isOverloadCompletedAwaitingKrabi(request: OverloadCompletedDisplayRequest): boolean {
   return request.survey_failure_type === 'OVERLOAD_REPORTED' && ['COMPLETED', 'COMPLETED_OVERLOAD_FORWARD'].includes(request.status);
@@ -320,16 +325,19 @@ export function resolveDisplayStatus(request: OverloadCompletedDisplayRequest): 
   return request.status;
 }
 
-export function getDisplayStatusLabel(status: DisplayStatus): string {
+export function getDisplayStatusLabel(status: DisplayStatus, context: DisplayStatusContext = 'AONANG_INTERNAL'): string {
   if (status === WAITING_KRABI_DISPLAY_STATUS) {
-    return WAITING_KRABI_DISPLAY_LABEL;
+    return WAITING_KRABI_DISPLAY_LABELS[context];
   }
 
   return getRequestStatusLabel(status as RequestStatus);
 }
 
-export function getRequestStatusLabelForDisplay(request: OverloadCompletedDisplayRequest): string {
-  return getDisplayStatusLabel(resolveDisplayStatus(request));
+export function getRequestStatusLabelForDisplay(
+  request: OverloadCompletedDisplayRequest,
+  context: DisplayStatusContext = 'AONANG_INTERNAL'
+): string {
+  return getDisplayStatusLabel(resolveDisplayStatus(request), context);
 }
 
 export function isActuallyCompleted(request: OverloadCompletedDisplayRequest): boolean {

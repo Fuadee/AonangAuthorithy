@@ -15,7 +15,7 @@ import {
   REQUEST_QUEUE_GROUP_META,
   RequestQueueGroup,
   ServiceRequest,
-  WAITING_KRABI_DISPLAY_LABEL
+  WAITING_KRABI_DISPLAY_LABELS
 } from '@/lib/requests/types';
 
 type RequestTypeFilter = 'ALL' | RequestIntent;
@@ -309,7 +309,7 @@ export function DashboardRequestsPanel({ requests, defaultQueue, defaultType }: 
 
     return baseItems.concat({
         queue: 'WAITING_KRABI',
-        label: WAITING_KRABI_DISPLAY_LABEL,
+        label: WAITING_KRABI_DISPLAY_LABELS.AONANG_INTERNAL,
         href: '/dashboard?queue=WAITING_KRABI',
         toneClass: 'text-amber-600',
         count: requests.filter((request) => isOverloadCompletedAwaitingKrabi(request)).length
