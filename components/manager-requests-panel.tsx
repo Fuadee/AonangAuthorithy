@@ -39,6 +39,8 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
   const [returnRequest, setReturnRequest] = useState<ServiceRequest | null>(null);
+  const [isReturnModalOpen, setIsReturnModalOpen] = useState(false);
+  const [returnActionError, setReturnActionError] = useState<string | null>(null);
   const [returnReason, setReturnReason] = useState('');
 
   const filteredRequests = useMemo(
@@ -100,9 +102,17 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
           console.info('[manager-queue] action success with stay_on_queue, no navigation expected', { requestId });
         }
         setConfirmRequest(null);
+        setIsReturnModalOpen(false);
+        setReturnRequest(null);
+        setReturnReason('');
+        setReturnActionError(null);
         router.refresh();
       } catch (error) {
         const message = error instanceof Error ? error.message : 'ไม่สามารถบันทึกการอนุมัติได้ กรุณาลองใหม่อีกครั้ง';
+        if (action === returnRequestForResurveyAction) {
+          setReturnActionError(message || 'ไม่สามารถส่งกลับคำร้องได้ กรุณาลองใหม่อีกครั้ง');
+          return;
+        }
         setActionError(message || 'ไม่สามารถบันทึกการอนุมัติได้ กรุณาลองใหม่อีกครั้ง');
       } finally {
         setPendingRequestId(null);
@@ -194,8 +204,10 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                                 disabled={isPending && pendingRequestId === request.id}
                                 type="button"
                                 onClick={() => {
+                                  setReturnActionError(null);
                                   setReturnReason('');
                                   setReturnRequest(request);
+                                  setIsReturnModalOpen(true);
                                 }}
                               >
                                 ส่งกลับให้ตรวจสอบใหม่
@@ -263,11 +275,12 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
         </div>
       ) : null}
 
-      {returnRequest ? (
+      {isReturnModalOpen && returnRequest ? (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
           <div className="w-full max-w-xl rounded-xl bg-white p-6 shadow-xl">
             <h4 className="text-lg font-semibold text-slate-900">ส่งกลับให้ตรวจสอบใหม่</h4>
             <p className="mt-2 text-sm text-slate-600">โปรดระบุสิ่งที่ต้องตรวจสอบเพิ่มเติมก่อนส่งกลับเข้าคิวสำรวจ</p>
+            {returnActionError ? <p className="mt-3 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{returnActionError}</p> : null}
             <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="manager-return-reason">
               โปรดระบุสิ่งที่ต้องตรวจสอบเพิ่มเติม
             </label>
@@ -278,7 +291,16 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
               onChange={(event) => setReturnReason(event.target.value)}
             />
             <div className="mt-5 flex justify-end gap-2">
-              <button className="btn-secondary" type="button" onClick={() => setReturnRequest(null)}>
+              <button
+                className="btn-secondary"
+                type="button"
+                onClick={() => {
+                  setIsReturnModalOpen(false);
+                  setReturnRequest(null);
+                  setReturnReason('');
+                  setReturnActionError(null);
+                }}
+              >
                 ยกเลิก
               </button>
               <button
