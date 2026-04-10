@@ -2301,8 +2301,12 @@ export async function restartReturnedResurveyAction(formData: FormData) {
 export async function approveManagerOverloadForwardAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
   const approvedBy = requiredOneOfFields(formData, ['manager_overload_approved_by', 'approved_by', 'actor_name']);
+  const krabiReferenceNo = optionalField(formData, 'krabi_reference_no');
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
@@ -2322,12 +2326,19 @@ export async function approveManagerOverloadForwardAction(formData: FormData) {
     throw new Error('ไม่พบข้อมูลบันทึกโหลดเกินของคำร้องนี้');
   }
 
+  if (!krabiReferenceNo) {
+    throw new Error('กรุณากรอกเลขที่หนังสือก่อนอนุมัติ');
+  }
+
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: 'COMPLETED_OVERLOAD_FORWARD',
+      status: 'COMPLETED',
       manager_overload_approved_at: nowIso,
       manager_overload_approved_by: approvedBy,
+      krabi_reference_no: krabiReferenceNo,
+      krabi_submitted_at: nowIso,
+      krabi_submitted_by: user?.id ?? null,
       updated_at: nowIso
     })
     .eq('id', requestId);

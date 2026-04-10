@@ -157,7 +157,7 @@ export function RequestTable({
 
               <div className="flex min-h-14 flex-col justify-center">
                 <p className="text-[11px] font-medium tracking-wide text-slate-500 uppercase lg:hidden">สถานะ</p>
-                <RequestStatusBadge status={request.status} />
+                <RequestStatusBadge status={request.status} surveyFailureType={request.survey_failure_type} />
                 <p className="mt-1 min-h-4 text-xs text-slate-500">{dispatchSubStatus ?? '\u00a0'}</p>
               </div>
 
@@ -289,7 +289,7 @@ export function RequestTable({
                   {hasSeparateStatusColumn ? (
                     <td className="max-w-0 px-3 py-3 align-middle">
                       <div className="space-y-1 pr-1">
-                        <RequestStatusBadge status={request.status} />
+                        <RequestStatusBadge status={request.status} surveyFailureType={request.survey_failure_type} />
                         {dispatchSubStatus ? (
                           <p className="truncate text-xs leading-4 text-slate-600" title={dispatchSubStatus}>
                             {dispatchSubStatus}
@@ -322,7 +322,7 @@ export function RequestTable({
                       </div>
                     ) : (
                       <div className="flex justify-center py-0.5">
-                        <RequestStatusBadge status={request.status} className="px-3 py-1.5 text-[12px] font-semibold" />
+                        <RequestStatusBadge status={request.status} surveyFailureType={request.survey_failure_type} className="px-3 py-1.5 text-[12px] font-semibold" />
                       </div>
                     )}
                   </td>

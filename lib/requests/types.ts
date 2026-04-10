@@ -303,6 +303,20 @@ export function getRequestStatusLabel(status: RequestStatus): string {
   return REQUEST_STATUS_LABELS[status];
 }
 
+type OverloadCompletedDisplayRequest = Pick<ServiceRequest, 'status' | 'survey_failure_type'>;
+
+export function isOverloadCompletedAwaitingKrabi(request: OverloadCompletedDisplayRequest): boolean {
+  return request.survey_failure_type === 'OVERLOAD_REPORTED' && ['COMPLETED', 'COMPLETED_OVERLOAD_FORWARD'].includes(request.status);
+}
+
+export function getRequestStatusLabelForDisplay(request: OverloadCompletedDisplayRequest): string {
+  if (isOverloadCompletedAwaitingKrabi(request)) {
+    return 'เสร็จสิ้น (รอกระบี่)';
+  }
+
+  return getRequestStatusLabel(request.status);
+}
+
 export function getDispatchSubStatus(
   _request: Pick<ServiceRequest, 'status' | 'is_document_ready' | 'planned_dispatch_date'>
 ): string | null {
@@ -860,6 +874,9 @@ export type ServiceRequest = {
   overload_reported_by: string | null;
   manager_overload_approved_at: string | null;
   manager_overload_approved_by: string | null;
+  krabi_reference_no: string | null;
+  krabi_submitted_at: string | null;
+  krabi_submitted_by: string | null;
   manager_return_reason: string | null;
   manager_return_checklist: string[] | null;
   manager_returned_by: string | null;
