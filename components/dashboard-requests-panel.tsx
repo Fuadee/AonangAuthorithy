@@ -6,17 +6,17 @@ import { useEffect, useMemo, useState } from 'react';
 import { DashboardSummary } from '@/components/dashboard-summary';
 import { RequestTable } from '@/components/request-table';
 import { buildFullAddress } from '@/lib/requests/address';
+import { REQUEST_INTENT_LABELS, REQUEST_INTENTS, RequestIntent } from '@/lib/requests/request-intent';
+import { getPrimaryRequestType } from '@/lib/requests/request-display';
 import {
   getDashboardQueueGroups,
   getRequestQueueGroup,
   REQUEST_QUEUE_GROUP_META,
-  REQUEST_TYPES,
   RequestQueueGroup,
-  RequestType,
   ServiceRequest
 } from '@/lib/requests/types';
 
-type RequestTypeFilter = 'ALL' | RequestType;
+type RequestTypeFilter = 'ALL' | RequestIntent;
 type QueueFilter = 'ALL' | RequestQueueGroup;
 
 type DashboardRequestsPanelProps = {
@@ -60,12 +60,33 @@ function resolveFilterLabel(value: string, label: string | null | undefined): st
 
 const FILTER_OPTIONS: Array<FilterGroupOption<RequestTypeFilter>> = [
   { value: 'ALL', label: 'ทั้งหมด' },
-  { value: 'METER', label: 'ขอมิเตอร์' },
-  { value: 'METER_30_100_1P', label: 'ขอมิเตอร์ 30/100 (1 เฟส)' },
-  { value: 'METER_30_100_3P', label: 'ขอมิเตอร์ 30/100 (3 เฟส)' },
-  { value: 'EXPANSION', label: 'ขยายเขต' },
-  { value: 'METER_TO_3PHASE', label: 'เพิ่มเป็นมิเตอร์ 3 เฟส' }
+  ...REQUEST_INTENTS.map((intent) => ({ value: intent, label: REQUEST_INTENT_LABELS[intent] }))
 ];
+
+function normalizeDashboardTypeFilter(value: string | null | undefined): RequestTypeFilter {
+  const rawValue = value?.trim();
+  if (!rawValue || rawValue === 'ALL') {
+    return 'ALL';
+  }
+
+  if (REQUEST_INTENTS.includes(rawValue as RequestIntent)) {
+    return rawValue as RequestIntent;
+  }
+
+  if (rawValue === 'METER' || rawValue === 'METER_30_100_1P' || rawValue === 'METER_30_100_3P') {
+    return 'NEW_METER';
+  }
+
+  if (rawValue === 'METER_TO_3PHASE') {
+    return 'PHASE_UPGRADE';
+  }
+
+  if (rawValue === 'EXPANSION') {
+    return 'EXPANSION';
+  }
+
+  return 'ALL';
+}
 
 const STATUS_STYLES = {
   default: 'bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-300 ring-brand-300/40',
@@ -144,8 +165,7 @@ export function DashboardRequestsPanel({ requests, defaultQueue, defaultType }: 
   const pathname = usePathname();
   const searchParams = useSearchParams();
   const currentQuery = searchParams.toString();
-  const defaultTypeFilter: RequestTypeFilter =
-    defaultType && REQUEST_TYPES.includes(defaultType as RequestType) ? (defaultType as RequestType) : 'ALL';
+  const defaultTypeFilter: RequestTypeFilter = normalizeDashboardTypeFilter(defaultType);
   const [activeFilter, setActiveFilter] = useState<RequestTypeFilter>(defaultTypeFilter);
   const [searchQuery, setSearchQuery] = useState('');
   const [debouncedQuery, setDebouncedQuery] = useState('');
@@ -199,7 +219,7 @@ export function DashboardRequestsPanel({ requests, defaultQueue, defaultType }: 
         limit: '100'
       });
       if (activeFilter !== 'ALL') {
-        params.set('request_type', activeFilter);
+        params.set('primary_type', activeFilter);
       }
       if (queueFilter !== 'ALL') {
         params.set('queue', queueFilter);
@@ -251,7 +271,7 @@ export function DashboardRequestsPanel({ requests, defaultQueue, defaultType }: 
     let result = serverFilteredRequests ?? requests;
 
     if (activeFilter !== 'ALL') {
-      result = result.filter((request) => request.request_type === activeFilter);
+      result = result.filter((request) => getPrimaryRequestType(request) === activeFilter);
     }
 
     if (queueFilter !== 'ALL') {
