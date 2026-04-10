@@ -4,6 +4,7 @@ import {
   canMarkSurveyPassed,
   canMoveToManagerReview,
   canStartSurvey,
+  isThirtyOneHundredRequestType,
   RequestStatus,
   RequestType,
   ServiceRequest,
@@ -31,6 +32,8 @@ export type WorkflowActionKey =
   | 'SURVEYOR_SIGN'
   | 'CONFIRM_PAYMENT'
   | 'MANAGER_APPROVE'
+  | 'MANAGER_RETURN_FOR_RESURVEY'
+  | 'SUBMIT_RESURVEY_REVIEW'
   | 'LAYOUT_DRAWING_DONE'
   | 'DISPATCHED_TO_KRABI'
   | 'KRABI_ACCEPT_AND_START'
@@ -84,7 +87,9 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   ISSUE_BILL: 'ออกใบแจ้งหนี้',
   SURVEYOR_SIGN: 'เซ็นใบแจ้งหนี้แล้ว',
   CONFIRM_PAYMENT: 'ชำระเงินแล้ว',
-  MANAGER_APPROVE: 'อนุมัติแล้ว',
+  MANAGER_APPROVE: 'อนุมัติส่งต่อ',
+  MANAGER_RETURN_FOR_RESURVEY: 'ส่งกลับให้ตรวจสอบใหม่',
+  SUBMIT_RESURVEY_REVIEW: 'บันทึกผลตรวจสอบใหม่',
   LAYOUT_DRAWING_DONE: 'วาดผังเสร็จ',
   DISPATCHED_TO_KRABI: 'ส่งเอกสารไปกระบี่',
   KRABI_ACCEPT_AND_START: 'ยืนยันรับเอกสาร',
@@ -144,7 +149,8 @@ const STATUS_INSTRUCTION: Partial<Record<RequestStatus, string>> = {
   WAIT_BILLING: 'กรุณาออกใบแจ้งหนี้',
   WAIT_ACTION_CONFIRMATION: 'กรุณาส่งให้ผู้จัดการอ่าวนางอนุมัติรอบสุดท้าย',
   WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'กรุณาอนุมัติปิดงาน',
-  WAIT_MANAGER_REVIEW: 'กรุณาตรวจสอบและอนุมัติปิดงาน',
+  WAIT_MANAGER_REVIEW: 'กรุณาตรวจสอบและอนุมัติส่งต่อ หรือส่งกลับให้ตรวจสอบใหม่',
+  RETURNED_FOR_RESURVEY: 'กรุณาตรวจสอบหน้างานเพิ่มเติมและส่งกลับให้ผู้จัดการพิจารณาอีกครั้ง',
   SURVEY_OVERLOAD_REPORTED: 'กรุณาตรวจสอบบันทึกโหลดเกินและอนุมัติส่งต่อกระบี่'
 };
 
@@ -344,7 +350,10 @@ export function getAvailableRequestActions(
 
   if (!inExpansionWorkflow && ['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type)) {
     if (status === 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL') {
-      return [toAction('APPROVE_PRE_KRABI', { variant: 'primary' })];
+      return [
+        toAction('APPROVE_PRE_KRABI', { variant: 'primary' }),
+        toAction('MANAGER_RETURN_FOR_RESURVEY', { variant: 'secondary', intent: 'warning' })
+      ];
     }
 
     if (status === 'SENT_TO_KRABI') {
@@ -400,7 +409,18 @@ export function getAvailableRequestActions(
   }
 
   if (status === 'WAIT_MANAGER_REVIEW' && ['METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE'].includes(request.request_type) && canMoveToManagerReview(request)) {
+    if (isThirtyOneHundredRequestType(request.request_type)) {
+      return [
+        toAction('MANAGER_APPROVE', { variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติส่งต่อกระบี่?' }),
+        toAction('MANAGER_RETURN_FOR_RESURVEY', { variant: 'secondary', intent: 'warning' })
+      ];
+    }
+
     return [toAction('MANAGER_APPROVE', { variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติปิดงาน?' })];
+  }
+
+  if (status === 'RETURNED_FOR_RESURVEY' && isThirtyOneHundredRequestType(request.request_type)) {
+    return [toAction('SUBMIT_RESURVEY_REVIEW', { variant: 'primary' })];
   }
 
   if (status === 'SURVEY_OVERLOAD_REPORTED') {

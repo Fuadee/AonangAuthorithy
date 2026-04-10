@@ -43,6 +43,7 @@ export const REQUEST_STATUSES = [
   'INSPECTION',
   'WAIT_ACTION_CONFIRMATION',
   'WAIT_MANAGER_REVIEW',
+  'RETURNED_FOR_RESURVEY',
   'COMPLETED',
   'COMPLETED_OVERLOAD_FORWARD'
 ] as const;
@@ -127,6 +128,7 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   INSPECTION: 'ตรวจสอบหลังติดตั้ง',
   WAIT_ACTION_CONFIRMATION: 'รอชำระเงิน',
   WAIT_MANAGER_REVIEW: 'รอผู้จัดการตรวจ',
+  RETURNED_FOR_RESURVEY: 'ส่งกลับให้ตรวจสอบใหม่',
   COMPLETED: 'เสร็จสิ้น',
   COMPLETED_OVERLOAD_FORWARD: 'เสร็จสิ้น'
 };
@@ -248,6 +250,7 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   INSPECTION: 'SURVEY',
   WAIT_ACTION_CONFIRMATION: 'BILLING',
   WAIT_MANAGER_REVIEW: 'MANAGER',
+  RETURNED_FOR_RESURVEY: 'SURVEY',
   COMPLETED: 'DONE',
   COMPLETED_OVERLOAD_FORWARD: 'DONE'
 };
@@ -374,6 +377,13 @@ export function getKrabiDispatchWarning(
 
 export function getDocumentReviewMode(requestType: RequestType): DocumentReviewMode {
   return requestType === 'EXPANSION' ? 'DETAILED' : 'BASIC';
+}
+
+
+export const METER_30_100_REQUEST_TYPES: RequestType[] = ['METER_30_100_1P', 'METER_30_100_3P'];
+
+export function isThirtyOneHundredRequestType(requestType: RequestType): boolean {
+  return METER_30_100_REQUEST_TYPES.includes(requestType);
 }
 
 export function isThreePhaseRequestType(requestType: RequestType): boolean {
@@ -850,6 +860,12 @@ export type ServiceRequest = {
   overload_reported_by: string | null;
   manager_overload_approved_at: string | null;
   manager_overload_approved_by: string | null;
+  manager_return_reason: string | null;
+  manager_return_checklist: string[] | null;
+  manager_returned_by: string | null;
+  manager_returned_at: string | null;
+  resurvey_note: string | null;
+  resurvey_completed_at: string | null;
   customer_fix_reported_at: string | null;
   photo_review_status: PhotoReviewStatus | null;
   photo_reviewed_at: string | null;

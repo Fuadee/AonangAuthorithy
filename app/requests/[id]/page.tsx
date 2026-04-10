@@ -116,9 +116,15 @@ function getNextStepSummary(
           owner: 'นักสำรวจ'
         };
       case 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL':
+      case 'WAIT_MANAGER_REVIEW':
         return {
-          nextStep: 'รอผู้จัดการอ่าวนางอนุมัติก่อนส่งเอกสารไปกระบี่',
+          nextStep: 'รอผู้จัดการอ่าวนางพิจารณาอนุมัติส่งต่อ หรือส่งกลับให้ตรวจสอบใหม่',
           owner: 'ผู้จัดการอ่าวนาง'
+        };
+      case 'RETURNED_FOR_RESURVEY':
+        return {
+          nextStep: 'งานถูกส่งกลับให้สำรวจตรวจสอบใหม่และส่งกลับเข้าคิวผู้จัดการ',
+          owner: 'นักสำรวจ'
         };
       case 'SENT_TO_KRABI':
       case 'WAIT_KRABI_APPROVAL':
@@ -155,7 +161,6 @@ function getNextStepSummary(
           owner: 'การเงิน'
         };
       case 'WAIT_AONANG_MANAGER_FINAL_APPROVAL':
-      case 'WAIT_MANAGER_REVIEW':
         return {
           nextStep: 'ผู้จัดการอ่าวนางอนุมัติรอบสุดท้ายก่อนปิดงาน',
           owner: 'ผู้จัดการอ่าวนาง'
@@ -324,6 +329,12 @@ function getTimeline(request: {
   overload_reported_by: string | null;
   manager_overload_approved_at: string | null;
   manager_overload_approved_by: string | null;
+  manager_return_reason: string | null;
+  manager_return_checklist: string[] | null;
+  manager_returned_by: string | null;
+  manager_returned_at: string | null;
+  resurvey_note: string | null;
+  resurvey_completed_at: string | null;
   customer_fix_reported_at: string | null;
   photo_review_status: 'PENDING' | 'APPROVED' | 'REJECTED' | null;
   photo_reviewed_at: string | null;
@@ -451,6 +462,27 @@ function getTimeline(request: {
             : 'ผลสำรวจไม่ผ่าน เข้าสู่ขั้นตอนแก้ไข/ตรวจซ้ำ',
       at: request.survey_completed_at,
       sortAt: resolveTimelineSortAt(request.survey_completed_at)
+    });
+  }
+
+
+  if (request.manager_returned_at) {
+    items.push({
+      key: 'manager-returned-for-resurvey',
+      title: 'ผู้จัดการส่งกลับให้ตรวจสอบหน้างานอีกครั้ง',
+      description: request.manager_return_reason ?? undefined,
+      at: request.manager_returned_at,
+      sortAt: resolveTimelineSortAt(request.manager_returned_at)
+    });
+  }
+
+  if (request.resurvey_completed_at) {
+    items.push({
+      key: 'resurvey-completed-and-returned-manager',
+      title: 'อัปเดตผลตรวจสอบใหม่และส่งกลับให้ผู้จัดการพิจารณาอีกครั้ง',
+      description: request.resurvey_note ?? request.survey_note ?? undefined,
+      at: request.resurvey_completed_at,
+      sortAt: resolveTimelineSortAt(request.resurvey_completed_at)
     });
   }
 
@@ -615,7 +647,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,request_intent,meter_size,phase,flow_type,area_name,assignee_id,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,survey_failure_type,fix_verification_mode,customer_fix_note,customer_fix_reported_at,overload_report_reason,overload_report_note,overload_reported_at,overload_reported_by,manager_overload_approved_at,manager_overload_approved_by,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,forwarded_to_expansion_at,forwarded_to_expansion_note,three_phase_capability_result,three_phase_capability_checked_at,house_number,village_no,road,landmark,latitude,longitude,location_note,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,request_intent,meter_size,phase,flow_type,area_name,assignee_id,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,survey_failure_type,fix_verification_mode,customer_fix_note,customer_fix_reported_at,overload_report_reason,overload_report_note,overload_reported_at,overload_reported_by,manager_overload_approved_at,manager_overload_approved_by,manager_return_reason,manager_return_checklist,manager_returned_by,manager_returned_at,resurvey_note,resurvey_completed_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,forwarded_to_expansion_at,forwarded_to_expansion_note,three_phase_capability_result,three_phase_capability_checked_at,house_number,village_no,road,landmark,latitude,longitude,location_note,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -686,6 +718,12 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     overload_reported_by: request.overload_reported_by,
     manager_overload_approved_at: request.manager_overload_approved_at,
     manager_overload_approved_by: request.manager_overload_approved_by,
+    manager_return_reason: request.manager_return_reason,
+    manager_return_checklist: request.manager_return_checklist,
+    manager_returned_by: request.manager_returned_by,
+    manager_returned_at: request.manager_returned_at,
+    resurvey_note: request.resurvey_note,
+    resurvey_completed_at: request.resurvey_completed_at,
     customer_fix_reported_at: request.customer_fix_reported_at,
     photo_review_status: request.photo_review_status,
     photo_reviewed_at: request.photo_reviewed_at,
@@ -943,6 +981,30 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
               <dd className="mt-1 font-medium">
                 {request.manager_overload_approved_by ?? '-'} / {formatDateTime(request.manager_overload_approved_at)}
               </dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
+
+      {request.manager_returned_at ? (
+        <section className="card p-6">
+          <h3 className="text-lg font-semibold">เหตุผลที่ผู้จัดการส่งกลับ</h3>
+          <dl className="mt-4 grid gap-4 sm:grid-cols-2">
+            <div className="sm:col-span-2">
+              <dt className="text-sm text-slate-500">ข้อความเหตุผล</dt>
+              <dd className="mt-1 whitespace-pre-wrap font-medium">{request.manager_return_reason ?? '-'}</dd>
+            </div>
+            <div className="sm:col-span-2">
+              <dt className="text-sm text-slate-500">รายการที่ต้องตรวจสอบ</dt>
+              <dd className="mt-1 font-medium">{request.manager_return_checklist?.length ? request.manager_return_checklist.join(', ') : '-'}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">วันที่ส่งกลับ</dt>
+              <dd className="mt-1 font-medium">{formatDateTime(request.manager_returned_at)}</dd>
+            </div>
+            <div>
+              <dt className="text-sm text-slate-500">ผู้ส่งกลับ</dt>
+              <dd className="mt-1 font-medium">{request.manager_returned_by ?? '-'}</dd>
             </div>
           </dl>
         </section>
