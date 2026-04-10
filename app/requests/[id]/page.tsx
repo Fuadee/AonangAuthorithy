@@ -31,7 +31,8 @@ import {
   isExpansionWorkflowStatus,
   RequestStatus,
   RequestType,
-  ThreePhaseCapabilityResult
+  ThreePhaseCapabilityResult,
+  WAITING_KRABI_DISPLAY_LABEL
 } from '@/lib/requests/types';
 import { buildFullAddress } from '@/lib/requests/address';
 import { getRequestIntentLabel, getRequestTechnicalSummary } from '@/lib/requests/request-display';
@@ -832,7 +833,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
               </div>
               <div>
                 <dt className="text-sm text-slate-500">สถานะ (ลูกค้า)</dt>
-                <dd className="mt-1 font-medium text-amber-700">รอการปรับปรุงระบบจากกระบี่</dd>
+                <dd className="mt-1 font-medium text-amber-700">{WAITING_KRABI_DISPLAY_LABEL}</dd>
               </div>
             </>
           ) : null}
@@ -976,7 +977,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
               <dd className="mt-1 font-medium">
                 {request.status === 'SURVEY_OVERLOAD_REPORTED'
                   ? 'รอผู้จัดการอนุมัติบันทึกโหลดเกิน'
-                  : 'เสร็จสิ้น (รอกระบี่)'}
+                  : `เสร็จสิ้น (${WAITING_KRABI_DISPLAY_LABEL})`}
               </dd>
             </div>
             {request.krabi_reference_no ? (
