@@ -53,6 +53,7 @@ const STATUS_SEMANTIC_TONE: Record<RequestStatus, SemanticTone> = {
   INSPECTION: 'info',
   WAIT_ACTION_CONFIRMATION: 'accent',
   WAIT_MANAGER_REVIEW: 'warning',
+  RETURNED_FOR_RESURVEY: 'danger',
   COMPLETED: 'success',
   COMPLETED_OVERLOAD_FORWARD: 'success'
 };

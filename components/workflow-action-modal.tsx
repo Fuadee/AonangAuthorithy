@@ -38,7 +38,9 @@ import {
   moveToWaitKrabiApprovalAction,
   receiveFromKrabiForMeterAction,
   resendToKrabiForMeterAction,
+  returnRequestForResurveyAction,
   sendToEligibilityReviewForMeterAction,
+  submitResurveyReviewAction,
   startDocumentFixForMeterAction,
   reportCustomerFixAction,
   startSurveyAction,
@@ -69,6 +71,8 @@ const ACTION_EXECUTORS: Partial<Record<WorkflowActionKey, ActionExecutor>> = {
   PHOTO_APPROVE: approveFixFromPhotoAction,
   PHOTO_REJECT_TO_RESURVEY: rejectFixPhotoAndRequireResurveyAction,
   MANAGER_APPROVE: approveManagerReviewAction,
+  MANAGER_RETURN_FOR_RESURVEY: returnRequestForResurveyAction,
+  SUBMIT_RESURVEY_REVIEW: submitResurveyReviewAction,
   LAYOUT_DRAWING_DONE: completeLayoutDrawingAction,
   DISPATCHED_TO_KRABI: markSentToKrabiAction,
   KRABI_ACCEPT_AND_START: markKrabiInProgressAction,
@@ -146,7 +150,9 @@ function getActionTitle(actionKey: WorkflowActionKey): string {
     FINAL_MANAGER_APPROVE: 'อนุมัติปิดงาน',
     COMPLETE_WORK: 'ปิดงานเสร็จสิ้น'
     ,
-    MANAGER_APPROVE_OVERLOAD_FORWARD: 'อนุมัติบันทึกให้กระบี่ปรับปรุงระบบจำหน่าย'
+    MANAGER_APPROVE_OVERLOAD_FORWARD: 'อนุมัติบันทึกให้กระบี่ปรับปรุงระบบจำหน่าย',
+    MANAGER_RETURN_FOR_RESURVEY: 'ส่งกลับให้สำรวจตรวจสอบใหม่',
+    SUBMIT_RESURVEY_REVIEW: 'บันทึกผลตรวจสอบใหม่และส่งกลับให้ผู้จัดการ'
   };
   return map[actionKey] ?? 'ยืนยันการทำรายการ';
 }
@@ -745,6 +751,73 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
             <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'MANAGER_RETURN_FOR_RESURVEY') {
+    const checklistOptions = [
+      { key: 'METER_SIZE', label: 'ตรวจสอบขนาดมิเตอร์ที่ขอ' },
+      { key: 'PHASE_COUNT', label: 'ตรวจสอบจำนวนเฟส' },
+      { key: 'ACTUAL_LOAD', label: 'ตรวจสอบโหลดใช้งานจริง' },
+      { key: 'INSTALLATION_POINT', label: 'ตรวจสอบจุดติดตั้งหน้างาน' },
+      { key: 'CABLE_DISTANCE', label: 'ตรวจสอบระยะสาย / แนวพาด' },
+      { key: 'SITE_PHOTOS', label: 'ตรวจสอบรูปถ่ายหน้างาน' },
+      { key: 'DOCUMENT_ACCURACY', label: 'ตรวจสอบความถูกต้องของเอกสาร' },
+      { key: 'THREE_PHASE_CAPABILITY', label: 'ตรวจสอบว่าระบบรองรับ 3 เฟสจริงหรือไม่' },
+      { key: 'EXPANSION_REQUIRED', label: 'ตรวจสอบว่าต้องเข้าขยายเขตหรือไม่' },
+      { key: 'OTHER', label: 'อื่น ๆ' }
+    ] as const;
+
+    return (
+      <ModalShell title="ส่งกลับให้ตรวจสอบใหม่" onClose={onClose}>
+        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('MANAGER_RETURN_FOR_RESURVEY')}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <input name="manager_returned_by" type="hidden" value="ผู้จัดการอ่าวนาง" />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <fieldset className="space-y-2">
+            <legend className="text-sm font-medium text-slate-700">หัวข้อที่ต้องตรวจสอบ</legend>
+            <div className="grid gap-1">
+              {checklistOptions.map((option) => (
+                <label key={option.key} className="inline-flex items-center gap-2 text-sm text-slate-700">
+                  <input name="manager_return_checklist" type="checkbox" value={option.key} />
+                  <span>{option.label}</span>
+                </label>
+              ))}
+            </div>
+          </fieldset>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-700" htmlFor="manager_return_reason">
+              โปรดระบุสิ่งที่ต้องตรวจสอบเพิ่มเติม
+            </label>
+            <textarea className="input min-h-24" id="manager_return_reason" name="manager_return_reason" />
+          </div>
+          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยันส่งกลับ'}</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'SUBMIT_RESURVEY_REVIEW') {
+    return (
+      <ModalShell title="บันทึกผลตรวจสอบใหม่" onClose={onClose}>
+        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('SUBMIT_RESURVEY_REVIEW')}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-700" htmlFor="resurvey_note">ผลการตรวจสอบใหม่</label>
+            <textarea className="input min-h-24" id="resurvey_note" name="resurvey_note" required />
+          </div>
+          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
+          <div className="flex justify-end gap-2">
+            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'บันทึกผลตรวจสอบใหม่'}</button>
           </div>
         </form>
       </ModalShell>

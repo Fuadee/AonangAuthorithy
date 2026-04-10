@@ -66,6 +66,8 @@ export function MeterWorkflowActions({
       'WAIT_BILLING',
       'WAIT_PAYMENT',
       'WAIT_ACTION_CONFIRMATION',
+      'WAIT_MANAGER_REVIEW',
+      'RETURNED_FOR_RESURVEY',
       'WAIT_AONANG_MANAGER_FINAL_APPROVAL',
       'COMPLETED'
     ].includes(currentStatus)

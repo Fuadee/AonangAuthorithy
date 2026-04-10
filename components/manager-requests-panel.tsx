@@ -7,14 +7,15 @@ import {
   approveAonangManagerFinalAction,
   approveAonangManagerPreKrabiAction,
   approveManagerOverloadForwardAction,
-  approveManagerReviewAction
+  approveManagerReviewAction,
+  returnRequestForResurveyAction
 } from '@/app/actions';
 import { AreaResponsibleCell } from '@/components/area-responsible-cell';
 import { QueueFilterChips } from '@/components/queue/queue-filter-chips';
 import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
 import { formatThaiDateTime } from '@/lib/datetime';
-import { getResponsiblePersonName, RequestStatus, ServiceRequest } from '@/lib/requests/types';
+import { getResponsiblePersonName, isThirtyOneHundredRequestType, RequestStatus, ServiceRequest } from '@/lib/requests/types';
 
 type ManagerRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -37,6 +38,8 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
   const [confirmRequest, setConfirmRequest] = useState<ServiceRequest | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
+  const [returnRequest, setReturnRequest] = useState<ServiceRequest | null>(null);
+  const [returnReason, setReturnReason] = useState('');
 
   const filteredRequests = useMemo(
     () => (activeFilter === 'ALL' ? requests : requests.filter((request) => request.status === activeFilter)),
@@ -73,7 +76,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
 
     return {
       action: approveManagerReviewAction,
-      label: 'อนุมัติแล้ว'
+      label: 'อนุมัติส่งต่อ'
     };
   };
 
@@ -175,14 +178,30 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                             {resolvedAction.label}
                           </button>
                         ) : (
-                          <button
-                            className="btn-primary"
-                            disabled={isPending && pendingRequestId === request.id}
-                            type="button"
-                            onClick={() => runManagerAction(request.id, resolvedAction.action)}
-                          >
-                            {isPending && pendingRequestId === request.id ? 'กำลังบันทึก...' : resolvedAction.label}
-                          </button>
+                          <>
+                            <button
+                              className="btn-primary"
+                              disabled={isPending && pendingRequestId === request.id}
+                              type="button"
+                              onClick={() => runManagerAction(request.id, resolvedAction.action)}
+                            >
+                              {isPending && pendingRequestId === request.id ? 'กำลังบันทึก...' : resolvedAction.label}
+                            </button>
+                            {isThirtyOneHundredRequestType(request.request_type) &&
+                            ['WAIT_MANAGER_REVIEW', 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL'].includes(request.status) ? (
+                              <button
+                                className="btn-secondary"
+                                disabled={isPending && pendingRequestId === request.id}
+                                type="button"
+                                onClick={() => {
+                                  setReturnReason('');
+                                  setReturnRequest(request);
+                                }}
+                              >
+                                ส่งกลับให้ตรวจสอบใหม่
+                              </button>
+                            ) : null}
+                          </>
                         )}
                       </div>
                     </td>
@@ -238,6 +257,42 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                 }
               >
                 {isPending && pendingRequestId === confirmRequest.id ? 'กำลังบันทึก...' : 'อนุมัติบันทึกให้กระบี่ปรับปรุงระบบจำหน่าย'}
+              </button>
+            </div>
+          </div>
+        </div>
+      ) : null}
+
+      {returnRequest ? (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/50 p-4">
+          <div className="w-full max-w-xl rounded-xl bg-white p-6 shadow-xl">
+            <h4 className="text-lg font-semibold text-slate-900">ส่งกลับให้ตรวจสอบใหม่</h4>
+            <p className="mt-2 text-sm text-slate-600">โปรดระบุสิ่งที่ต้องตรวจสอบเพิ่มเติมก่อนส่งกลับเข้าคิวสำรวจ</p>
+            <label className="mt-4 block text-sm font-medium text-slate-700" htmlFor="manager-return-reason">
+              โปรดระบุสิ่งที่ต้องตรวจสอบเพิ่มเติม
+            </label>
+            <textarea
+              className="input mt-2 min-h-24"
+              id="manager-return-reason"
+              value={returnReason}
+              onChange={(event) => setReturnReason(event.target.value)}
+            />
+            <div className="mt-5 flex justify-end gap-2">
+              <button className="btn-secondary" type="button" onClick={() => setReturnRequest(null)}>
+                ยกเลิก
+              </button>
+              <button
+                className="btn-primary"
+                disabled={isPending && pendingRequestId === returnRequest.id}
+                type="button"
+                onClick={() =>
+                  runManagerAction(returnRequest.id, returnRequestForResurveyAction, {
+                    manager_returned_by: 'ผู้จัดการอ่าวนาง',
+                    manager_return_reason: returnReason
+                  })
+                }
+              >
+                {isPending && pendingRequestId === returnRequest.id ? 'กำลังบันทึก...' : 'ยืนยันส่งกลับ'}
               </button>
             </div>
           </div>
