@@ -1,4 +1,4 @@
-import { isOverloadCompletedAwaitingKrabi, RequestStatus, ServiceRequest } from '@/lib/requests/types';
+import { DisplayStatus, RequestStatus, resolveDisplayStatus, ServiceRequest, WAITING_KRABI_DISPLAY_STATUS } from '@/lib/requests/types';
 
 type SemanticTone = 'neutral' | 'info' | 'warning' | 'danger' | 'success' | 'accent';
 
@@ -62,10 +62,14 @@ export function getRequestStatusToneClass(status: RequestStatus): string {
   return SEMANTIC_TONE_CLASS[STATUS_SEMANTIC_TONE[status]];
 }
 
-export function getRequestStatusToneClassForDisplay(request: Pick<ServiceRequest, 'status' | 'survey_failure_type'>): string {
-  if (isOverloadCompletedAwaitingKrabi(request)) {
+export function getDisplayStatusToneClass(status: DisplayStatus): string {
+  if (status === WAITING_KRABI_DISPLAY_STATUS) {
     return SEMANTIC_TONE_CLASS.warning;
   }
 
-  return getRequestStatusToneClass(request.status);
+  return getRequestStatusToneClass(status as RequestStatus);
+}
+
+export function getRequestStatusToneClassForDisplay(request: Pick<ServiceRequest, 'status' | 'survey_failure_type'>): string {
+  return getDisplayStatusToneClass(resolveDisplayStatus(request));
 }

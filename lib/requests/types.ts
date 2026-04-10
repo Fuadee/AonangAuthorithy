@@ -304,17 +304,36 @@ export function getRequestStatusLabel(status: RequestStatus): string {
 }
 
 type OverloadCompletedDisplayRequest = Pick<ServiceRequest, 'status' | 'survey_failure_type'>;
+export type DisplayStatus = RequestStatus | 'WAITING_KRABI';
+export const WAITING_KRABI_DISPLAY_STATUS: DisplayStatus = 'WAITING_KRABI';
+export const WAITING_KRABI_DISPLAY_LABEL = 'รอกระบี่ปรับปรุงระบบไฟฟ้า';
 
 export function isOverloadCompletedAwaitingKrabi(request: OverloadCompletedDisplayRequest): boolean {
   return request.survey_failure_type === 'OVERLOAD_REPORTED' && ['COMPLETED', 'COMPLETED_OVERLOAD_FORWARD'].includes(request.status);
 }
 
-export function getRequestStatusLabelForDisplay(request: OverloadCompletedDisplayRequest): string {
+export function resolveDisplayStatus(request: OverloadCompletedDisplayRequest): DisplayStatus {
   if (isOverloadCompletedAwaitingKrabi(request)) {
-    return 'เสร็จสิ้น (รอกระบี่)';
+    return WAITING_KRABI_DISPLAY_STATUS;
   }
 
-  return getRequestStatusLabel(request.status);
+  return request.status;
+}
+
+export function getDisplayStatusLabel(status: DisplayStatus): string {
+  if (status === WAITING_KRABI_DISPLAY_STATUS) {
+    return WAITING_KRABI_DISPLAY_LABEL;
+  }
+
+  return getRequestStatusLabel(status as RequestStatus);
+}
+
+export function getRequestStatusLabelForDisplay(request: OverloadCompletedDisplayRequest): string {
+  return getDisplayStatusLabel(resolveDisplayStatus(request));
+}
+
+export function isActuallyCompleted(request: OverloadCompletedDisplayRequest): boolean {
+  return request.status === 'COMPLETED' && !isOverloadCompletedAwaitingKrabi(request);
 }
 
 export function getDispatchSubStatus(

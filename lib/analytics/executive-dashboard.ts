@@ -2,7 +2,7 @@ import {
   getResponsiblePersonName,
   getRequestQueueGroup,
   getRequestQueueGroupLabel,
-  getRequestStatusLabel,
+  getRequestStatusLabelForDisplay,
   REQUEST_QUEUE_GROUPS,
   REQUEST_TYPE_LABELS,
   RequestQueueGroup,
@@ -207,7 +207,7 @@ export function computeRequestViews(
         requestType: REQUEST_TYPE_LABELS[request.request_type],
         assigneeName: getResponsiblePersonName(request),
         queue: getRequestQueueGroup(request.status),
-        statusLabel: getRequestStatusLabel(request.status),
+        statusLabel: getRequestStatusLabelForDisplay(request),
         createdAt: request.created_at,
         ageDays,
         flags

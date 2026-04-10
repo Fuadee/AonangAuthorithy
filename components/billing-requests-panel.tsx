@@ -9,6 +9,7 @@ import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
 import {
   getRequestStatusLabel,
+  getRequestStatusLabelForDisplay,
   isMeterLikeBillingRequest,
   RequestStatus,
   ServiceRequest
@@ -118,7 +119,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
                     {resolveAreaDisplayName(request.area_name)}
                   </td>
                   <td className="px-4 py-3">{formatThaiDate(request.billed_at)}</td>
-                  <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
+                  <td className="px-4 py-3">{getRequestStatusLabelForDisplay(request)}</td>
                   <td className="px-4 py-3" onClick={(event) => event.stopPropagation()}>
                     {isMeterLikeBillingRequest(request.request_type, request.status) ? (
                       <BillingWorkflowActionRenderer

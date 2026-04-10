@@ -13,7 +13,7 @@ import {
   formatThaiSurveyDate,
   getCurrentSurveyDate,
   getResponsiblePersonName,
-  getRequestStatusLabel,
+  getRequestStatusLabelForDisplay,
   isSurveyScheduledTodayInBangkok,
   RequestStatus,
   ServiceRequest,
@@ -255,7 +255,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
                   </td>
                   <td className="px-4 py-3">
                     <div className="space-y-1">
-                      <p>{getRequestStatusLabel(request.status)}</p>
+                      <p>{getRequestStatusLabelForDisplay(request)}</p>
                       {request.status === 'RETURNED_FOR_RESURVEY' && request.manager_return_reason ? (
                         <p className="max-w-xs whitespace-pre-wrap text-xs text-rose-700">เหตุผลผู้จัดการ: {request.manager_return_reason}</p>
                       ) : null}

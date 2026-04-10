@@ -11,13 +11,15 @@ import { getPrimaryRequestType } from '@/lib/requests/request-display';
 import {
   getDashboardQueueGroups,
   getRequestQueueGroup,
+  isOverloadCompletedAwaitingKrabi,
   REQUEST_QUEUE_GROUP_META,
   RequestQueueGroup,
-  ServiceRequest
+  ServiceRequest,
+  WAITING_KRABI_DISPLAY_LABEL
 } from '@/lib/requests/types';
 
 type RequestTypeFilter = 'ALL' | RequestIntent;
-type QueueFilter = 'ALL' | RequestQueueGroup;
+type QueueFilter = 'ALL' | RequestQueueGroup | 'WAITING_KRABI';
 
 type DashboardRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -36,6 +38,13 @@ type FilterGroupOption<T extends string> = {
   value: T;
   label: string;
   tone?: FilterChipProps['tone'];
+};
+type QueueSummaryItem = {
+  queue: RequestQueueGroup | 'WAITING_KRABI';
+  label: string;
+  href: string;
+  toneClass: string;
+  count: number;
 };
 
 type FilterGroupProps<T extends string> = {
@@ -107,6 +116,7 @@ const QUEUE_STYLE_KEY: Record<RequestQueueGroup, keyof typeof STATUS_STYLES | nu
   DONE: 'done',
   OTHER: null
 };
+const WAITING_KRABI_STYLE_KEY: FilterChipProps['tone'] = 'finance';
 
 const FILTER_CHIP_BASE =
   'inline-flex h-9 items-center justify-center rounded-full border px-3.5 py-2 text-sm whitespace-nowrap transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
@@ -173,8 +183,8 @@ export function DashboardRequestsPanel({ requests, defaultQueue, defaultType }: 
   const [suggestions, setSuggestions] = useState<ServiceRequest[]>([]);
   const [isSearching, setIsSearching] = useState(false);
   const defaultQueueFilter: QueueFilter =
-    defaultQueue && getDashboardQueueGroups().includes(defaultQueue as RequestQueueGroup)
-      ? (defaultQueue as RequestQueueGroup)
+    defaultQueue && (getDashboardQueueGroups().includes(defaultQueue as RequestQueueGroup) || defaultQueue === 'WAITING_KRABI')
+      ? (defaultQueue as QueueFilter)
       : 'ALL';
   const [queueFilter, setQueueFilter] = useState<QueueFilter>(defaultQueueFilter);
 
@@ -275,26 +285,36 @@ export function DashboardRequestsPanel({ requests, defaultQueue, defaultType }: 
     }
 
     if (queueFilter !== 'ALL') {
-      result = result.filter((request) => getRequestQueueGroup(request.status) === queueFilter);
+      if (queueFilter === 'WAITING_KRABI') {
+        result = result.filter((request) => isOverloadCompletedAwaitingKrabi(request));
+      } else {
+        result = result.filter((request) => !isOverloadCompletedAwaitingKrabi(request) && getRequestQueueGroup(request.status) === queueFilter);
+      }
     }
 
     return result;
   }, [activeFilter, queueFilter, requests, serverFilteredRequests]);
 
-  const queueItems = useMemo(
-    () =>
-      getDashboardQueueGroups().map((queue) => {
+  const queueItems = useMemo<QueueSummaryItem[]>(() => {
+    const baseItems: QueueSummaryItem[] = getDashboardQueueGroups().map((queue) => {
         const meta = REQUEST_QUEUE_GROUP_META[queue];
         return {
           queue,
           label: meta.label,
           href: meta.href,
           toneClass: meta.toneClass,
-          count: requests.filter((request) => getRequestQueueGroup(request.status) === queue).length
+          count: requests.filter((request) => !isOverloadCompletedAwaitingKrabi(request) && getRequestQueueGroup(request.status) === queue).length
         };
-      }),
-    [requests]
-  );
+      });
+
+    return baseItems.concat({
+        queue: 'WAITING_KRABI',
+        label: WAITING_KRABI_DISPLAY_LABEL,
+        href: '/dashboard?queue=WAITING_KRABI',
+        toneClass: 'text-amber-600',
+        count: requests.filter((request) => isOverloadCompletedAwaitingKrabi(request)).length
+      });
+  }, [requests]);
 
   const queueFilterOptions: Array<FilterGroupOption<QueueFilter>> = useMemo(
     () => [
@@ -302,7 +322,7 @@ export function DashboardRequestsPanel({ requests, defaultQueue, defaultType }: 
       ...queueItems.map((item) => ({
         value: item.queue,
         label: resolveFilterLabel(item.queue, item.label),
-        tone: QUEUE_STYLE_KEY[item.queue] ?? 'default'
+        tone: item.queue === 'WAITING_KRABI' ? WAITING_KRABI_STYLE_KEY : (QUEUE_STYLE_KEY[item.queue] ?? 'default')
       }))
     ],
     [queueItems]
