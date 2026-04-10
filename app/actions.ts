@@ -143,7 +143,6 @@ const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>
   WAIT_ACTION_CONFIRMATION: ['WAIT_MANAGER_REVIEW', 'WAIT_AONANG_MANAGER_FINAL_APPROVAL'],
   WAIT_MANAGER_REVIEW: ['COMPLETED', 'SENT_TO_KRABI', 'RETURNED_FOR_RESURVEY'],
   WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL: ['SENT_TO_KRABI', 'RETURNED_FOR_RESURVEY'],
-  RETURNED_FOR_RESURVEY: ['WAIT_MANAGER_REVIEW'],
   SURVEY_OVERLOAD_REPORTED: ['COMPLETED_OVERLOAD_FORWARD'],
   SENT_TO_KRABI: ['WAIT_KRABI_DOCUMENT_CHECK', 'WAIT_KRABI_APPROVAL'],
   WAIT_KRABI_APPROVAL: ['KRABI_APPROVED', 'KRABI_NEEDS_CORRECTION'],
@@ -2212,7 +2211,7 @@ export async function returnRequestForResurveyAction(formData: FormData) {
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status,request_type')
+    .select('id,status,request_type,survey_round,scheduled_survey_date,survey_date_current')
     .eq('id', requestId)
     .single();
 
@@ -2232,10 +2231,16 @@ export async function returnRequestForResurveyAction(formData: FormData) {
     .from('service_requests')
     .update({
       status: 'RETURNED_FOR_RESURVEY',
+      assigned_surveyor_id: null,
+      assigned_surveyor: null,
+      scheduled_survey_date: null,
+      previous_survey_date: getEffectiveSurveyDate(request),
+      survey_date_current: null,
       manager_return_reason: managerReturnReason,
       manager_return_checklist: managerReturnChecklist,
       manager_returned_by: managerReturnedBy,
       manager_returned_at: nowIso,
+      survey_round: ((request.survey_round as number | null) ?? 1) + 1,
       updated_at: nowIso
     })
     .eq('id', requestId);
@@ -2247,9 +2252,10 @@ export async function returnRequestForResurveyAction(formData: FormData) {
   finalizeWorkflowAction(requestId, formData);
 }
 
-export async function submitResurveyReviewAction(formData: FormData) {
+export async function restartReturnedResurveyAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
-  const resurveyNote = requiredField(formData, 'resurvey_note');
+  const assignedSurveyor = requiredField(formData, 'assigned_surveyor');
+  const scheduledSurveyDate = requiredField(formData, 'scheduled_survey_date');
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
 
@@ -2264,16 +2270,23 @@ export async function submitResurveyReviewAction(formData: FormData) {
   }
 
   if (!isThirtyOneHundredRequestType(request.request_type as RequestType) || request.status !== 'RETURNED_FOR_RESURVEY') {
-    throw new Error('บันทึกผลตรวจสอบใหม่ได้เฉพาะงาน 30/100 ที่ถูกส่งกลับให้ตรวจสอบใหม่');
+    throw new Error('เริ่มรอบสำรวจใหม่ได้เฉพาะงาน 30/100 ที่ถูกส่งกลับให้สำรวจใหม่');
+  }
+
+  if (!isValidDateOnly(scheduledSurveyDate)) {
+    throw new Error('รูปแบบวันสำรวจไม่ถูกต้อง');
   }
 
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: 'WAIT_MANAGER_REVIEW',
-      survey_note: resurveyNote,
-      resurvey_note: resurveyNote,
-      resurvey_completed_at: nowIso,
+      status: 'READY_FOR_SURVEY',
+      assigned_surveyor: assignedSurveyor,
+      scheduled_survey_date: scheduledSurveyDate,
+      survey_date_initial: scheduledSurveyDate,
+      survey_date_current: scheduledSurveyDate,
+      survey_rescheduled_at: null,
+      survey_reschedule_reason: null,
       updated_at: nowIso
     })
     .eq('id', requestId);

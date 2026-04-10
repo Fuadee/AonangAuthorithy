@@ -81,6 +81,7 @@ create table if not exists public.service_requests (
   manager_return_checklist jsonb,
   manager_returned_by text,
   manager_returned_at timestamptz,
+  survey_round int not null default 1,
   resurvey_note text,
   resurvey_completed_at timestamptz,
   customer_fix_reported_at timestamptz,
