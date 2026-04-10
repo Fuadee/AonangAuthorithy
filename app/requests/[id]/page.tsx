@@ -174,7 +174,7 @@ function getNextStepSummary(
         };
       case 'COMPLETED_OVERLOAD_FORWARD':
         return {
-          nextStep: 'ส่งต่อกระบี่รับเรื่องปรับปรุงระบบจำหน่ายแล้ว',
+          nextStep: 'เสร็จสิ้น (ส่งต่อกระบี่เพื่อปรับปรุงระบบแล้ว)',
           owner: 'เสร็จสิ้น'
         };
       case 'COMPLETED':
@@ -499,7 +499,7 @@ function getTimeline(request: {
     });
     items.push({
       key: 'close-overload',
-      title: 'ปิดคำร้อง: ส่งต่อกระบี่รับเรื่องปรับปรุงระบบจำหน่ายแล้ว',
+      title: 'ปิดคำร้อง: เสร็จสิ้น (ส่งต่อกระบี่เพื่อปรับปรุงระบบแล้ว)',
       at: request.manager_overload_approved_at,
       sortAt: resolveTimelineSortAt(request.manager_overload_approved_at)
     });

@@ -55,7 +55,7 @@ const STATUS_SEMANTIC_TONE: Record<RequestStatus, SemanticTone> = {
   WAIT_MANAGER_REVIEW: 'warning',
   RETURNED_FOR_RESURVEY: 'danger',
   COMPLETED: 'success',
-  COMPLETED_OVERLOAD_FORWARD: 'success'
+  COMPLETED_OVERLOAD_FORWARD: 'warning'
 };
 
 export function getRequestStatusToneClass(status: RequestStatus): string {
