@@ -832,6 +832,9 @@ export type ServiceRequest = {
   awaiting_customer_documents_since: string | null;
   status: RequestStatus;
   request_type: RequestType;
+  request_intent: 'NEW_METER' | 'UPSCALE' | 'RELOCATE' | 'PHASE_UPGRADE' | 'EXPANSION' | null;
+  meter_size: 'NORMAL' | 'THIRTY_ONE_HUNDRED' | null;
+  phase: 'ONE_PHASE' | 'THREE_PHASE' | null;
   flow_type?: FlowType | null;
   survey_note: string | null;
   survey_reschedule_date: string | null;
