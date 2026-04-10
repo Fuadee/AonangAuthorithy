@@ -1,5 +1,5 @@
 import { FlowTypeBadge } from '@/components/queue/flow-type-badge';
-import { getRequestIntentLabel, getRequestTechnicalSummary } from '@/lib/requests/request-display';
+import { getRequestSubtypeDisplay, getRequestTypeDisplay } from '@/lib/requests/request-display';
 import { getFlowType, ServiceRequest } from '@/lib/requests/types';
 
 type RequestTypeFlowCellProps = {
@@ -10,13 +10,13 @@ type RequestTypeFlowCellProps = {
 
 export function RequestTypeFlowCell({ request, className }: RequestTypeFlowCellProps) {
   const flowType = getFlowType(request);
-  const requestIntentLabel = getRequestIntentLabel(request);
-  const technicalSummary = getRequestTechnicalSummary(request);
+  const requestTypeLabel = getRequestTypeDisplay(request);
+  const technicalSummary = getRequestSubtypeDisplay(request);
 
   return (
     <div className={className}>
-      <p className="truncate whitespace-nowrap text-sm leading-5 text-slate-700" title={requestIntentLabel}>
-        {requestIntentLabel}
+      <p className="truncate whitespace-nowrap text-sm leading-5 text-slate-700" title={requestTypeLabel}>
+        {requestTypeLabel}
       </p>
       {technicalSummary ? (
         <p className="truncate whitespace-nowrap text-xs leading-5 text-slate-500" title={technicalSummary}>
