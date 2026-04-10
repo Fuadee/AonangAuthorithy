@@ -24,6 +24,7 @@ import {
   resolvePostBillingPhase,
   shouldUseExpansionActionSet
 } from '@/lib/requests/types';
+import { resolveRequestSubmission } from '@/lib/requests/request-intent';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 function requiredField(formData: FormData, key: string): string {
@@ -159,7 +160,15 @@ export async function createRequestAction(formData: FormData) {
   const phone = requiredField(formData, 'phone');
   const areaCode = requiredField(formData, 'area_code');
   const assignedSurveyorId = requiredField(formData, 'assigned_surveyor_id');
-  const requestType = requiredField(formData, 'request_type');
+  const legacyRequestType = optionalField(formData, 'request_type');
+  const submission = resolveRequestSubmission({
+    intent: optionalField(formData, 'intent'),
+    meterSize: optionalField(formData, 'meter_size'),
+    phase: optionalField(formData, 'phase'),
+    legacyRequestType
+  });
+  const requestType = submission.requestType;
+  const flowType = submission.flowType;
   const assignedSurveyor = optionalField(formData, 'assigned_surveyor');
   const scheduledSurveyDate = requiredField(formData, 'scheduled_survey_date');
   const houseNumber = optionalField(formData, 'house_number');
@@ -229,6 +238,12 @@ export async function createRequestAction(formData: FormData) {
   console.info('[survey-submit] create request payload', {
     requestNo,
     areaCode: area.code,
+    intent: submission.intent,
+    meterSize: submission.meterSize,
+    phase: submission.phase,
+    flowType,
+    pathFamily: submission.pathFamily,
+    requestType,
     assignedSurveyorId: assignee.id,
     assignedSurveyorName: assignee.name,
     submittedAssignedSurveyor: assignedSurveyor,
@@ -252,6 +267,7 @@ export async function createRequestAction(formData: FormData) {
     survey_date_current: scheduledSurveyDate,
     status: initialStatus,
     request_type: requestType,
+    flow_type: flowType,
     house_number: houseNumber,
     village_no: villageNo,
     road,
