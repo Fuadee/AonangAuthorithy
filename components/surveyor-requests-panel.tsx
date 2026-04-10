@@ -253,7 +253,14 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
                   <td className="max-w-0 px-4 py-3 align-top">
                     <AreaResponsibleCell areaName={request.area_name} responsiblePersonName={responsiblePersonName} />
                   </td>
-                  <td className="px-4 py-3">{getRequestStatusLabel(request.status)}</td>
+                  <td className="px-4 py-3">
+                    <div className="space-y-1">
+                      <p>{getRequestStatusLabel(request.status)}</p>
+                      {request.status === 'RETURNED_FOR_RESURVEY' && request.manager_return_reason ? (
+                        <p className="max-w-xs whitespace-pre-wrap text-xs text-rose-700">เหตุผลผู้จัดการ: {request.manager_return_reason}</p>
+                      ) : null}
+                    </div>
+                  </td>
                   <td className="px-4 py-3">{formatThaiSurveyDate(getCurrentSurveyDate(request))}</td>
                   <td className="min-w-[220px] px-4 py-3">
                     <WorkflowActionButtons

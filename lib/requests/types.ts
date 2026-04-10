@@ -128,7 +128,7 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   INSPECTION: 'ตรวจสอบหลังติดตั้ง',
   WAIT_ACTION_CONFIRMATION: 'รอชำระเงิน',
   WAIT_MANAGER_REVIEW: 'รอผู้จัดการตรวจ',
-  RETURNED_FOR_RESURVEY: 'ส่งกลับให้ตรวจสอบใหม่',
+  RETURNED_FOR_RESURVEY: 'ต้องสำรวจใหม่',
   COMPLETED: 'เสร็จสิ้น',
   COMPLETED_OVERLOAD_FORWARD: 'เสร็จสิ้น'
 };
@@ -864,6 +864,7 @@ export type ServiceRequest = {
   manager_return_checklist: string[] | null;
   manager_returned_by: string | null;
   manager_returned_at: string | null;
+  survey_round: number | null;
   resurvey_note: string | null;
   resurvey_completed_at: string | null;
   customer_fix_reported_at: string | null;

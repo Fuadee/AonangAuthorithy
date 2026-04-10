@@ -39,8 +39,8 @@ import {
   receiveFromKrabiForMeterAction,
   resendToKrabiForMeterAction,
   returnRequestForResurveyAction,
+  restartReturnedResurveyAction,
   sendToEligibilityReviewForMeterAction,
-  submitResurveyReviewAction,
   startDocumentFixForMeterAction,
   reportCustomerFixAction,
   startSurveyAction,
@@ -72,7 +72,7 @@ const ACTION_EXECUTORS: Partial<Record<WorkflowActionKey, ActionExecutor>> = {
   PHOTO_REJECT_TO_RESURVEY: rejectFixPhotoAndRequireResurveyAction,
   MANAGER_APPROVE: approveManagerReviewAction,
   MANAGER_RETURN_FOR_RESURVEY: returnRequestForResurveyAction,
-  SUBMIT_RESURVEY_REVIEW: submitResurveyReviewAction,
+  RESTART_RETURNED_RESURVEY: restartReturnedResurveyAction,
   LAYOUT_DRAWING_DONE: completeLayoutDrawingAction,
   DISPATCHED_TO_KRABI: markSentToKrabiAction,
   KRABI_ACCEPT_AND_START: markKrabiInProgressAction,
@@ -152,7 +152,7 @@ function getActionTitle(actionKey: WorkflowActionKey): string {
     ,
     MANAGER_APPROVE_OVERLOAD_FORWARD: 'อนุมัติบันทึกให้กระบี่ปรับปรุงระบบจำหน่าย',
     MANAGER_RETURN_FOR_RESURVEY: 'ส่งกลับให้สำรวจตรวจสอบใหม่',
-    SUBMIT_RESURVEY_REVIEW: 'บันทึกผลตรวจสอบใหม่และส่งกลับให้ผู้จัดการ'
+    RESTART_RETURNED_RESURVEY: 'เริ่มงานสำรวจรอบใหม่'
   };
   return map[actionKey] ?? 'ยืนยันการทำรายการ';
 }
@@ -804,20 +804,24 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
     );
   }
 
-  if (actionKey === 'SUBMIT_RESURVEY_REVIEW') {
+  if (actionKey === 'RESTART_RETURNED_RESURVEY') {
     return (
-      <ModalShell title="บันทึกผลตรวจสอบใหม่" onClose={onClose}>
-        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('SUBMIT_RESURVEY_REVIEW')}>
+      <ModalShell title="ตั้งต้นงานสำรวจใหม่" onClose={onClose}>
+        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('RESTART_RETURNED_RESURVEY')}>
           <input name="request_id" type="hidden" value={requestId} />
           <QueueStayInput stayOnQueue={stayOnQueue} />
           <div className="space-y-1">
-            <label className="text-sm font-medium text-slate-700" htmlFor="resurvey_note">ผลการตรวจสอบใหม่</label>
-            <textarea className="input min-h-24" id="resurvey_note" name="resurvey_note" required />
+            <label className="text-sm font-medium text-slate-700" htmlFor="assigned_surveyor">มอบหมายนักสำรวจรอบใหม่</label>
+            <input className="input" id="assigned_surveyor" name="assigned_surveyor" required />
+          </div>
+          <div className="space-y-1">
+            <label className="text-sm font-medium text-slate-700" htmlFor="scheduled_survey_date">วันนัดสำรวจรอบใหม่</label>
+            <input className="input" id="scheduled_survey_date" name="scheduled_survey_date" required type="date" />
           </div>
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
             <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'บันทึกผลตรวจสอบใหม่'}</button>
+            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'เริ่มรอบสำรวจใหม่'}</button>
           </div>
         </form>
       </ModalShell>

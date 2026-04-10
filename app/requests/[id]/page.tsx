@@ -123,8 +123,8 @@ function getNextStepSummary(
         };
       case 'RETURNED_FOR_RESURVEY':
         return {
-          nextStep: 'งานถูกส่งกลับให้สำรวจตรวจสอบใหม่และส่งกลับเข้าคิวผู้จัดการ',
-          owner: 'นักสำรวจ'
+          nextStep: 'ต้องมอบหมายนักสำรวจและกำหนดวันนัดใหม่ เพื่อเริ่มรอบสำรวจใหม่ตั้งแต่ READY_FOR_SURVEY',
+          owner: 'เจ้าหน้าที่ / นักสำรวจ'
         };
       case 'SENT_TO_KRABI':
       case 'WAIT_KRABI_APPROVAL':
@@ -333,6 +333,7 @@ function getTimeline(request: {
   manager_return_checklist: string[] | null;
   manager_returned_by: string | null;
   manager_returned_at: string | null;
+  survey_round: number | null;
   resurvey_note: string | null;
   resurvey_completed_at: string | null;
   customer_fix_reported_at: string | null;
@@ -647,7 +648,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,request_intent,meter_size,phase,flow_type,area_name,assignee_id,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,survey_failure_type,fix_verification_mode,customer_fix_note,customer_fix_reported_at,overload_report_reason,overload_report_note,overload_reported_at,overload_reported_by,manager_overload_approved_at,manager_overload_approved_by,manager_return_reason,manager_return_checklist,manager_returned_by,manager_returned_at,resurvey_note,resurvey_completed_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,forwarded_to_expansion_at,forwarded_to_expansion_note,three_phase_capability_result,three_phase_capability_checked_at,house_number,village_no,road,landmark,latitude,longitude,location_note,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,request_intent,meter_size,phase,flow_type,area_name,assignee_id,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,survey_failure_type,fix_verification_mode,customer_fix_note,customer_fix_reported_at,overload_report_reason,overload_report_note,overload_reported_at,overload_reported_by,manager_overload_approved_at,manager_overload_approved_by,manager_return_reason,manager_return_checklist,manager_returned_by,manager_returned_at,survey_round,resurvey_note,resurvey_completed_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,forwarded_to_expansion_at,forwarded_to_expansion_note,three_phase_capability_result,three_phase_capability_checked_at,house_number,village_no,road,landmark,latitude,longitude,location_note,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -722,6 +723,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     manager_return_checklist: request.manager_return_checklist,
     manager_returned_by: request.manager_returned_by,
     manager_returned_at: request.manager_returned_at,
+    survey_round: request.survey_round,
     resurvey_note: request.resurvey_note,
     resurvey_completed_at: request.resurvey_completed_at,
     customer_fix_reported_at: request.customer_fix_reported_at,
