@@ -3,13 +3,24 @@
 import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { createRequestAction } from '@/app/actions';
 import { formatDateOnly, isFutureBangkokDate } from '@/lib/datetime';
-import { Area, Assignee, REQUEST_TYPE_LABELS, REQUEST_TYPES } from '@/lib/requests/types';
+import { Area, Assignee } from '@/lib/requests/types';
 import { resolveAreaLabelFromCode } from '@/lib/requests/areas';
 import { getResponsibleSurveyorIdByAreaCode } from '@/lib/requests/area-responsible';
 import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
 import type { SurveySuggestionResult } from '@/lib/requests/survey-suggestion';
 import { getFixedSurveyScheduleByAreaCode } from '@/lib/requests/fixed-survey-schedule';
 import { RequestLocationPicker } from '@/components/request-location-picker';
+import {
+  METER_SIZE_LABELS,
+  MeterSize,
+  PHASE_LABELS,
+  PHASE_TYPES,
+  PhaseType,
+  REQUEST_INTENT_LABELS,
+  REQUEST_INTENTS,
+  RequestIntent,
+  resolveRequestSubmission
+} from '@/lib/requests/request-intent';
 
 type RequestFormProps = {
   areas: Area[];
@@ -33,7 +44,12 @@ const WEEKDAY_LABELS: Record<string, string> = {
 };
 
 export function RequestForm({ areas, assignees }: RequestFormProps) {
-  const [requestType, setRequestType] = useState('');
+  const [intent, setIntent] = useState<RequestIntent | ''>('');
+  const [meterSize, setMeterSize] = useState<MeterSize | ''>('');
+  const [phase, setPhase] = useState<PhaseType | ''>('');
+  const [intentError, setIntentError] = useState<string | null>(null);
+  const [meterSizeError, setMeterSizeError] = useState<string | null>(null);
+  const [phaseError, setPhaseError] = useState<string | null>(null);
   const [areaCode, setAreaCode] = useState('');
   const [selectedSurveyorId, setSelectedSurveyorId] = useState('');
   const [selectedSurveyDate, setSelectedSurveyDate] = useState('');
@@ -86,6 +102,42 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   );
   const selectedSurveyorName = selectedSurveyor?.name ?? '';
   const areaFixedSchedule = useMemo(() => getFixedSurveyScheduleByAreaCode(areaCode), [areaCode]);
+  const isExpansionIntent = intent === 'EXPANSION';
+  const isPhaseUpgradeIntent = intent === 'PHASE_UPGRADE';
+  const effectivePhase = isPhaseUpgradeIntent ? 'THREE_PHASE' : phase;
+  const shouldShowMeterOptions = !!intent && !isExpansionIntent;
+  const canSubmitRequestTypeSelection = !!intent && (isExpansionIntent || (!!meterSize && !!effectivePhase));
+  const resolvedSelection = useMemo(() => {
+    if (!canSubmitRequestTypeSelection) {
+      return null;
+    }
+
+    try {
+      return resolveRequestSubmission({
+        intent,
+        meterSize,
+        phase: effectivePhase
+      });
+    } catch {
+      return null;
+    }
+  }, [canSubmitRequestTypeSelection, effectivePhase, intent, meterSize]);
+
+  const selectionSummary = useMemo(() => {
+    if (!intent) {
+      return 'ยังไม่เลือกลักษณะงาน';
+    }
+
+    if (isExpansionIntent) {
+      return REQUEST_INTENT_LABELS[intent];
+    }
+
+    if (!meterSize || !effectivePhase) {
+      return `${REQUEST_INTENT_LABELS[intent]} / รอเลือกข้อมูลเพิ่มเติม`;
+    }
+
+    return `${REQUEST_INTENT_LABELS[intent]} / ${METER_SIZE_LABELS[meterSize]} / ${PHASE_LABELS[effectivePhase]}`;
+  }, [effectivePhase, intent, isExpansionIntent, meterSize]);
 
   useEffect(() => {
     const controller = new AbortController();
@@ -126,6 +178,22 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
 
     return () => controller.abort();
   }, [areaCode]);
+
+  useEffect(() => {
+    setIntentError(null);
+    if (intent === 'EXPANSION') {
+      setMeterSize('');
+      setPhase('');
+      setMeterSizeError(null);
+      setPhaseError(null);
+      return;
+    }
+
+    if (intent === 'PHASE_UPGRADE') {
+      setPhase('THREE_PHASE');
+      setPhaseError(null);
+    }
+  }, [intent]);
 
   const recommendation = useMemo(() => {
     const recommendedSurveyorId =
@@ -224,6 +292,36 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   }, [areaCode, assignees, recommendation, selectedSurveyDate, selectedSurveyorId, surveyorOptions]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (!intent) {
+      event.preventDefault();
+      setIntentError('กรุณาเลือกลักษณะงาน');
+      return;
+    }
+
+    if (!isExpansionIntent && !meterSize) {
+      event.preventDefault();
+      setMeterSizeError('กรุณาเลือกขนาดมิเตอร์');
+      return;
+    }
+
+    if (!isExpansionIntent && !effectivePhase) {
+      event.preventDefault();
+      setPhaseError('กรุณาเลือกระบบไฟ');
+      return;
+    }
+
+    if (isPhaseUpgradeIntent && effectivePhase !== 'THREE_PHASE') {
+      event.preventDefault();
+      setPhaseError('งานเพิ่มเฟสต้องเป็นระบบไฟ 3 เฟส');
+      return;
+    }
+
+    if (canSubmitRequestTypeSelection && !resolvedSelection) {
+      event.preventDefault();
+      setPhaseError('ตรวจสอบประเภทคำร้องไม่สำเร็จ');
+      return;
+    }
+
     if (!isFutureBangkokDate(selectedSurveyDate)) {
       event.preventDefault();
       setSurveyDateError('วันสำรวจต้องเป็นวันถัดไปจากวันนี้ (โซนเวลาไทย) เท่านั้น');
@@ -250,30 +348,119 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     setSurveyDateError(null);
     setLocationError(null);
     setFlexibleAddressError(null);
+    setIntentError(null);
+    setMeterSizeError(null);
+    setPhaseError(null);
   }
 
   return (
     <form action={createRequestAction} className="card space-y-5 p-6" onSubmit={handleSubmit}>
-      <div>
-        <label className="text-sm font-medium" htmlFor="request_type">
-          ประเภทคำร้อง
-        </label>
-        <select
-          className="input"
-          id="request_type"
-          name="request_type"
-          required
-          value={requestType}
-          onChange={(event) => setRequestType(event.target.value)}
-        >
-          <option value="">-- เลือกประเภทคำร้อง --</option>
-          {REQUEST_TYPES.map((type) => (
-            <option key={type} value={type}>
-              {REQUEST_TYPE_LABELS[type]}
-            </option>
-          ))}
-        </select>
-      </div>
+      <section className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
+        <div>
+          <h3 className="text-sm font-semibold text-slate-700">ประเภทคำร้อง</h3>
+          <p className="mt-1 text-xs text-slate-500">เลือกข้อมูล 3 ส่วน เพื่อให้ระบบ map ไป flow ที่ถูกต้อง</p>
+        </div>
+
+        <div className="space-y-2">
+          <p className="text-sm font-medium">1) ลักษณะงาน</p>
+          <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+            {REQUEST_INTENTS.map((option) => (
+              <button
+                key={option}
+                className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
+                  intent === option
+                    ? 'border-blue-400 bg-blue-50 text-blue-800 shadow-sm'
+                    : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                }`}
+                type="button"
+                onClick={() => setIntent(option)}
+              >
+                {REQUEST_INTENT_LABELS[option]}
+              </button>
+            ))}
+          </div>
+          {intentError ? <p className="text-xs text-rose-600">{intentError}</p> : null}
+        </div>
+
+        {shouldShowMeterOptions ? (
+          <div className="grid gap-4 md:grid-cols-2">
+            <div className="space-y-2">
+              <p className="text-sm font-medium">2) ขนาดมิเตอร์</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {(['NORMAL', 'THIRTY_ONE_HUNDRED'] as MeterSize[]).map((option) => (
+                  <button
+                    key={option}
+                    className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
+                      meterSize === option
+                        ? 'border-blue-400 bg-blue-50 text-blue-800 shadow-sm'
+                        : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                    }`}
+                    type="button"
+                    onClick={() => {
+                      setMeterSize(option);
+                      setMeterSizeError(null);
+                    }}
+                  >
+                    {METER_SIZE_LABELS[option]}
+                  </button>
+                ))}
+              </div>
+              {meterSizeError ? <p className="text-xs text-rose-600">{meterSizeError}</p> : null}
+            </div>
+
+            <div className="space-y-2">
+              <p className="text-sm font-medium">3) ระบบไฟ</p>
+              <div className="grid gap-2 sm:grid-cols-2">
+                {PHASE_TYPES.map((option) => {
+                  const isLocked = isPhaseUpgradeIntent && option !== 'THREE_PHASE';
+                  return (
+                    <button
+                      key={option}
+                      className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
+                        effectivePhase === option
+                          ? 'border-blue-400 bg-blue-50 text-blue-800 shadow-sm'
+                          : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
+                      } ${isLocked ? 'cursor-not-allowed opacity-50' : ''}`}
+                      type="button"
+                      onClick={() => {
+                        if (isLocked) {
+                          return;
+                        }
+                        setPhase(option);
+                        setPhaseError(null);
+                      }}
+                    >
+                      {PHASE_LABELS[option]}
+                    </button>
+                  );
+                })}
+              </div>
+              {isPhaseUpgradeIntent ? (
+                <p className="text-xs text-slate-500">งานเพิ่มเฟสจะใช้ระบบไฟ 3 เฟสเสมอ</p>
+              ) : null}
+              {phaseError ? <p className="text-xs text-rose-600">{phaseError}</p> : null}
+            </div>
+          </div>
+        ) : null}
+
+        <div className="rounded-lg border border-slate-200 bg-white p-3">
+          <p className="text-xs font-medium text-slate-500">สรุปที่เลือก</p>
+          <p className="mt-1 text-sm font-medium text-slate-800">{selectionSummary}</p>
+        </div>
+
+        {effectivePhase === 'THREE_PHASE' ? (
+          <p className="rounded-lg border border-amber-200 bg-amber-50 px-3 py-2 text-xs text-amber-700">
+            กรณี 3 เฟส ระบบจะตรวจสอบภายหลังว่ารองรับหรือไม่ หากไม่รองรับอาจเข้าสู่กระบวนการขยายเขต
+          </p>
+        ) : null}
+
+        <input name="intent" type="hidden" value={intent} readOnly />
+        <input name="meter_size" type="hidden" value={isExpansionIntent ? '' : meterSize} readOnly />
+        <input name="phase" type="hidden" value={isExpansionIntent ? '' : effectivePhase} readOnly />
+        <input name="request_type" type="hidden" value={resolvedSelection?.requestType ?? ''} readOnly />
+        <input name="flow_type" type="hidden" value={resolvedSelection?.flowType ?? ''} readOnly />
+        <input name="path_family" type="hidden" value={resolvedSelection?.pathFamily ?? ''} readOnly />
+      </section>
 
       <div>
         <label className="text-sm font-medium" htmlFor="customer_name">
