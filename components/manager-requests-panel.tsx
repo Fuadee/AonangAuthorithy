@@ -11,11 +11,11 @@ import {
   returnRequestForResurveyAction
 } from '@/app/actions';
 import { AreaResponsibleCell } from '@/components/area-responsible-cell';
-import { QueueFilterChips } from '@/components/queue/queue-filter-chips';
 import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
 import { formatThaiDateTime } from '@/lib/datetime';
-import { getResponsiblePersonName, isThirtyOneHundredRequestType, RequestStatus, ServiceRequest } from '@/lib/requests/types';
+import { getRequestTypeDisplay } from '@/lib/requests/request-display';
+import { getResponsiblePersonName, isThirtyOneHundredRequestType, ServiceRequest } from '@/lib/requests/types';
 
 type ManagerRequestsPanelProps = {
   requests: ServiceRequest[];
@@ -23,18 +23,29 @@ type ManagerRequestsPanelProps = {
 
 const MANAGER_TABLE_COLUMNS = ['เลขคำร้อง', 'ลูกค้า', 'ประเภทคำร้อง', 'พื้นที่', 'สถานะ', 'จัดการ'] as const;
 
-const MANAGER_FILTERS: Array<{ value: 'ALL' | RequestStatus; label: string }> = [
-  { value: 'ALL', label: 'ทั้งหมด' },
-  { value: 'SURVEY_OVERLOAD_REPORTED', label: 'รออนุมัติบันทึกโหลดเกิน' },
-  { value: 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL', label: 'อนุมัติก่อนส่งกระบี่' },
-  { value: 'WAIT_AONANG_MANAGER_FINAL_APPROVAL', label: 'อนุมัติปิดงาน' },
-  { value: 'WAIT_MANAGER_REVIEW', label: 'รอผู้จัดการตรวจ' }
-];
+function buildManagerSearchText(request: ServiceRequest): string {
+  return [
+    request.request_no,
+    request.customer_name,
+    request.phone,
+    request.house_number,
+    request.village_no,
+    request.road,
+    request.landmark,
+    request.area_name,
+    request.request_type,
+    request.request_intent,
+    getRequestTypeDisplay(request)
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLocaleLowerCase('th-TH');
+}
 
 export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
-  const [activeFilter, setActiveFilter] = useState<'ALL' | RequestStatus>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
   const [confirmRequest, setConfirmRequest] = useState<ServiceRequest | null>(null);
   const [actionError, setActionError] = useState<string | null>(null);
   const [pendingRequestId, setPendingRequestId] = useState<string | null>(null);
@@ -45,10 +56,14 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
   const [krabiReferenceNo, setKrabiReferenceNo] = useState('');
   const [krabiReferenceError, setKrabiReferenceError] = useState<string | null>(null);
 
-  const filteredRequests = useMemo(
-    () => (activeFilter === 'ALL' ? requests : requests.filter((request) => request.status === activeFilter)),
-    [activeFilter, requests]
-  );
+  const filteredRequests = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLocaleLowerCase('th-TH');
+    if (!normalizedQuery) {
+      return requests;
+    }
+
+    return requests.filter((request) => buildManagerSearchText(request).includes(normalizedQuery));
+  }, [requests, searchQuery]);
 
   const summary = useMemo(
     () => ({
@@ -139,10 +154,30 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
         </article>
       </div>
 
-      <QueueFilterChips active={activeFilter} onChange={setActiveFilter} options={MANAGER_FILTERS} />
-
       <div className="card overflow-hidden">
         {actionError ? <p className="border-b border-rose-100 bg-rose-50 px-4 py-3 text-sm text-rose-700">{actionError}</p> : null}
+        <div className="border-b border-slate-200 bg-white p-4">
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="ค้นหาเลขคำร้อง / ชื่อ / เบอร์โทร / บ้านเลขที่ / หมู่ / จุดสังเกต"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#1E3A8A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="ล้างคำค้นหา"
+                title="ล้างคำค้นหา"
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full table-fixed divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-100 text-left text-slate-600">
@@ -229,7 +264,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
               {!filteredRequests.length && (
                 <tr>
                   <td className="px-4 py-6 text-center text-slate-500" colSpan={MANAGER_TABLE_COLUMNS.length}>
-                    ไม่มีงานที่ตรงกับตัวกรอง
+                    {searchQuery.trim() ? 'ไม่พบรายการที่ตรงกับคำค้นหา' : 'ไม่มีงานรอผู้จัดการตรวจ'}
                   </td>
                 </tr>
               )}
