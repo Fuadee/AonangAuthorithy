@@ -7,6 +7,7 @@ import { AreaResponsibleCell } from '@/components/area-responsible-cell';
 import { QueueFilterChips } from '@/components/queue/queue-filter-chips';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
+import { getRequestTypeDisplay } from '@/lib/requests/request-display';
 import { getAvailableRequestActions } from '@/lib/requests/workflow-action-config';
 import { getSurveyorDisplayName } from '@/lib/requests/surveyor-display';
 import {
@@ -50,6 +51,30 @@ const DETAIL_FILTER_OPTIONS: StatusOption<DetailSurveyorFilter>[] = [
   { value: 'WAIT_FIX_REVIEW', label: 'รอตรวจจากรูป' },
   { value: 'READY_FOR_RESURVEY', label: 'รอนัดตรวจซ้ำ' }
 ];
+
+function buildSurveyorSearchText(request: ServiceRequest): string {
+  return [
+    request.request_no,
+    request.customer_name,
+    request.phone,
+    request.house_number,
+    request.village_no,
+    request.road,
+    request.landmark,
+    request.location_note,
+    request.area_name,
+    request.request_type,
+    request.request_intent,
+    getRequestTypeDisplay(request),
+    request.assignee_name,
+    request.assigned_surveyor,
+    getSurveyorDisplayName(request.assigned_surveyor ?? request.assignee_name),
+    getRequestStatusLabelForDisplay(request)
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLocaleLowerCase('th-TH');
+}
 
 function SurveyorSelect({
   activeSurveyor,
@@ -111,6 +136,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
 
   const [activeFilter, setActiveFilter] = useState<SurveyorFilter>('ALL');
   const [isExpanded, setIsExpanded] = useState(false);
+  const [searchQuery, setSearchQuery] = useState('');
 
   const surveyorOptions = useMemo(() => {
     const unique = new Set<string>();
@@ -138,26 +164,22 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
     setActiveSurveyor(selectedSurveyor);
   }, [selectedSurveyor]);
 
-  const surveyorFilteredRequests = useMemo(() => {
-    if (activeSurveyor === ALL_SURVEYORS) {
+  const searchedRequests = useMemo(() => {
+    const normalizedQuery = searchQuery.trim().toLocaleLowerCase('th-TH');
+    if (!normalizedQuery) {
       return requests;
     }
 
-    return requests.filter((request) => request.assigned_surveyor === activeSurveyor);
-  }, [activeSurveyor, requests]);
+    return requests.filter((request) => buildSurveyorSearchText(request).includes(normalizedQuery));
+  }, [requests, searchQuery]);
 
-  const workloadBySurveyor = useMemo(() => {
-    const bySurveyor = new Map<string, number>();
+  const surveyorFilteredRequests = useMemo(() => {
+    if (activeSurveyor === ALL_SURVEYORS) {
+      return searchedRequests;
+    }
 
-    requests.forEach((request) => {
-      const key = request.assigned_surveyor ?? 'ยังไม่ระบุ';
-      bySurveyor.set(key, (bySurveyor.get(key) ?? 0) + 1);
-    });
-
-    return Array.from(bySurveyor.entries())
-      .map(([name, total]) => ({ name, total }))
-      .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'th'));
-  }, [requests]);
+    return searchedRequests.filter((request) => request.assigned_surveyor === activeSurveyor);
+  }, [activeSurveyor, searchedRequests]);
 
   const filteredRequests = useMemo(() => {
     if (activeFilter === 'ALL') {
@@ -177,6 +199,19 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
 
     return surveyorFilteredRequests.filter((request) => request.status === activeFilter);
   }, [activeFilter, surveyorFilteredRequests]);
+
+  const workloadBySurveyor = useMemo(() => {
+    const bySurveyor = new Map<string, number>();
+
+    filteredRequests.forEach((request) => {
+      const key = request.assigned_surveyor ?? 'ยังไม่ระบุ';
+      bySurveyor.set(key, (bySurveyor.get(key) ?? 0) + 1);
+    });
+
+    return Array.from(bySurveyor.entries())
+      .map(([name, total]) => ({ name, total }))
+      .sort((a, b) => b.total - a.total || a.name.localeCompare(b.name, 'th'));
+  }, [filteredRequests]);
 
   const handleSurveyorChange = (value: string) => {
     setActiveSurveyor(value);
@@ -225,6 +260,28 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
       </FilterContainer>
 
       <section className="card overflow-hidden">
+        <div className="border-b border-slate-200 bg-white p-4">
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="ค้นหาเลขคำร้อง / ชื่อ / เบอร์โทร / บ้านเลขที่ / หมู่ / จุดสังเกต"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#1E3A8A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="ล้างคำค้นหา"
+                title="ล้างคำค้นหา"
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full table-fixed divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-100 text-left text-slate-600">
@@ -278,7 +335,11 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
               {!filteredRequests.length && (
                 <tr>
                   <td className="px-4 py-6 text-center text-slate-500" colSpan={7}>
-                    {activeFilter === 'READY' ? 'วันนี้ไม่มีงานที่นัดสำรวจ' : 'ไม่พบรายการตามตัวกรองนี้'}
+                    {searchQuery.trim()
+                      ? 'ไม่พบรายการที่ตรงกับคำค้นหา'
+                      : activeFilter === 'READY'
+                        ? 'วันนี้ไม่มีงานที่นัดสำรวจ'
+                        : 'ไม่พบรายการตามตัวกรองนี้'}
                   </td>
                 </tr>
               )}
