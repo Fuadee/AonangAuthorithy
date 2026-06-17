@@ -3,15 +3,13 @@
 import Link from 'next/link';
 import { useMemo, useState } from 'react';
 import { BillingWorkflowActionRenderer } from '@/components/billing-workflow-action-renderer';
-import { QueueFilterChips } from '@/components/queue/queue-filter-chips';
 import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
 import { resolveAreaDisplayName } from '@/lib/requests/areas';
+import { getRequestTypeDisplay } from '@/lib/requests/request-display';
 import {
-  getRequestStatusLabel,
   getRequestStatusLabelForDisplay,
   isMeterLikeBillingRequest,
-  RequestStatus,
   ServiceRequest
 } from '@/lib/requests/types';
 import { getWorkflowActionsForRequest } from '@/lib/requests/workflow-action-config';
@@ -21,22 +19,31 @@ type BillingRequestsPanelProps = {
   requests: ServiceRequest[];
 };
 
-type BillingQueueStatus = Extract<RequestStatus, 'WAIT_ELIGIBILITY_REVIEW' | 'WAIT_BILLING' | 'WAIT_ACTION_CONFIRMATION' | 'WAIT_PAYMENT'>;
-type BillingFilter = 'ALL' | BillingQueueStatus;
-
-const BILLING_FILTER_STATUSES: BillingQueueStatus[] = ['WAIT_ELIGIBILITY_REVIEW', 'WAIT_BILLING', 'WAIT_ACTION_CONFIRMATION', 'WAIT_PAYMENT'];
-
-const FILTER_OPTIONS: Array<{ value: BillingFilter; label: string }> = [
-  { value: 'ALL', label: 'ทั้งหมด' },
-  ...BILLING_FILTER_STATUSES.map((status) => ({
-    value: status,
-    label: getRequestStatusLabel(status)
-  }))
-];
+function buildBillingSearchText(request: ServiceRequest): string {
+  return [
+    request.request_no,
+    request.customer_name,
+    request.phone,
+    request.house_number,
+    request.village_no,
+    request.road,
+    request.landmark,
+    request.area_name,
+    resolveAreaDisplayName(request.area_name),
+    request.request_type,
+    request.request_intent,
+    getRequestTypeDisplay(request),
+    request.status,
+    getRequestStatusLabelForDisplay(request)
+  ]
+    .filter(Boolean)
+    .join(' ')
+    .toLocaleLowerCase('th-TH');
+}
 
 
 export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
-  const [activeFilter, setActiveFilter] = useState<BillingFilter>('ALL');
+  const [searchQuery, setSearchQuery] = useState('');
 
   const summary = useMemo(
     () => ({
@@ -50,12 +57,13 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
   );
 
   const filteredRequests = useMemo(() => {
-    if (activeFilter === 'ALL') {
+    const normalizedQuery = searchQuery.trim().toLocaleLowerCase('th-TH');
+    if (!normalizedQuery) {
       return requests;
     }
 
-    return requests.filter((request) => request.status === activeFilter);
-  }, [activeFilter, requests]);
+    return requests.filter((request) => buildBillingSearchText(request).includes(normalizedQuery));
+  }, [requests, searchQuery]);
 
   return (
     <div className="space-y-4">
@@ -85,11 +93,29 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
         </article>
       </section>
 
-      <section className="card p-4">
-        <QueueFilterChips active={activeFilter} onChange={setActiveFilter} options={FILTER_OPTIONS} />
-      </section>
-
       <section className="card overflow-hidden">
+        <div className="border-b border-slate-200 bg-white p-4">
+          <div className="relative">
+            <input
+              type="text"
+              value={searchQuery}
+              onChange={(event) => setSearchQuery(event.target.value)}
+              placeholder="ค้นหาเลขคำร้อง / ชื่อ / เบอร์โทร / บ้านเลขที่ / หมู่ / จุดสังเกต"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#1E3A8A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20"
+            />
+            {searchQuery ? (
+              <button
+                type="button"
+                onClick={() => setSearchQuery('')}
+                className="absolute right-2 top-1/2 -translate-y-1/2 rounded p-1 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+                aria-label="ล้างคำค้นหา"
+                title="ล้างคำค้นหา"
+              >
+                ×
+              </button>
+            ) : null}
+          </div>
+        </div>
         <div className="overflow-x-auto">
           <table className="min-w-full divide-y divide-slate-200 text-sm">
             <thead className="bg-slate-100 text-left text-slate-600">
@@ -144,7 +170,7 @@ export function BillingRequestsPanel({ requests }: BillingRequestsPanelProps) {
               {!filteredRequests.length && (
                 <tr>
                   <td className="px-4 py-6 text-center text-slate-500" colSpan={7}>
-                    ไม่พบรายการตามตัวกรองนี้
+                    {searchQuery.trim() ? 'ไม่พบรายการที่ตรงกับคำค้นหา' : 'ไม่มีรายการในคิวการเงิน'}
                   </td>
                 </tr>
               )}
