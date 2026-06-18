@@ -66,10 +66,10 @@ export function SurveyScheduleActionDialog({ actionKey, requestId, onClose, stay
           </div>
         ) : null}
         <div className="flex justify-end gap-2">
-          <button className="btn-secondary" type="button" onClick={onClose}>
+          <button className="btn-flow-neutral" type="button" onClick={onClose}>
             ยกเลิก
           </button>
-          <button className="btn-primary" type="submit">
+          <button className="btn-flow-primary" type="submit">
             บันทึกวันนัด
           </button>
         </div>

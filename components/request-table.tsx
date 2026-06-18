@@ -109,7 +109,7 @@ export function RequestTable({
                 <p className="text-[11px] font-medium tracking-wide text-slate-500 uppercase lg:hidden">Request / ลูกค้า</p>
                 <Link
                   href={`/requests/${request.id}`}
-                  className="block truncate text-sm font-semibold text-[#1E3A8A] hover:underline"
+                      className="block truncate text-sm font-semibold text-[#1E40AF] hover:underline"
                   title={request.request_no}
                 >
                   {request.request_no}
@@ -246,7 +246,7 @@ export function RequestTable({
                   <td className="max-w-0 px-3 py-3 align-middle tabular-nums" title={request.request_no}>
                     <Link
                       href={`/requests/${request.id}`}
-                      className="block w-[10ch] min-w-[10ch] truncate whitespace-nowrap pr-1 font-semibold text-[#1E3A8A] hover:underline"
+                      className="block w-[10ch] min-w-[10ch] truncate whitespace-nowrap pr-1 font-semibold text-[#1E40AF] hover:underline"
                     >
                       {request.request_no}
                     </Link>

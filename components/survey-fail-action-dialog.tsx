@@ -174,10 +174,10 @@ export function SurveyFailActionDialog({ open, requestId, onClose, stayOnQueue =
           )}
         </div>
         <div className="flex justify-end gap-2">
-          <button className="btn-secondary" disabled={isSubmitting} type="button" onClick={onClose}>
+          <button className="btn-flow-neutral" disabled={isSubmitting} type="button" onClick={onClose}>
             ยกเลิก
           </button>
-          <button className="btn-primary" disabled={isSubmitting} type="submit">
+          <button className={isOverloadMode ? 'btn-flow-warning' : 'btn-flow-danger'} disabled={isSubmitting} type="submit">
             {isSubmitting ? 'กำลังบันทึก...' : submitLabel}
           </button>
         </div>

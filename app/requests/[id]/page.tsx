@@ -1,5 +1,6 @@
 import Link from 'next/link';
 import RequestPhoneAction from '@/components/request-phone-action';
+import { ConvertToExpansionAction } from '@/components/convert-to-expansion-action';
 import { FlowTypeBadge } from '@/components/queue/flow-type-badge';
 import { notFound } from 'next/navigation';
 import { LocationPreview } from '@/components/location-preview';
@@ -63,6 +64,19 @@ function formatDateTime(value: string | null): string {
 function resolveTimelineSortAt(value: string): number {
   const parsed = safeParseDate(value);
   return parsed ? parsed.getTime() : 0;
+}
+
+function getConversionReason(note: string | null): string {
+  if (!note) {
+    return '-';
+  }
+
+  const reasonLine = note
+    .split('\n')
+    .map((line) => line.trim())
+    .find((line) => line.startsWith('เหตุผล:'));
+
+  return reasonLine ? reasonLine.replace(/^เหตุผล:\s*/, '') : note;
 }
 
 
@@ -538,8 +552,8 @@ function getTimeline(request: {
   if (request.forwarded_to_expansion_at) {
     items.push({
       key: 'forwarded-to-expansion',
-      title: 'ส่งต่องานเข้าสู่ flow ขยายเขต',
-      description: request.forwarded_to_expansion_note ?? 'ระบบไม่รองรับ 3 เฟส จึงส่งต่อเข้าขยายเขตที่ WAIT_LAYOUT_DRAWING',
+      title: 'เปลี่ยนประเภทคำร้องจาก METER เป็น EXPANSION',
+      description: request.forwarded_to_expansion_note ?? 'ย้ายสถานะไปยัง WAIT_LAYOUT_DRAWING โดยไม่ลบข้อมูลเดิม',
       at: request.forwarded_to_expansion_at,
       sortAt: resolveTimelineSortAt(request.forwarded_to_expansion_at)
     });
@@ -665,6 +679,10 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
 
   const requestStatus = request.status as RequestStatus;
   const requestType = request.request_type as RequestType;
+  const completedStatuses: RequestStatus[] = ['COMPLETED', 'COMPLETED_OVERLOAD_FORWARD', 'COORDINATED_WITH_CONSTRUCTION'];
+  const canConvertToExpansion = requestType === 'METER' && !completedStatuses.includes(requestStatus);
+  const wasConvertedFromMeterToExpansion = requestType === 'EXPANSION' && Boolean(request.forwarded_to_expansion_at);
+  const conversionReason = getConversionReason(request.forwarded_to_expansion_note);
   const requestTypeLabel = getRequestIntentLabel(request);
   const requestTechnicalSummary = getRequestTechnicalSummary(request);
   const flowType = getFlowType(request);
@@ -840,6 +858,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
             <dt className="text-sm text-slate-500">ประเภทคำร้อง</dt>
             <dd className="mt-1 font-medium">{requestTypeLabel}</dd>
             {requestTechnicalSummary ? <dd className="mt-1 text-sm text-slate-500">{requestTechnicalSummary}</dd> : null}
+            {canConvertToExpansion ? <ConvertToExpansionAction requestId={request.id} /> : null}
           </div>
           <div>
             <dt className="text-sm text-slate-500">Flow งาน</dt>
@@ -874,6 +893,22 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
           </div>
         </dl>
       </section>
+
+      {wasConvertedFromMeterToExpansion ? (
+        <section className="rounded-lg border border-amber-300 bg-amber-50 p-4 shadow-sm">
+          <p className="text-sm font-semibold text-amber-900">คำร้องนี้ถูกเปลี่ยนเป็นงานขยายเขต</p>
+          <dl className="mt-2 grid gap-2 text-sm text-amber-900 sm:grid-cols-2">
+            <div>
+              <dt className="font-medium">เดิม</dt>
+              <dd>ขอมิเตอร์ใหม่</dd>
+            </div>
+            <div>
+              <dt className="font-medium">เหตุผล</dt>
+              <dd className="whitespace-pre-wrap">{conversionReason}</dd>
+            </div>
+          </dl>
+        </section>
+      ) : null}
 
       {krabiDispatchWarning ? (
         <section className="card border border-amber-300 bg-amber-50 p-4">

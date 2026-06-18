@@ -106,7 +106,7 @@ export function SurveyMapQueuePage({ requests, activeStatuses, initialSurveyor }
               <p className="text-sm text-slate-500">กำลังแสดง: งานของ{getSurveyorDisplayNameByRaw(selectedSurveyor)}</p>
             ) : null}
           </div>
-          <button className="btn-secondary" type="button" onClick={resetHiddenRequests}>
+          <button className="btn-flow-neutral" type="button" onClick={resetHiddenRequests}>
             แสดงงานที่ซ่อน ({hiddenRequestIds.length})
           </button>
         </div>

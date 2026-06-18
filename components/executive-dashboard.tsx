@@ -118,7 +118,7 @@ export function ExecutiveDashboard({
                   onClick={() => setTimeRange(option)}
                   className={`rounded-full border px-4 py-2 text-sm transition ${
                     active
-                      ? 'border-[#1E3A8A] bg-[#1E3A8A] text-white shadow-sm'
+                      ? 'border-[#1E40AF] bg-[#1E40AF] text-white shadow-sm'
                       : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
                   }`}
                 >
@@ -164,10 +164,10 @@ export function ExecutiveDashboard({
             <span className="text-xs text-slate-500">{pickTrendBucket(timeRange) === 'DAY' ? 'รายวัน' : 'รายสัปดาห์'}</span>
           </div>
           {computed.trend.length > 0 && (
-            <div className="rounded-xl border border-blue-100 bg-blue-50/70 p-3">
-              <p className="text-xs text-blue-700">วันนี้</p>
+            <div className="rounded-xl border border-[#BFDBFE] bg-[#DBEAFE]/70 p-3">
+              <p className="text-xs text-[#1E40AF]">วันนี้</p>
               <p className="mt-1 text-sm font-semibold text-slate-900">
-                เข้า <span className="text-lg font-bold text-blue-700">{computed.trend[computed.trend.length - 1].incoming}</span> งาน | ปิด{' '}
+                เข้า <span className="text-lg font-bold text-[#1E40AF]">{computed.trend[computed.trend.length - 1].incoming}</span> งาน | ปิด{' '}
                 <span className="font-bold text-emerald-700">{computed.trend[computed.trend.length - 1].completed}</span> งาน
               </p>
               <p className="mt-1 text-xs text-slate-500">
@@ -191,22 +191,22 @@ export function ExecutiveDashboard({
                   <div
                     key={`${point.label}-${index}`}
                     className={`rounded-lg border p-3 ${
-                      isLatest ? 'border-blue-200 bg-blue-50/60' : 'border-slate-200 bg-white'
+                      isLatest ? 'border-[#BFDBFE] bg-[#DBEAFE]/60' : 'border-slate-200 bg-white'
                     }`}
                   >
                     <div className="flex flex-wrap items-center justify-between gap-2">
-                      <p className={`text-sm ${isLatest ? 'font-semibold text-blue-900' : 'text-slate-700'}`}>{point.label}</p>
+                      <p className={`text-sm ${isLatest ? 'font-semibold text-[#1E40AF]' : 'text-slate-700'}`}>{point.label}</p>
                       <p className="text-sm text-slate-700">
-                        เข้า <span className="font-bold text-blue-700">{point.incoming}</span> | ปิด{' '}
+                        เข้า <span className="font-bold text-[#1E40AF]">{point.incoming}</span> | ปิด{' '}
                         <span className="font-semibold text-emerald-700">{point.completed}</span>
                       </p>
                     </div>
                     <div className="mt-2 grid gap-2 sm:grid-cols-2">
                       <div className="space-y-1">
                         <p className="text-[11px] text-slate-500">คำร้องเข้า</p>
-                        <div className="h-2 rounded-full bg-blue-100">
+                        <div className="h-2 rounded-full bg-[#DBEAFE]">
                           <div
-                            className="h-2 rounded-full bg-blue-500"
+                            className="h-2 rounded-full bg-[#1E40AF]"
                             style={{ width: `${Math.max((point.incoming / maxIncoming) * 100, point.incoming > 0 ? 8 : 0)}%` }}
                           />
                         </div>
@@ -271,7 +271,7 @@ export function ExecutiveDashboard({
             <button
               type="button"
               onClick={() => setDrilldownFilter('OVERDUE')}
-              className="text-xs font-medium text-[#1E3A8A] hover:underline"
+              className="text-xs font-semibold text-[#1E40AF] hover:underline"
             >
               ดูงานค้างนาน
             </button>
@@ -375,7 +375,7 @@ export function ExecutiveDashboard({
                 onClick={() => setDrilldownFilter(tab.key)}
                 className={`rounded-full border px-3 py-1.5 text-sm ${
                   drilldownFilter === tab.key
-                    ? 'border-[#1E3A8A] bg-[#1E3A8A] text-white'
+                    ? 'border-[#1E40AF] bg-[#1E40AF] text-white'
                     : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
                 }`}
               >

@@ -55,7 +55,7 @@ export function RequestLocationPicker({ onLocationChange, submitError }: Request
 
       <div className="mt-3 flex flex-wrap items-center gap-2 text-sm">
         <span className={selectedLocation ? 'font-medium text-slate-800' : 'text-slate-500'}>{coordinateText}</span>
-        <button className="btn-secondary" type="button" onClick={clearMarker}>
+        <button className="btn-flow-neutral" type="button" onClick={clearMarker}>
           ล้างหมุด
         </button>
       </div>

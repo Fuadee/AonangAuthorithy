@@ -369,7 +369,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
                 key={option}
                 className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
                   intent === option
-                    ? 'border-blue-400 bg-blue-50 text-blue-800 shadow-sm'
+                    ? 'border-[#BFDBFE] bg-[#DBEAFE] text-[#1E40AF] shadow-sm'
                     : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
                 }`}
                 type="button"
@@ -392,7 +392,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
                     key={option}
                     className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
                       meterSize === option
-                        ? 'border-blue-400 bg-blue-50 text-blue-800 shadow-sm'
+                        ? 'border-[#BFDBFE] bg-[#DBEAFE] text-[#1E40AF] shadow-sm'
                         : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
                     }`}
                     type="button"
@@ -418,7 +418,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
                       key={option}
                       className={`rounded-lg border px-3 py-2 text-left text-sm transition ${
                         effectivePhase === option
-                          ? 'border-blue-400 bg-blue-50 text-blue-800 shadow-sm'
+                          ? 'border-[#BFDBFE] bg-[#DBEAFE] text-[#1E40AF] shadow-sm'
                           : 'border-slate-200 bg-white text-slate-700 hover:border-slate-300'
                       } ${isLocked ? 'cursor-not-allowed opacity-50' : ''}`}
                       type="button"
@@ -592,7 +592,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
                 <span className="text-slate-500">ผู้สำรวจที่แนะนำ:</span>{' '}
                 {recommendation.recommendedSurveyorName}
               {surveySuggestion.suggestion?.recommendedSurveyorId ? (
-                <span className="ml-2 inline-flex rounded-full bg-blue-100 px-2 py-0.5 text-xs font-medium text-blue-700">
+                <span className="ml-2 inline-flex rounded-full border border-[#BFDBFE] bg-[#DBEAFE] px-2 py-0.5 text-xs font-semibold text-[#1E40AF]">
                   {isRecommendedSurveyorSelected ? 'ตามคำแนะนำ' : 'คำแนะนำของระบบ'}
                 </span>
                 ) : null}

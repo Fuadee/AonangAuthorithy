@@ -51,7 +51,7 @@ export default async function SurveyorPage({ searchParams }: SurveyorPageProps) 
           <p className="mt-1 text-sm text-slate-500">แสดงเฉพาะงานสำรวจ และกรองดูรายบุคคลได้ในหน้าเดียว</p>
         </div>
         <Link
-          className="inline-flex items-center gap-2 rounded-lg bg-[#1E3A8A] px-5 py-2.5 font-medium text-white shadow-sm transition-colors hover:bg-[#1D4ED8]"
+          className="btn-primary gap-2 px-5"
           href={mapHref}
         >
           <Map className="h-4 w-4" />

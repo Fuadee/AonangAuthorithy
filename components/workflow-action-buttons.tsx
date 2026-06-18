@@ -8,7 +8,7 @@ import { updateDocumentReviewDecisionAction } from '@/app/actions';
 import { SurveyFailActionDialog } from '@/components/survey-fail-action-dialog';
 import { SurveyScheduleActionDialog } from '@/components/survey-schedule-action-dialog';
 import { WorkflowActionModal } from '@/components/workflow-action-modal';
-import { QueueWorkflowAction, WorkflowActionKey } from '@/lib/requests/workflow-action-config';
+import { QueueWorkflowAction, WorkflowActionFlow, WorkflowActionKey } from '@/lib/requests/workflow-action-config';
 import { RequestStatus } from '@/lib/requests/types';
 
 type WorkflowActionButtonsProps = {
@@ -21,10 +21,18 @@ type WorkflowActionButtonsProps = {
   maxVisibleActions?: number;
 };
 
-const ACTION_BUTTON_CLASS: Record<'primary' | 'secondary', string> = {
-  primary: 'btn-primary',
-  secondary: 'btn-secondary'
+const ACTION_BUTTON_CLASS: Record<WorkflowActionFlow, string> = {
+  primary: 'btn-flow-primary',
+  info: 'btn-flow-info',
+  warning: 'btn-flow-warning',
+  success: 'btn-flow-success',
+  danger: 'btn-flow-danger',
+  neutral: 'btn-flow-neutral'
 };
+
+function getActionButtonClass(action: QueueWorkflowAction): string {
+  return ACTION_BUTTON_CLASS[action.flow];
+}
 
 const DOC_INCOMPLETE_GROUP_ACTIONS: WorkflowActionKey[] = ['DOC_INCOMPLETE_COLLECT_ON_SITE', 'DOC_INCOMPLETE_WAIT_CUSTOMER'];
 type IncompleteDocumentOption = Extract<WorkflowActionKey, 'DOC_INCOMPLETE_COLLECT_ON_SITE' | 'DOC_INCOMPLETE_WAIT_CUSTOMER'>;
@@ -115,7 +123,7 @@ function IncompleteDocumentModal({
                 key={option.key}
                 className={`w-full rounded-xl border px-4 py-3 text-left transition ${
                   isSelected
-                    ? 'border-blue-500 bg-blue-50/80 shadow-sm ring-1 ring-blue-200'
+                    ? 'border-[#FCD34D] bg-[#FEF3C7] shadow-sm ring-1 ring-[#FCD34D]/60'
                     : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50'
                 }`}
                 disabled={isPending}
@@ -132,10 +140,10 @@ function IncompleteDocumentModal({
         {error ? <p className="mt-4 rounded-lg bg-rose-50 px-3 py-2 text-sm text-rose-700">{error}</p> : null}
 
         <div className="mt-6 flex flex-col-reverse gap-2 sm:flex-row sm:justify-end">
-          <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>
+          <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>
             ยกเลิก
           </button>
-          <button className="btn-primary" disabled={!selectedOption || isPending} type="button" onClick={onConfirm}>
+          <button className="btn-flow-warning" disabled={!selectedOption || isPending} type="button" onClick={onConfirm}>
             {isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}
           </button>
         </div>
@@ -253,7 +261,7 @@ export function WorkflowActionButtons({
         {shouldGroupDocumentReviewActions && groupedDocCompleteAction ? (
           <button
             aria-label={`ดำเนินการ ${groupedDocCompleteAction.label}`}
-            className={`${ACTION_BUTTON_CLASS[groupedDocCompleteAction.variant]} ${compact ? 'min-h-9 px-2.5 py-1.5 text-sm' : 'min-h-10'} justify-center whitespace-nowrap text-left`}
+            className={`${getActionButtonClass(groupedDocCompleteAction)} ${compact ? 'min-h-10 px-2.5 py-1.5 text-sm' : 'min-h-10'} justify-center whitespace-nowrap text-left`}
             disabled={activeAction !== null || isSubmittingIncompleteDecision}
             type="button"
             onClick={(event) => handleAction(event, groupedDocCompleteAction.key)}
@@ -264,7 +272,7 @@ export function WorkflowActionButtons({
         {shouldGroupDocumentReviewActions && groupedDocIncompleteActions.length ? (
           <button
             aria-haspopup="dialog"
-            className={`${ACTION_BUTTON_CLASS.secondary} ${compact ? 'min-h-9 px-2.5 py-1.5 text-sm' : 'min-h-10'} inline-flex items-center justify-center gap-1 whitespace-nowrap`}
+            className={`${ACTION_BUTTON_CLASS.warning} ${compact ? 'min-h-10 px-2.5 py-1.5 text-sm' : 'min-h-10'} inline-flex items-center justify-center gap-1 whitespace-nowrap`}
             disabled={activeAction !== null || isSubmittingIncompleteDecision}
             type="button"
             onClick={(event) => {
@@ -284,7 +292,7 @@ export function WorkflowActionButtons({
             <button
               key={action.key}
               aria-label={`ดำเนินการ ${action.label}`}
-              className={`${ACTION_BUTTON_CLASS[action.variant]} ${compact ? 'min-h-9 px-2.5 py-1.5 text-sm' : 'min-h-10'} justify-center whitespace-normal break-words text-left`}
+              className={`${getActionButtonClass(action)} ${compact ? 'min-h-10 px-2.5 py-1.5 text-sm' : 'min-h-10'} justify-center whitespace-normal break-words text-left`}
               disabled={disabled}
               type="button"
               onClick={(event) => handleAction(event, action.key)}
@@ -297,7 +305,7 @@ export function WorkflowActionButtons({
         {singleOverflowAction ? (
           <button
             aria-label={`ดำเนินการ ${singleOverflowAction.label}`}
-            className={`${ACTION_BUTTON_CLASS[singleOverflowAction.variant]} ${compact ? 'min-h-9 px-2.5 py-1.5 text-sm' : 'min-h-10'} justify-center whitespace-normal break-words text-left`}
+            className={`${getActionButtonClass(singleOverflowAction)} ${compact ? 'min-h-10 px-2.5 py-1.5 text-sm' : 'min-h-10'} justify-center whitespace-normal break-words text-left`}
             disabled={activeAction !== null || isSubmittingIncompleteDecision}
             type="button"
             onClick={(event) => handleAction(event, singleOverflowAction.key)}
@@ -308,13 +316,13 @@ export function WorkflowActionButtons({
 
         {dropdownOverflowActions.length ? (
           <details className="relative">
-            <summary className={`btn-secondary cursor-pointer list-none whitespace-nowrap text-sm ${compact ? 'min-h-9 px-2.5 py-1.5' : 'min-h-10 px-3 py-2'}`}>เพิ่มเติม</summary>
+            <summary className={`btn-flow-neutral cursor-pointer list-none whitespace-nowrap text-sm ${compact ? 'min-h-10 px-2.5 py-1.5' : 'min-h-10 px-3 py-2'}`}>เพิ่มเติม</summary>
             <div className="absolute right-0 z-10 mt-1 min-w-56 rounded-lg border border-slate-200 bg-white p-1.5 shadow-lg">
               {dropdownOverflowActions.map((action) => (
                 <button
                   key={action.key}
                   aria-label={`ดำเนินการ ${action.label}`}
-                  className="w-full rounded-md px-3 py-2 text-left text-sm text-slate-700 hover:bg-slate-50"
+                  className={`${getActionButtonClass(action)} mb-1 w-full justify-start whitespace-normal text-left text-sm last:mb-0`}
                   disabled={activeAction !== null || isSubmittingIncompleteDecision}
                   type="button"
                   onClick={(event) => handleAction(event, action.key)}
@@ -327,7 +335,7 @@ export function WorkflowActionButtons({
         ) : null}
 
         {detailHref ? (
-          <Link className={`btn-secondary whitespace-nowrap text-sm ${compact ? 'min-h-9 px-2.5 py-1.5' : 'min-h-10 px-3 py-2'}`} href={detailHref}>
+          <Link className={`btn-flow-neutral whitespace-nowrap text-sm ${compact ? 'min-h-10 px-2.5 py-1.5' : 'min-h-10 px-3 py-2'}`} href={detailHref}>
             ดูรายละเอียด
           </Link>
         ) : null}

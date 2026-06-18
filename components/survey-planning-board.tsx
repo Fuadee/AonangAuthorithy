@@ -183,7 +183,7 @@ function MonthCell({
         isOverdueDay ? 'border-[#EF4444] bg-[#FFF5F5]' : ''
       } ${
         selected
-          ? 'border-[#93C5FD] bg-[#EFF6FF] shadow-[0_6px_16px_-12px_rgba(30,58,138,0.55)] ring-1 ring-[#1E3A8A]/20'
+          ? 'border-[#BFDBFE] bg-[#DBEAFE] shadow-[0_6px_16px_-12px_rgba(30,64,175,0.35)] ring-1 ring-[#BFDBFE]'
           : 'hover:border-[#BFDBFE] hover:shadow-[0_8px_18px_-16px_rgba(15,23,42,0.35)]'
       }`}
       onClick={() => onSelect(cell.dateKey)}
@@ -201,7 +201,7 @@ function MonthCell({
               </span>
             ) : null}
             {hasTask ? (
-              <span className="inline-flex items-center rounded-full border border-[#DBEAFE] bg-[#EFF6FF] px-2 py-0.5 text-[10px] font-medium text-[#1D4ED8]">
+              <span className="inline-flex items-center rounded-full border border-[#BFDBFE] bg-[#DBEAFE] px-2 py-0.5 text-[10px] font-semibold text-[#1E40AF]">
                 {summary?.total} งาน
               </span>
             ) : null}
@@ -291,32 +291,32 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
 
           <div className="flex flex-wrap items-center gap-2 rounded-xl border border-[#E2E8F0] bg-[#F8FAFC] p-1.5">
             <button
-              className="inline-flex h-9 items-center justify-center rounded-lg border border-[#D6DFEA] bg-white px-3 text-sm font-medium text-[#334155] transition hover:border-[#BFDBFE] hover:text-[#1E3A8A]"
+              className="btn-flow-neutral text-sm"
               onClick={goToPrevious}
               type="button"
             >
               เดือนก่อนหน้า
             </button>
             <button
-              className="inline-flex h-9 items-center justify-center rounded-lg border border-[#D6DFEA] bg-white px-3 text-sm font-medium text-[#334155] transition hover:border-[#BFDBFE] hover:text-[#1E3A8A]"
+              className="btn-flow-neutral text-sm"
               onClick={goToToday}
               type="button"
             >
               วันนี้
             </button>
             <button
-              className="inline-flex h-9 items-center justify-center rounded-lg border border-[#D6DFEA] bg-white px-3 text-sm font-medium text-[#334155] transition hover:border-[#BFDBFE] hover:text-[#1E3A8A]"
+              className="btn-flow-neutral text-sm"
               onClick={goToNext}
               type="button"
             >
               เดือนถัดไป
             </button>
-            <div className="inline-flex h-9 items-center rounded-lg border border-[#D6DFEA] bg-white p-0.5 text-sm">
+            <div className="inline-flex min-h-10 items-center rounded-lg border border-[#D1D5DB] bg-white p-0.5 text-sm">
               <button
-                className={`rounded-md px-3 py-1.5 font-medium transition ${
+                className={`min-h-10 rounded-md px-4 py-2 font-semibold transition-all duration-200 ${
                   viewMode === 'month'
-                    ? 'border border-[#BFDBFE] bg-[#EFF6FF] text-[#1E3A8A] shadow-[0_1px_2px_rgba(30,58,138,0.15)]'
-                    : 'text-[#64748B] hover:text-[#334155]'
+                    ? 'border border-[#475569] bg-[#E2E8F0] text-[#334155] shadow-[inset_0_2px_4px_rgba(15,23,42,0.12)]'
+                    : 'border border-transparent text-[#334155] hover:border-[#64748B] hover:bg-[#F8FAFC]'
                 }`}
                 onClick={() => setViewMode('month')}
                 type="button"
@@ -324,10 +324,10 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
                 เดือน
               </button>
               <button
-                className={`rounded-md px-3 py-1.5 font-medium transition ${
+                className={`min-h-10 rounded-md px-4 py-2 font-semibold transition-all duration-200 ${
                   viewMode === 'week'
-                    ? 'border border-[#BFDBFE] bg-[#EFF6FF] text-[#1E3A8A] shadow-[0_1px_2px_rgba(30,58,138,0.15)]'
-                    : 'text-[#64748B] hover:text-[#334155]'
+                    ? 'border border-[#475569] bg-[#E2E8F0] text-[#334155] shadow-[inset_0_2px_4px_rgba(15,23,42,0.12)]'
+                    : 'border border-transparent text-[#334155] hover:border-[#64748B] hover:bg-[#F8FAFC]'
                 }`}
                 onClick={() => setViewMode('week')}
                 type="button"
@@ -363,7 +363,7 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
             {summaryStats.busiestDay ? (
               <>
                 {formatDateKeyThai(summaryStats.busiestDay.dateKey)}
-                <span className="ml-1 text-[#1E3A8A]">({summaryStats.busiestDay.total} งาน)</span>
+                <span className="ml-1 text-[#1E40AF]">({summaryStats.busiestDay.total} งาน)</span>
               </>
             ) : (
               'ยังไม่มีงานนัด'
@@ -442,7 +442,7 @@ export function SurveyPlanningBoard({ requests }: SurveyPlanningBoardProps) {
           </div>
 
           <div className="mt-3 flex flex-wrap gap-1.5">
-            <span className="rounded-full border border-[#DBEAFE] bg-[#EFF6FF] px-2.5 py-1 text-xs font-medium text-[#1E3A8A]">
+            <span className="rounded-full border border-[#BFDBFE] bg-[#DBEAFE] px-2.5 py-1 text-xs font-semibold text-[#1E40AF]">
               รวม {selectedSummary?.total ?? 0} งาน
             </span>
             {selectedSummary?.byAssignee.slice(0, 2).map((assignee) => (

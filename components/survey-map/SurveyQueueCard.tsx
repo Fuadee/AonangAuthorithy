@@ -44,11 +44,11 @@ export function SurveyQueueCard({ request, selected, onSelect, onViewOnMap, onHi
       </div>
 
       <div className="mt-3 grid grid-cols-1 gap-2 sm:grid-cols-3">
-        <button className="btn-secondary" onClick={() => onViewOnMap(request.id)} type="button" disabled={!hasCoordinate}>
+        <button className="btn-flow-neutral" onClick={() => onViewOnMap(request.id)} type="button" disabled={!hasCoordinate}>
           ดูบนแผนที่
         </button>
         <a
-          className={`btn-primary ${!hasCoordinate ? 'pointer-events-none opacity-50' : ''}`}
+          className={`btn-flow-primary ${!hasCoordinate ? 'pointer-events-none opacity-50' : ''}`}
           href={hasCoordinate ? buildGoogleMapsDirectionsUrl({ latitude: request.latitude as number, longitude: request.longitude as number }) : '#'}
           rel="noreferrer"
           target="_blank"
@@ -60,7 +60,7 @@ export function SurveyQueueCard({ request, selected, onSelect, onViewOnMap, onHi
         >
           นำทาง
         </a>
-        <button className="btn-secondary" onClick={() => onHide(request.id)} type="button">
+        <button className="btn-flow-neutral" onClick={() => onHide(request.id)} type="button">
           ซ่อนชั่วคราว
         </button>
       </div>

@@ -18,8 +18,10 @@ export function QueueFilterChips<T extends string>({ options, active, onChange }
         return (
           <button
             key={option.value}
-            className={`whitespace-nowrap rounded-full border px-3 py-1.5 text-sm transition ${
-              isActive ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 bg-white text-slate-600 hover:bg-slate-50'
+            className={`inline-flex min-h-10 items-center justify-center whitespace-nowrap rounded-md border px-4 py-2 text-sm font-semibold shadow-[0_1px_3px_rgba(15,23,42,0.12)] transition-all duration-200 hover:-translate-y-px hover:shadow-[0_3px_6px_rgba(15,23,42,0.16)] active:translate-y-0 active:shadow-[inset_0_2px_4px_rgba(15,23,42,0.12)] ${
+              isActive
+                ? 'border-[#475569] bg-[#E2E8F0] text-[#334155]'
+                : 'border-[#94A3B8] bg-white text-[#334155] hover:border-[#64748B] hover:bg-[#F8FAFC]'
             }`}
             type="button"
             onClick={() => onChange(option.value)}

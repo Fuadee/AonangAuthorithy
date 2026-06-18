@@ -50,7 +50,7 @@ export default function RequestPhoneAction({ phone }: RequestPhoneActionProps) {
     <div className="mt-2 flex flex-wrap items-center gap-2">
       <a
         href={`tel:${telPhone}`}
-        className="inline-flex min-h-10 items-center gap-2 rounded-lg px-3 py-2 text-sm font-semibold text-blue-700 transition hover:bg-blue-50 hover:underline focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+        className="inline-flex min-h-10 items-center gap-2 rounded-lg border border-[#BFDBFE] bg-[#DBEAFE] px-3 py-2 text-sm font-semibold text-[#1E40AF] transition-colors hover:bg-[#BFDBFE] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#BFDBFE]"
       >
         <Phone className="h-4 w-4" aria-hidden="true" />
         <span className="text-base leading-none text-slate-900">{displayPhone}</span>
@@ -59,7 +59,7 @@ export default function RequestPhoneAction({ phone }: RequestPhoneActionProps) {
       <button
         type="button"
         onClick={handleCopy}
-        className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-slate-200 px-2.5 py-2 text-xs font-medium text-slate-600 transition hover:bg-slate-100 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-blue-300"
+        className="inline-flex min-h-10 items-center gap-1 rounded-lg border border-[#D1D5DB] bg-[#F3F4F6] px-2.5 py-2 text-xs font-semibold text-[#374151] transition-colors hover:bg-[#E5E7EB] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-[#D1D5DB]"
         aria-label="คัดลอกเบอร์โทรศัพท์"
       >
         {copied ? <Check className="h-3.5 w-3.5" aria-hidden="true" /> : <Copy className="h-3.5 w-3.5" aria-hidden="true" />}

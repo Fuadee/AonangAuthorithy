@@ -12,10 +12,10 @@ type SurveyorActionFormProps = {
 type SurveyorAction = 'ACCEPT' | 'DOCS_INCOMPLETE' | 'REQUEST_RESCHEDULE' | 'COMPLETE';
 
 const ACTION_BUTTONS: Array<{ action: SurveyorAction; label: string; className: string }> = [
-  { action: 'ACCEPT', label: 'รับงาน', className: 'btn-primary' },
-  { action: 'DOCS_INCOMPLETE', label: 'เอกสารไม่ครบ', className: 'btn-secondary' },
-  { action: 'REQUEST_RESCHEDULE', label: 'ขอเลื่อนวันสำรวจ', className: 'btn-secondary' },
-  { action: 'COMPLETE', label: 'สำรวจแล้ว', className: 'btn-primary' }
+  { action: 'ACCEPT', label: 'รับงาน', className: 'btn-flow-primary' },
+  { action: 'DOCS_INCOMPLETE', label: 'เอกสารไม่ครบ', className: 'btn-flow-warning' },
+  { action: 'REQUEST_RESCHEDULE', label: 'ขอเลื่อนวันสำรวจ', className: 'btn-flow-warning' },
+  { action: 'COMPLETE', label: 'สำรวจแล้ว', className: 'btn-flow-success' }
 ];
 
 const ACTION_HINTS: Record<SurveyorAction, string> = {
@@ -58,8 +58,8 @@ export function SurveyorActionForm({ requestId, currentStatus }: SurveyorActionF
               key={item.action}
               className={`rounded-lg border px-3 py-2 text-sm transition ${
                 selectedAction === item.action
-                  ? 'border-brand-600 bg-brand-50 text-brand-700'
-                  : 'border-slate-300 bg-white text-slate-700 hover:bg-slate-50'
+                  ? item.className
+                  : 'border-[#D1D5DB] bg-[#F3F4F6] text-[#374151] hover:border-[#9CA3AF] hover:bg-[#E5E7EB]'
               }`}
               type="button"
               onClick={() => setSelectedAction(item.action)}
@@ -101,7 +101,7 @@ export function SurveyorActionForm({ requestId, currentStatus }: SurveyorActionF
         />
       </div>
 
-      <button className="btn-primary" disabled={!enabledButtons.length} type="submit">
+      <button className="btn-flow-primary" disabled={!enabledButtons.length} type="submit">
         ยืนยันการดำเนินการ
       </button>
     </form>

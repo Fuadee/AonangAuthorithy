@@ -65,6 +65,7 @@ export type WorkflowActionKey =
 
 export type WorkflowActionVariant = 'primary' | 'secondary';
 export type WorkflowActionIntent = 'progress' | 'warning' | 'neutral';
+export type WorkflowActionFlow = 'primary' | 'info' | 'warning' | 'success' | 'danger' | 'neutral';
 export type WorkflowActionHandlerType = 'modal' | 'schedule_dialog' | 'survey_fail_dialog';
 
 export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
@@ -79,25 +80,25 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   SURVEY_PASS: 'บันทึกว่าสำรวจผ่าน',
   SURVEY_FAIL: 'บันทึกว่าสำรวจไม่ผ่าน',
   THREE_PHASE_CAPABLE: 'ระบบรองรับ 3 เฟส',
-  THREE_PHASE_NEEDS_EXPANSION: 'ระบบไม่รองรับ 3 เฟส (ส่งต่องานขยายเขต)',
+  THREE_PHASE_NEEDS_EXPANSION: 'ส่งต่องานขยายเขต',
   REPORT_CUSTOMER_FIX: 'ผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว',
   SCHEDULE_RESURVEY: 'นัดตรวจซ้ำ',
   PHOTO_APPROVE: 'ตรวจข้อมูลแก้ไขผ่าน',
   PHOTO_REJECT_TO_RESURVEY: 'นัดสำรวจใหม่',
-  ISSUE_BILL: 'ออกใบแจ้งหนี้',
+  ISSUE_BILL: 'ส่งเข้าการเงิน / ออกใบแจ้งหนี้',
   SURVEYOR_SIGN: 'เซ็นใบแจ้งหนี้แล้ว',
   CONFIRM_PAYMENT: 'ชำระเงินแล้ว',
-  MANAGER_APPROVE: 'อนุมัติส่งต่อ',
+  MANAGER_APPROVE: 'อนุมัติส่งต่อ Flow มิเตอร์',
   MANAGER_RETURN_FOR_RESURVEY: 'ส่งกลับให้ตรวจสอบใหม่',
   RESTART_RETURNED_RESURVEY: 'ตั้งต้นงานสำรวจใหม่',
-  LAYOUT_DRAWING_DONE: 'วาดผังเสร็จ',
-  DISPATCHED_TO_KRABI: 'ส่งเอกสารไปกระบี่',
-  KRABI_ACCEPT_AND_START: 'ยืนยันรับเอกสาร',
+  LAYOUT_DRAWING_DONE: 'วาดผังขยายเขตเสร็จ',
+  DISPATCHED_TO_KRABI: 'ส่งเอกสารขยายเขตไปกระบี่',
+  KRABI_ACCEPT_AND_START: 'กระบี่รับงานขยายเขต',
   KRABI_RETURN_FOR_FIX: 'เอกสารไม่พร้อม ส่งกลับแก้ไข',
   KRABI_FIX_COMPLETED: 'แก้ไขเอกสารแล้ว / พร้อมส่งใหม่',
-  KRABI_ESTIMATION_COMPLETED: 'ประมาณการเสร็จ',
-  KRABI_BILL_ISSUED: 'ออกใบแจ้งหนี้แล้ว',
-  COORDINATED_WITH_CONSTRUCTION: 'ผกส.รับเรื่องแล้ว',
+  KRABI_ESTIMATION_COMPLETED: 'ประมาณการขยายเขตเสร็จ',
+  KRABI_BILL_ISSUED: 'ออกใบแจ้งหนี้ขยายเขตแล้ว',
+  COORDINATED_WITH_CONSTRUCTION: 'ส่งต่อก่อสร้างขยายเขต',
   COMPLETE_DESIGN_ESTIMATE: 'ออกแบบ / ประเมินเสร็จ',
   ISSUE_3PHASE_BILL: 'ออกใบแจ้งหนี้ 3 เฟส',
   CONFIRM_3PHASE_PAYMENT: 'ยืนยันชำระเงิน 3 เฟส',
@@ -163,6 +164,7 @@ export type AvailableRequestAction = {
   label: string;
   variant: WorkflowActionVariant;
   intent: WorkflowActionIntent;
+  flow: WorkflowActionFlow;
   handlerType: WorkflowActionHandlerType;
   requiresConfirmation?: string;
 };
@@ -206,15 +208,19 @@ function toAction(
   options: {
     variant: WorkflowActionVariant;
     intent?: WorkflowActionIntent;
+    flow?: WorkflowActionFlow;
     handlerType?: WorkflowActionHandlerType;
     requiresConfirmation?: string;
   }
 ): AvailableRequestAction {
+  const intent = options.intent ?? (options.variant === 'primary' ? 'progress' : 'neutral');
+
   return {
     key,
     label: getWorkflowActionLabel(key),
     variant: options.variant,
-    intent: options.intent ?? (options.variant === 'primary' ? 'progress' : 'neutral'),
+    intent,
+    flow: options.flow ?? (intent === 'warning' ? 'warning' : options.variant === 'primary' ? 'primary' : 'neutral'),
     handlerType:
       options.handlerType ??
       (key === 'SURVEY_FAIL' ? 'survey_fail_dialog' : key === 'SCHEDULE_SURVEY' || key === 'EDIT_SURVEY_DATE' ? 'schedule_dialog' : 'modal'),
@@ -229,20 +235,27 @@ export function getAvailableRequestActions(
   const inExpansionWorkflow = shouldUseExpansionActionSet(request);
 
   if (status === 'WAIT_DOCUMENT_REVIEW') {
+    const documentFlow: WorkflowActionFlow = 'success';
     return [
-      toAction('DOC_COMPLETE', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าเอกสารครบถ้วนแล้วใช่หรือไม่?' }),
-      toAction('DOC_INCOMPLETE_COLLECT_ON_SITE', { variant: 'secondary' }),
-      toAction('DOC_INCOMPLETE_WAIT_CUSTOMER', { variant: 'secondary' })
+      toAction('DOC_COMPLETE', { variant: 'primary', flow: documentFlow, requiresConfirmation: 'ยืนยันว่าเอกสารครบถ้วนแล้วใช่หรือไม่?' }),
+      toAction('DOC_INCOMPLETE_COLLECT_ON_SITE', { variant: 'secondary', flow: 'warning' }),
+      toAction('DOC_INCOMPLETE_WAIT_CUSTOMER', { variant: 'secondary', flow: 'warning' })
     ];
   }
 
   if (status === 'WAIT_DOCUMENT_FROM_CUSTOMER') {
-    return [toAction('CONFIRM_DOCS_RECEIVED', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าได้รับเอกสารจากลูกค้าแล้ว?' })];
+    return [
+      toAction('CONFIRM_DOCS_RECEIVED', {
+        variant: 'primary',
+        flow: 'info',
+        requiresConfirmation: 'ยืนยันว่าได้รับเอกสารจากลูกค้าแล้ว?'
+      })
+    ];
   }
 
   if (status === 'READY_FOR_SURVEY') {
     if (!request.survey_date_current && !request.scheduled_survey_date) {
-      return [toAction('SCHEDULE_SURVEY', { variant: 'primary' })];
+      return [toAction('SCHEDULE_SURVEY', { variant: 'primary', flow: 'neutral' })];
     }
 
     if (!canStartSurvey({ status, scheduled_survey_date: request.scheduled_survey_date, survey_date_current: request.survey_date_current })) {
@@ -250,15 +263,23 @@ export function getAvailableRequestActions(
     }
 
     return [
-      toAction('START_SURVEY', { variant: 'primary', requiresConfirmation: 'ยืนยันเริ่มสำรวจหน้างาน?' }),
-      toAction('EDIT_SURVEY_DATE', { variant: 'secondary' })
+      toAction('START_SURVEY', {
+        variant: 'primary',
+        flow: 'primary',
+        requiresConfirmation: 'ยืนยันเริ่มสำรวจหน้างาน?'
+      }),
+      toAction('EDIT_SURVEY_DATE', { variant: 'secondary', flow: 'neutral' })
     ];
   }
 
   if (status === 'READY_FOR_RESURVEY') {
     return [
-      toAction('START_SURVEY', { variant: 'primary', requiresConfirmation: 'ยืนยันเริ่มตรวจซ้ำหน้างาน?' }),
-      toAction('EDIT_SURVEY_DATE', { variant: 'secondary' })
+      toAction('START_SURVEY', {
+        variant: 'primary',
+        flow: 'primary',
+        requiresConfirmation: 'ยืนยันเริ่มตรวจซ้ำหน้างาน?'
+      }),
+      toAction('EDIT_SURVEY_DATE', { variant: 'secondary', flow: 'neutral' })
     ];
   }
 
@@ -281,150 +302,164 @@ export function getAvailableRequestActions(
       })
     ) {
       return [
-        toAction('THREE_PHASE_CAPABLE', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าระบบรองรับ 3 เฟส?' }),
-        toAction('THREE_PHASE_NEEDS_EXPANSION', { variant: 'secondary', intent: 'warning', requiresConfirmation: 'ยืนยันส่งต่องานเดิมเข้าสู่ flow ขยายเขตที่ WAIT_LAYOUT_DRAWING?' })
+        toAction('THREE_PHASE_CAPABLE', { variant: 'primary', flow: 'success', requiresConfirmation: 'ยืนยันว่าระบบรองรับ 3 เฟส?' }),
+        toAction('THREE_PHASE_NEEDS_EXPANSION', {
+          variant: 'secondary',
+          flow: 'warning',
+          requiresConfirmation: 'ยืนยันส่งต่องานเดิมเข้าสู่ flow ขยายเขตที่ WAIT_LAYOUT_DRAWING?'
+        })
       ];
     }
 
     if (canMarkSurveyPassed({ status, request_type: request.request_type })) {
       return [
-        toAction('SURVEY_PASS', { variant: 'primary', requiresConfirmation: 'ยืนยันผลสำรวจผ่าน?' }),
-        toAction('SURVEY_FAIL', { variant: 'secondary', intent: 'warning', handlerType: 'survey_fail_dialog' })
+        toAction('SURVEY_PASS', { variant: 'primary', flow: 'success', requiresConfirmation: 'ยืนยันผลสำรวจผ่าน?' }),
+        toAction('SURVEY_FAIL', { variant: 'secondary', intent: 'warning', flow: 'warning', handlerType: 'survey_fail_dialog' })
       ];
     }
 
-    return [toAction('COMPLETE_SURVEY', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าการสำรวจเสร็จสิ้นแล้ว?' })];
+    return [
+      toAction('COMPLETE_SURVEY', {
+        variant: 'primary',
+        flow: 'success',
+        requiresConfirmation: 'ยืนยันว่าการสำรวจเสร็จสิ้นแล้ว?'
+      })
+    ];
   }
 
   if (['METER_TO_3PHASE', 'METER_30_100_3P'].includes(request.request_type) && status === 'CHECK_3PHASE_CAPABILITY') {
     return [
-      toAction('THREE_PHASE_CAPABLE', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าระบบรองรับ 3 เฟส?' }),
-      toAction('THREE_PHASE_NEEDS_EXPANSION', { variant: 'secondary', intent: 'warning', requiresConfirmation: 'ยืนยันส่งต่องานเดิมเข้าสู่ flow ขยายเขตที่ WAIT_LAYOUT_DRAWING?' })
+      toAction('THREE_PHASE_CAPABLE', { variant: 'primary', flow: 'success', requiresConfirmation: 'ยืนยันว่าระบบรองรับ 3 เฟส?' }),
+      toAction('THREE_PHASE_NEEDS_EXPANSION', {
+        variant: 'secondary',
+        flow: 'warning',
+        requiresConfirmation: 'ยืนยันส่งต่องานเดิมเข้าสู่ flow ขยายเขตที่ WAIT_LAYOUT_DRAWING?'
+      })
     ];
   }
 
   if (status === 'WAIT_CUSTOMER_FIX' && ['METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE'].includes(request.request_type)) {
     return [
-      toAction('REPORT_CUSTOMER_FIX', { variant: 'primary', requiresConfirmation: 'ยืนยันว่าลูกค้าแจ้งแก้ไขแล้ว?' }),
-      toAction('SCHEDULE_RESURVEY', { variant: 'secondary', requiresConfirmation: 'นัดตรวจซ้ำทันทีใช่หรือไม่?' })
+      toAction('REPORT_CUSTOMER_FIX', { variant: 'primary', flow: 'info', requiresConfirmation: 'ยืนยันว่าลูกค้าแจ้งแก้ไขแล้ว?' }),
+      toAction('SCHEDULE_RESURVEY', { variant: 'secondary', flow: 'warning', requiresConfirmation: 'นัดตรวจซ้ำทันทีใช่หรือไม่?' })
     ];
   }
 
   if (status === 'WAIT_FIX_REVIEW' && ['METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE'].includes(request.request_type)) {
-    return [toAction('PHOTO_APPROVE', { variant: 'primary' }), toAction('PHOTO_REJECT_TO_RESURVEY', { variant: 'secondary' })].filter(
+    return [toAction('PHOTO_APPROVE', { variant: 'primary', flow: 'success' }), toAction('PHOTO_REJECT_TO_RESURVEY', { variant: 'secondary', flow: 'warning' })].filter(
       (action) => action.key !== 'PHOTO_APPROVE' || canApproveFixFromPhoto({ status, fix_verification_mode: request.fix_verification_mode })
     );
   }
 
 
   if (inExpansionWorkflow && ['SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING'].includes(status)) {
-    return [toAction('LAYOUT_DRAWING_DONE', { variant: 'primary', requiresConfirmation: 'ยืนยันวาดผังเสร็จแล้ว?' })];
+    return [toAction('LAYOUT_DRAWING_DONE', { variant: 'primary', flow: 'success', requiresConfirmation: 'ยืนยันวาดผังเสร็จแล้ว?' })];
   }
 
   if (inExpansionWorkflow && status === 'WAITING_TO_SEND_TO_KRABI') {
-    return [toAction('DISPATCHED_TO_KRABI', { variant: 'primary' })];
+    return [toAction('DISPATCHED_TO_KRABI', { variant: 'primary', flow: 'primary' })];
   }
 
   if (inExpansionWorkflow && ['SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK'].includes(status)) {
     return [
-      toAction('KRABI_ACCEPT_AND_START', { variant: 'primary' }),
-      toAction('KRABI_RETURN_FOR_FIX', { variant: 'secondary', intent: 'warning' })
+      toAction('KRABI_ACCEPT_AND_START', { variant: 'primary', flow: 'primary' }),
+      toAction('KRABI_RETURN_FOR_FIX', { variant: 'secondary', intent: 'warning', flow: 'warning' })
     ];
   }
 
   if (inExpansionWorkflow && status === 'KRABI_NEEDS_DOCUMENT_FIX') {
-    return [toAction('KRABI_FIX_COMPLETED', { variant: 'primary' })];
+    return [toAction('KRABI_FIX_COMPLETED', { variant: 'primary', flow: 'warning' })];
   }
 
   if (inExpansionWorkflow && status === 'KRABI_IN_PROGRESS') {
-    return [toAction('KRABI_ESTIMATION_COMPLETED', { variant: 'primary' })];
+    return [toAction('KRABI_ESTIMATION_COMPLETED', { variant: 'primary', flow: 'success' })];
   }
 
   if (inExpansionWorkflow && status === 'KRABI_ESTIMATION_COMPLETED') {
-    return [toAction('KRABI_BILL_ISSUED', { variant: 'primary' })];
+    return [toAction('KRABI_BILL_ISSUED', { variant: 'primary', flow: 'success' })];
   }
 
   if (inExpansionWorkflow && status === 'BILL_ISSUED') {
-    return [toAction('COORDINATED_WITH_CONSTRUCTION', { variant: 'primary' })];
+    return [toAction('COORDINATED_WITH_CONSTRUCTION', { variant: 'primary', flow: 'success' })];
   }
 
   if (!inExpansionWorkflow && ['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type)) {
     if (status === 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL') {
       return [
-        toAction('APPROVE_PRE_KRABI', { variant: 'primary' }),
-        toAction('MANAGER_RETURN_FOR_RESURVEY', { variant: 'secondary', intent: 'warning' })
+        toAction('APPROVE_PRE_KRABI', { variant: 'primary', flow: 'primary' }),
+        toAction('MANAGER_RETURN_FOR_RESURVEY', { variant: 'secondary', intent: 'warning', flow: 'warning' })
       ];
     }
 
     if (status === 'SENT_TO_KRABI') {
-      return [toAction('MOVE_TO_WAIT_KRABI_APPROVAL', { variant: 'primary' })];
+      return [toAction('MOVE_TO_WAIT_KRABI_APPROVAL', { variant: 'primary', flow: 'primary' })];
     }
 
     if (status === 'WAIT_KRABI_APPROVAL') {
-      return [toAction('MARK_KRABI_APPROVED', { variant: 'primary' }), toAction('MARK_KRABI_REJECTED', { variant: 'secondary', intent: 'warning' })];
+      return [toAction('MARK_KRABI_APPROVED', { variant: 'primary', flow: 'success' }), toAction('MARK_KRABI_REJECTED', { variant: 'secondary', intent: 'warning', flow: 'danger' })];
     }
 
     if (status === 'KRABI_NEEDS_CORRECTION') {
-      return [toAction('START_DOCUMENT_FIX', { variant: 'primary' })];
+      return [toAction('START_DOCUMENT_FIX', { variant: 'primary', flow: 'warning' })];
     }
 
     if (status === 'DOCUMENT_FIX') {
-      return [toAction('RESENT_TO_KRABI', { variant: 'primary' })];
+      return [toAction('RESENT_TO_KRABI', { variant: 'primary', flow: 'primary' })];
     }
 
     if (status === 'RESENT_TO_KRABI') {
-      return [toAction('MOVE_TO_WAIT_KRABI_APPROVAL', { variant: 'primary' })];
+      return [toAction('MOVE_TO_WAIT_KRABI_APPROVAL', { variant: 'primary', flow: 'primary' })];
     }
 
     if (status === 'KRABI_APPROVED') {
-      return [toAction('RECEIVE_FROM_KRABI', { variant: 'primary' })];
+      return [toAction('RECEIVE_FROM_KRABI', { variant: 'primary', flow: 'info' })];
     }
 
     if (status === 'WAIT_RECEIVE_FROM_KRABI') {
-      return [toAction('SEND_TO_ELIGIBILITY_REVIEW', { variant: 'primary' })];
+      return [toAction('SEND_TO_ELIGIBILITY_REVIEW', { variant: 'primary', flow: 'primary' })];
     }
 
     if (status === 'WAIT_ELIGIBILITY_REVIEW') {
       return [
-        toAction('ELIGIBILITY_PASS', { variant: 'primary' }),
-        toAction('ELIGIBILITY_FAIL', { variant: 'secondary', intent: 'warning' })
+        toAction('ELIGIBILITY_PASS', { variant: 'primary', flow: 'success' }),
+        toAction('ELIGIBILITY_FAIL', { variant: 'secondary', intent: 'warning', flow: 'warning' })
       ];
     }
 
     if (status === 'WAIT_BILLING') {
-      return [toAction('ISSUE_BILL', { variant: 'primary' })];
+      return [toAction('ISSUE_BILL', { variant: 'primary', flow: 'primary' })];
     }
 
     if (status === 'WAIT_PAYMENT') {
-      return [toAction('MOVE_TO_FINAL_MANAGER_APPROVAL', { variant: 'primary' })];
+      return [toAction('MOVE_TO_FINAL_MANAGER_APPROVAL', { variant: 'primary', flow: 'primary' })];
     }
 
     if (status === 'WAIT_ACTION_CONFIRMATION') {
-      return [toAction('MOVE_TO_FINAL_MANAGER_APPROVAL', { variant: 'primary' })];
+      return [toAction('MOVE_TO_FINAL_MANAGER_APPROVAL', { variant: 'primary', flow: 'primary' })];
     }
 
     if (status === 'WAIT_AONANG_MANAGER_FINAL_APPROVAL') {
-      return [toAction('FINAL_MANAGER_APPROVE', { variant: 'primary' }), toAction('COMPLETE_WORK', { variant: 'secondary' })];
+      return [toAction('FINAL_MANAGER_APPROVE', { variant: 'primary', flow: 'success' }), toAction('COMPLETE_WORK', { variant: 'secondary', flow: 'neutral' })];
     }
   }
 
   if (status === 'WAIT_MANAGER_REVIEW' && ['METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE'].includes(request.request_type) && canMoveToManagerReview(request)) {
     if (isThirtyOneHundredRequestType(request.request_type)) {
       return [
-        toAction('MANAGER_APPROVE', { variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติส่งต่อกระบี่?' }),
-        toAction('MANAGER_RETURN_FOR_RESURVEY', { variant: 'secondary', intent: 'warning' })
+        toAction('MANAGER_APPROVE', { variant: 'primary', flow: 'primary', requiresConfirmation: 'ยืนยันอนุมัติส่งต่อกระบี่?' }),
+        toAction('MANAGER_RETURN_FOR_RESURVEY', { variant: 'secondary', intent: 'warning', flow: 'warning' })
       ];
     }
 
-    return [toAction('MANAGER_APPROVE', { variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติปิดงาน?' })];
+    return [toAction('MANAGER_APPROVE', { variant: 'primary', flow: 'success', requiresConfirmation: 'ยืนยันอนุมัติปิดงาน?' })];
   }
 
   if (status === 'RETURNED_FOR_RESURVEY' && isThirtyOneHundredRequestType(request.request_type)) {
-    return [toAction('RESTART_RETURNED_RESURVEY', { variant: 'primary' })];
+    return [toAction('RESTART_RETURNED_RESURVEY', { variant: 'primary', flow: 'primary' })];
   }
 
   if (status === 'SURVEY_OVERLOAD_REPORTED') {
-    return [toAction('MANAGER_APPROVE_OVERLOAD_FORWARD', { variant: 'primary', requiresConfirmation: 'ยืนยันอนุมัติบันทึกให้กระบี่รับเรื่องปรับปรุงระบบจำหน่าย?' })];
+    return [toAction('MANAGER_APPROVE_OVERLOAD_FORWARD', { variant: 'primary', flow: 'warning', requiresConfirmation: 'ยืนยันอนุมัติบันทึกให้กระบี่รับเรื่องปรับปรุงระบบจำหน่าย?' })];
   }
 
   return [];

@@ -157,6 +157,50 @@ function getActionTitle(actionKey: WorkflowActionKey): string {
   return map[actionKey] ?? 'ยืนยันการทำรายการ';
 }
 
+const DANGER_MODAL_ACTIONS: WorkflowActionKey[] = [
+  'KRABI_RETURN_FOR_FIX',
+  'MARK_KRABI_REJECTED',
+  'MANAGER_RETURN_FOR_RESURVEY'
+];
+
+const WARNING_MODAL_ACTIONS: WorkflowActionKey[] = [
+  'DOC_INCOMPLETE_COLLECT_ON_SITE',
+  'DOC_INCOMPLETE_WAIT_CUSTOMER',
+  'THREE_PHASE_NEEDS_EXPANSION',
+  'START_DOCUMENT_FIX',
+  'KRABI_FIX_COMPLETED',
+  'MANAGER_APPROVE_OVERLOAD_FORWARD'
+];
+
+const SUCCESS_MODAL_ACTIONS: WorkflowActionKey[] = [
+  'DOC_COMPLETE',
+  'SURVEY_PASS',
+  'PHOTO_APPROVE',
+  'THREE_PHASE_CAPABLE',
+  'COMPLETE_SURVEY',
+  'MARK_KRABI_APPROVED',
+  'ELIGIBILITY_PASS',
+  'FINAL_MANAGER_APPROVE',
+  'COMPLETE_WORK',
+  'COORDINATED_WITH_CONSTRUCTION',
+  'KRABI_ESTIMATION_COMPLETED',
+  'KRABI_BILL_ISSUED'
+];
+
+const INFO_MODAL_ACTIONS: WorkflowActionKey[] = [
+  'CONFIRM_DOCS_RECEIVED',
+  'REPORT_CUSTOMER_FIX',
+  'RECEIVE_FROM_KRABI'
+];
+
+function getModalSubmitButtonClass(actionKey: WorkflowActionKey): string {
+  if (DANGER_MODAL_ACTIONS.includes(actionKey)) return 'btn-flow-danger';
+  if (WARNING_MODAL_ACTIONS.includes(actionKey)) return 'btn-flow-warning';
+  if (SUCCESS_MODAL_ACTIONS.includes(actionKey)) return 'btn-flow-success';
+  if (INFO_MODAL_ACTIONS.includes(actionKey)) return 'btn-flow-info';
+  return 'btn-flow-primary';
+}
+
 export function WorkflowActionModal({ actionKey, requestId, onClose, currentStatus, stayOnQueue = false }: WorkflowActionModalProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
@@ -255,8 +299,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -281,8 +325,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
             <textarea className="input min-h-24" disabled={isPending} id="incomplete_docs_note" name="incomplete_docs_note" required />
           </div>
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -298,8 +342,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <p className="text-sm text-slate-600">หลังยืนยันเอกสาร งานจะกลับไปสถานะ “พร้อมนัดสำรวจ” และยังไม่เริ่มสำรวจทันที</p>
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -314,8 +358,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           {submitError ? <p className="mb-3 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -334,8 +378,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
             <textarea className="input min-h-24" disabled={isPending} id="survey_note_complete" name="survey_note" />
           </div>
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -362,8 +406,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           ) : null}
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -381,8 +425,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <textarea className="input min-h-24" name="billing_note" placeholder="หมายเหตุ (ถ้ามี)" />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -401,8 +445,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           </div>
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -419,8 +463,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <textarea className="input min-h-24" name="billing_note" placeholder="หมายเหตุ (ถ้ามี)" />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -436,8 +480,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <input className="input" name="paid_by" placeholder="รับชำระโดย" required type="text" />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -456,8 +500,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
             <textarea className="input min-h-24" disabled={isPending} id="survey_note" name="survey_note" />
           </div>
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -476,8 +520,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
             <textarea className="input min-h-24" disabled={isPending} id="customer_fix_note_confirm" name="customer_fix_note" />
           </div>
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -492,8 +536,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           {submitError ? <p className="mb-3 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -509,8 +553,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <input className="input" disabled={isPending} name="photo_reviewed_by" placeholder="ผู้ตรวจรูป" required type="text" />
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -526,8 +570,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <input className="input" disabled={isPending} name="photo_reviewed_by" placeholder="ผู้ตรวจรูป" required type="text" />
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -542,8 +586,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           {submitError ? <p className="mb-3 rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยันอนุมัติ'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยันอนุมัติ'}</button>
           </div>
         </form>
       </ModalShell>
@@ -562,8 +606,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
             <textarea className="input min-h-24" disabled={isPending} id="layout_note" name="survey_note" />
           </div>
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -583,8 +627,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
             <input className="input" disabled={isPending} id="dispatcher_name" name="dispatcher_name" required />
           </div>
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยันส่งเอกสารแล้ว'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยันส่งเอกสารแล้ว'}</button>
           </div>
         </form>
       </ModalShell>
@@ -599,8 +643,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -651,8 +695,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
             />
           </div>
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยันส่งกลับ'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยันส่งกลับ'}</button>
           </div>
         </form>
       </ModalShell>
@@ -667,8 +711,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -683,8 +727,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -699,8 +743,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -715,8 +759,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -750,8 +794,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <QueueStayInput stayOnQueue={stayOnQueue} />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -767,8 +811,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <textarea className="input min-h-24" name="reject_reason" placeholder="เหตุผลตีกลับ (ถ้ามี)" value={krabiRejectReason} onChange={(event) => setKrabiRejectReason(event.target.value)} />
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
           </div>
         </form>
       </ModalShell>
@@ -814,8 +858,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           </div>
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยันส่งกลับ'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยันส่งกลับ'}</button>
           </div>
         </form>
       </ModalShell>
@@ -838,8 +882,8 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           </div>
           {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
           <div className="flex justify-end gap-2">
-            <button className="btn-secondary" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className="btn-primary" disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'เริ่มรอบสำรวจใหม่'}</button>
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'เริ่มรอบสำรวจใหม่'}</button>
           </div>
         </form>
       </ModalShell>

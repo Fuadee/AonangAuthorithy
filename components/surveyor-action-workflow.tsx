@@ -117,10 +117,10 @@ function ActionModal({
           ) : null}
 
           <div className="flex flex-wrap justify-end gap-2 pt-2">
-            <button className="btn-secondary" onClick={onClose} type="button">
+            <button className="btn-flow-neutral" onClick={onClose} type="button">
               ยกเลิก
             </button>
-            <button className="btn-primary" type="submit">
+            <button className={config.action === 'COMPLETE' ? 'btn-flow-success' : config.action === 'ACCEPT' ? 'btn-flow-primary' : 'btn-flow-warning'} type="submit">
               {config.confirmLabel}
             </button>
           </div>
@@ -150,7 +150,7 @@ export function SurveyorActionWorkflow({ requestId, currentStatus }: SurveyorAct
           const config = ACTION_CONFIGS[action];
           return (
             <button
-              className={action === 'ACCEPT' || action === 'COMPLETE' ? 'btn-primary' : 'btn-secondary'}
+              className={action === 'COMPLETE' ? 'btn-flow-success' : action === 'ACCEPT' ? 'btn-flow-primary' : 'btn-flow-warning'}
               key={action}
               onClick={() => setActiveAction(action)}
               type="button"

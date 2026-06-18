@@ -99,13 +99,13 @@ function normalizeDashboardTypeFilter(value: string | null | undefined): Request
 }
 
 const STATUS_STYLES = {
-  default: 'bg-brand-600 hover:bg-brand-700 focus-visible:ring-brand-300 ring-brand-300/40',
-  survey: 'bg-blue-600 hover:bg-blue-700 focus-visible:ring-blue-300 ring-blue-300/40',
-  finance: 'bg-amber-500 hover:bg-amber-600 focus-visible:ring-amber-300 ring-amber-300/40',
-  manager: 'bg-indigo-600 hover:bg-indigo-700 focus-visible:ring-indigo-300 ring-indigo-300/40',
-  document: 'bg-slate-600 hover:bg-slate-700 focus-visible:ring-slate-300 ring-slate-300/40',
-  operation: 'bg-purple-600 hover:bg-purple-700 focus-visible:ring-purple-300 ring-purple-300/40',
-  done: 'bg-emerald-600 hover:bg-emerald-700 focus-visible:ring-emerald-300 ring-emerald-300/40'
+  default: 'border-[#0B3FB3] bg-[#0F4ED8] text-white focus-visible:ring-[#155EEF] ring-[#155EEF]/60',
+  survey: 'border-[#0B3FB3] bg-[#0F4ED8] text-white focus-visible:ring-[#155EEF] ring-[#155EEF]/60',
+  finance: 'border-[#B45309] bg-[#EA8A00] text-white focus-visible:ring-[#F59E0B] ring-[#F59E0B]/60',
+  manager: 'border-[#B45309] bg-[#EA8A00] text-white focus-visible:ring-[#F59E0B] ring-[#F59E0B]/60',
+  document: 'border-[#475569] bg-[#E2E8F0] text-[#334155] focus-visible:ring-[#94A3B8] ring-[#94A3B8]/60',
+  operation: 'border-[#0B3FB3] bg-[#0F4ED8] text-white focus-visible:ring-[#155EEF] ring-[#155EEF]/60',
+  done: 'border-[#166534] bg-[#12813B] text-white focus-visible:ring-[#16A34A] ring-[#16A34A]/60'
 } as const;
 
 const QUEUE_STYLE_KEY: Record<RequestQueueGroup, keyof typeof STATUS_STYLES | null> = {
@@ -120,12 +120,12 @@ const QUEUE_STYLE_KEY: Record<RequestQueueGroup, keyof typeof STATUS_STYLES | nu
 const WAITING_KRABI_STYLE_KEY: FilterChipProps['tone'] = 'finance';
 
 const FILTER_CHIP_BASE =
-  'inline-flex h-9 items-center justify-center rounded-full border px-3.5 py-2 text-sm whitespace-nowrap transition-colors duration-200 focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
+  'inline-flex min-h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold whitespace-nowrap shadow-[0_1px_3px_rgba(15,23,42,0.12)] transition-all duration-200 hover:-translate-y-px hover:shadow-[0_3px_6px_rgba(15,23,42,0.16)] active:translate-y-0 active:shadow-[inset_0_2px_4px_rgba(15,23,42,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';
 const FILTER_CHIP_INACTIVE =
-  'border-slate-300/80 bg-slate-100 text-slate-700 hover:border-slate-400 hover:bg-slate-200 hover:text-slate-800';
+  'border-[#94A3B8] bg-white text-[#334155] hover:border-[#64748B] hover:bg-[#F8FAFC]';
 
 function getActiveChipClass(tone: FilterChipProps['tone']) {
-  return `border-transparent text-white font-semibold shadow-sm ring-1 ${STATUS_STYLES[tone ?? 'default']}`;
+  return `ring-1 ${STATUS_STYLES[tone ?? 'default']}`;
 }
 
 function FilterChip({ label, isActive, onClick, tone = 'default' }: FilterChipProps) {
@@ -339,7 +339,7 @@ export function DashboardRequestsPanel({ requests, defaultQueue, defaultType }: 
                 value={searchQuery}
                 onChange={(event) => setSearchQuery(event.target.value)}
                 placeholder="ค้นหาเลขคำร้อง / ชื่อ / เบอร์โทร / บ้านเลขที่ / หมู่ / จุดสังเกต"
-                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#1E3A8A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20"
+                className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#1E40AF] focus:outline-none focus:ring-2 focus:ring-[#BFDBFE]"
               />
               {searchQuery && (
                 <button

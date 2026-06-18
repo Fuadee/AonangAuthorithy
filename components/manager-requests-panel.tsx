@@ -77,25 +77,29 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
     if (request.status === 'SURVEY_OVERLOAD_REPORTED') {
       return {
         action: approveManagerOverloadForwardAction,
-        label: 'อนุมัติบันทึกให้กระบี่ปรับปรุงระบบจำหน่าย'
+        label: 'ส่งต่อกระบี่ปรับปรุงระบบ',
+        className: 'btn-flow-warning'
       };
     }
     if (request.status === 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL') {
       return {
         action: approveAonangManagerPreKrabiAction,
-        label: 'อนุมัติก่อนส่งกระบี่'
+        label: 'อนุมัติส่งต่อ Flow มิเตอร์',
+        className: 'btn-flow-primary'
       };
     }
     if (request.status === 'WAIT_AONANG_MANAGER_FINAL_APPROVAL') {
       return {
         action: approveAonangManagerFinalAction,
-        label: 'อนุมัติจ่ายมิเตอร์'
+        label: 'อนุมัติปิดงานมิเตอร์',
+        className: 'btn-flow-success'
       };
     }
 
     return {
       action: approveManagerReviewAction,
-      label: 'อนุมัติส่งต่อ'
+      label: 'อนุมัติส่งต่อ Flow มิเตอร์',
+      className: 'btn-flow-primary'
     };
   };
 
@@ -163,7 +167,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="ค้นหาเลขคำร้อง / ชื่อ / เบอร์โทร / บ้านเลขที่ / หมู่ / จุดสังเกต"
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#1E3A8A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#1E40AF] focus:outline-none focus:ring-2 focus:ring-[#BFDBFE]"
             />
             {searchQuery ? (
               <button
@@ -216,7 +220,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                       <div className="flex flex-wrap gap-2">
                         {requiresConfirm ? (
                           <button
-                            className="btn-primary"
+                            className={resolvedAction.className}
                             disabled={isPending}
                             type="button"
                             onClick={() => {
@@ -231,7 +235,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                         ) : (
                           <>
                             <button
-                              className="btn-primary"
+                              className={resolvedAction.className}
                               disabled={isPending && pendingRequestId === request.id}
                               type="button"
                               onClick={() => runManagerAction(request.id, resolvedAction.action)}
@@ -241,7 +245,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                             {isThirtyOneHundredRequestType(request.request_type) &&
                             ['WAIT_MANAGER_REVIEW', 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL'].includes(request.status) ? (
                               <button
-                                className="btn-secondary"
+                                className="btn-flow-danger"
                                 disabled={isPending && pendingRequestId === request.id}
                                 type="button"
                                 onClick={() => {
@@ -315,7 +319,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
 
             <div className="mt-5 flex justify-end gap-2">
               <button
-                className="btn-secondary"
+                className="btn-flow-neutral"
                 type="button"
                 onClick={() => {
                   setConfirmRequest(null);
@@ -326,7 +330,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                 ยกเลิก
               </button>
               <button
-                className="btn-primary"
+                className="btn-flow-warning"
                 disabled={isPending && pendingRequestId === confirmRequest.id}
                 type="button"
                 onClick={() => {
@@ -366,7 +370,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
             />
             <div className="mt-5 flex justify-end gap-2">
               <button
-                className="btn-secondary"
+                className="btn-flow-neutral"
                 type="button"
                 onClick={() => {
                   setIsReturnModalOpen(false);
@@ -378,7 +382,7 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
                 ยกเลิก
               </button>
               <button
-                className="btn-primary"
+                className="btn-flow-danger"
                 disabled={isPending && pendingRequestId === returnRequest.id}
                 type="button"
                 onClick={() =>

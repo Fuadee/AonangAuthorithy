@@ -244,7 +244,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
           <div className="space-y-2">
             <button
               type="button"
-              className="text-sm font-medium text-brand-700 hover:text-brand-800"
+              className="btn-flow-neutral w-fit text-sm"
               onClick={() => setIsExpanded((prev) => !prev)}
             >
               {isExpanded ? '− ซ่อนตัวกรองเพิ่มเติม' : '+ ตัวกรองเพิ่มเติม'}
@@ -267,7 +267,7 @@ export function SurveyorRequestsPanel({ requests, defaultSurveyor }: SurveyorReq
               value={searchQuery}
               onChange={(event) => setSearchQuery(event.target.value)}
               placeholder="ค้นหาเลขคำร้อง / ชื่อ / เบอร์โทร / บ้านเลขที่ / หมู่ / จุดสังเกต"
-              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#1E3A8A] focus:outline-none focus:ring-2 focus:ring-[#1E3A8A]/20"
+              className="w-full rounded-lg border border-slate-200 bg-white px-3 py-2 pr-10 text-sm text-slate-700 placeholder:text-slate-400 focus:border-[#1E40AF] focus:outline-none focus:ring-2 focus:ring-[#BFDBFE]"
             />
             {searchQuery ? (
               <button

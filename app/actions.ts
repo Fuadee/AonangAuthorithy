@@ -83,6 +83,14 @@ function isValidDateOnly(dateText: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(dateText) && !Number.isNaN(new Date(`${dateText}T00:00:00.000Z`).valueOf());
 }
 
+function formatActionTimestamp(value: string): string {
+  return new Intl.DateTimeFormat('th-TH', {
+    dateStyle: 'medium',
+    timeStyle: 'short',
+    timeZone: 'Asia/Bangkok'
+  }).format(new Date(value));
+}
+
 function isValidRequestStatus(status: string): status is RequestStatus {
   return REQUEST_STATUSES.includes(status as RequestStatus);
 }
@@ -105,6 +113,10 @@ function revalidateRequestPaths(requestId: string): void {
   revalidatePath('/surveyor');
   revalidatePath('/billing');
   revalidatePath('/manager');
+  revalidatePath('/document');
+  revalidatePath('/krabi');
+  revalidatePath('/survey/planning');
+  revalidatePath('/survey/map');
   revalidatePath('/analytics');
   revalidatePath(`/requests/${requestId}`);
 }
@@ -2054,6 +2066,70 @@ export async function updateRequestAssigneeAction(formData: FormData) {
 
   revalidateRequestPaths(requestId);
   redirect(`/requests/${requestId}`);
+}
+
+export async function convertMeterToExpansionAction(formData: FormData): Promise<{ message: string }> {
+  const requestId = requiredField(formData, 'request_id');
+  const reason = requiredField(formData, 'conversion_reason');
+  const supabase = createServerSupabaseClient();
+  const nowIso = new Date().toISOString();
+  const {
+    data: { user }
+  } = await supabase.auth.getUser();
+
+  const { data: request, error: requestError } = await supabase
+    .from('service_requests')
+    .select('id,request_type,status')
+    .eq('id', requestId)
+    .single();
+
+  if (requestError || !request) {
+    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
+  }
+
+  if (request.request_type !== 'METER') {
+    throw new Error('เปลี่ยนเป็นงานขยายเขตได้เฉพาะคำร้องขอมิเตอร์ใหม่เท่านั้น');
+  }
+
+  if (['COMPLETED', 'COMPLETED_OVERLOAD_FORWARD', 'COORDINATED_WITH_CONSTRUCTION'].includes(request.status)) {
+    throw new Error('ไม่สามารถเปลี่ยนประเภทคำร้องได้ เพราะงานนี้จบแล้ว');
+  }
+
+  const actorLabel = user?.email ? `โดย: ${user.email}` : 'โดย: ผู้ใช้งานปัจจุบัน';
+  const auditNote = [
+    'เปลี่ยนประเภทคำร้องจาก METER เป็น EXPANSION',
+    `เหตุผล: ${reason}`,
+    actorLabel,
+    `เวลา: ${formatActionTimestamp(nowIso)}`
+  ].join('\n');
+
+  const { data: updatedRequest, error } = await supabase
+    .from('service_requests')
+    .update({
+      request_type: 'EXPANSION',
+      request_intent: 'EXPANSION',
+      flow_type: 'EXPANSION',
+      status: 'WAIT_LAYOUT_DRAWING',
+      forwarded_to_expansion_at: nowIso,
+      forwarded_to_expansion_note: auditNote,
+      updated_at: nowIso
+    })
+    .eq('id', requestId)
+    .eq('request_type', 'METER')
+    .not('status', 'in', '("COMPLETED","COMPLETED_OVERLOAD_FORWARD","COORDINATED_WITH_CONSTRUCTION")')
+    .select('id')
+    .maybeSingle();
+
+  if (error) {
+    throw new Error(error.message);
+  }
+
+  if (!updatedRequest) {
+    throw new Error('ไม่สามารถเปลี่ยนประเภทคำร้องได้ เนื่องจากข้อมูลคำร้องมีการเปลี่ยนแปลง กรุณารีเฟรชหน้าแล้วลองใหม่');
+  }
+
+  revalidateRequestPaths(requestId);
+  return { message: 'เปลี่ยนเป็นงานขยายเขตเรียบร้อยแล้ว' };
 }
 
 export async function confirmPaymentReceivedAction(formData: FormData) {

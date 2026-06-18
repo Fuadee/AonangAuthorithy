@@ -88,8 +88,10 @@ export default async function DocumentQueuePage({ searchParams }: DocumentQueueP
       <section className="card p-4">
         <div className="flex flex-wrap gap-2">
           <Link
-            className={`inline-flex max-w-full items-center rounded-full border px-3 py-1.5 text-sm whitespace-nowrap ${
-              selectedStatus === 'ALL' ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 bg-white text-slate-600'
+            className={`inline-flex min-h-10 max-w-full items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold whitespace-nowrap shadow-[0_1px_3px_rgba(15,23,42,0.12)] transition-all duration-200 hover:-translate-y-px hover:shadow-[0_3px_6px_rgba(15,23,42,0.16)] active:translate-y-0 active:shadow-[inset_0_2px_4px_rgba(15,23,42,0.12)] ${
+              selectedStatus === 'ALL'
+                ? 'border-[#475569] bg-[#E2E8F0] text-[#334155]'
+                : 'border-[#94A3B8] bg-white text-[#334155] hover:border-[#64748B] hover:bg-[#F8FAFC]'
             }`}
             href="/document"
           >
@@ -98,8 +100,10 @@ export default async function DocumentQueuePage({ searchParams }: DocumentQueueP
           {statusCounts.map((item) => (
             <Link
               key={item.status}
-              className={`inline-flex max-w-full items-center rounded-full border px-3 py-1.5 text-sm whitespace-nowrap ${
-                selectedStatus === item.status ? 'border-brand-600 bg-brand-50 text-brand-700' : 'border-slate-300 bg-white text-slate-600'
+              className={`inline-flex min-h-10 max-w-full items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold whitespace-nowrap shadow-[0_1px_3px_rgba(15,23,42,0.12)] transition-all duration-200 hover:-translate-y-px hover:shadow-[0_3px_6px_rgba(15,23,42,0.16)] active:translate-y-0 active:shadow-[inset_0_2px_4px_rgba(15,23,42,0.12)] ${
+                selectedStatus === item.status
+                  ? 'border-[#475569] bg-[#E2E8F0] text-[#334155]'
+                  : 'border-[#94A3B8] bg-white text-[#334155] hover:border-[#64748B] hover:bg-[#F8FAFC]'
               }`}
               href={`/document?status=${item.status}`}
               title={`${item.label} (${item.count})`}
