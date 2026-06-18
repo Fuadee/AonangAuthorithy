@@ -1,6 +1,5 @@
 import Link from 'next/link';
 import RequestPhoneAction from '@/components/request-phone-action';
-import { ConvertToExpansionAction } from '@/components/convert-to-expansion-action';
 import { FlowTypeBadge } from '@/components/queue/flow-type-badge';
 import { notFound } from 'next/navigation';
 import { LocationPreview } from '@/components/location-preview';
@@ -32,6 +31,8 @@ import {
   isExpansionWorkflowStatus,
   RequestStatus,
   RequestType,
+  REQUEST_TYPE_LABELS,
+  REQUEST_TYPES,
   ThreePhaseCapabilityResult
 } from '@/lib/requests/types';
 import { buildFullAddress } from '@/lib/requests/address';
@@ -77,6 +78,29 @@ function getConversionReason(note: string | null): string {
     .find((line) => line.startsWith('เหตุผล:'));
 
   return reasonLine ? reasonLine.replace(/^เหตุผล:\s*/, '') : note;
+}
+
+function getPreviousRequestTypeFromConversionNote(note: string | null): RequestType | null {
+  if (!note) {
+    return null;
+  }
+
+  const previousTypeLine = note
+    .split('\n')
+    .map((line) => line.trim())
+    .find((line) => line.startsWith('previous_request_type:'));
+  const previousType = previousTypeLine?.replace(/^previous_request_type:\s*/, '') ?? null;
+
+  if (previousType && REQUEST_TYPES.includes(previousType as RequestType)) {
+    return previousType as RequestType;
+  }
+
+  const titleMatch = /จาก\s+(METER(?:_TO_3PHASE|_30_100_1P|_30_100_3P)?)\s+เป็น\s+EXPANSION/.exec(note);
+  if (titleMatch?.[1] && REQUEST_TYPES.includes(titleMatch[1] as RequestType)) {
+    return titleMatch[1] as RequestType;
+  }
+
+  return null;
 }
 
 
@@ -552,7 +576,7 @@ function getTimeline(request: {
   if (request.forwarded_to_expansion_at) {
     items.push({
       key: 'forwarded-to-expansion',
-      title: 'เปลี่ยนประเภทคำร้องจาก METER เป็น EXPANSION',
+      title: 'ผลสำรวจ: ต้องขยายเขต',
       description: request.forwarded_to_expansion_note ?? 'ย้ายสถานะไปยัง WAIT_LAYOUT_DRAWING โดยไม่ลบข้อมูลเดิม',
       at: request.forwarded_to_expansion_at,
       sortAt: resolveTimelineSortAt(request.forwarded_to_expansion_at)
@@ -679,10 +703,10 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
 
   const requestStatus = request.status as RequestStatus;
   const requestType = request.request_type as RequestType;
-  const completedStatuses: RequestStatus[] = ['COMPLETED', 'COMPLETED_OVERLOAD_FORWARD', 'COORDINATED_WITH_CONSTRUCTION'];
-  const canConvertToExpansion = requestType === 'METER' && !completedStatuses.includes(requestStatus);
   const wasConvertedFromMeterToExpansion = requestType === 'EXPANSION' && Boolean(request.forwarded_to_expansion_at);
   const conversionReason = getConversionReason(request.forwarded_to_expansion_note);
+  const previousRequestType = getPreviousRequestTypeFromConversionNote(request.forwarded_to_expansion_note);
+  const previousRequestTypeLabel = previousRequestType ? REQUEST_TYPE_LABELS[previousRequestType] : 'ขอมิเตอร์ใหม่';
   const requestTypeLabel = getRequestIntentLabel(request);
   const requestTechnicalSummary = getRequestTechnicalSummary(request);
   const flowType = getFlowType(request);
@@ -858,7 +882,6 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
             <dt className="text-sm text-slate-500">ประเภทคำร้อง</dt>
             <dd className="mt-1 font-medium">{requestTypeLabel}</dd>
             {requestTechnicalSummary ? <dd className="mt-1 text-sm text-slate-500">{requestTechnicalSummary}</dd> : null}
-            {canConvertToExpansion ? <ConvertToExpansionAction requestId={request.id} /> : null}
           </div>
           <div>
             <dt className="text-sm text-slate-500">Flow งาน</dt>
@@ -896,11 +919,11 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
 
       {wasConvertedFromMeterToExpansion ? (
         <section className="rounded-lg border border-amber-300 bg-amber-50 p-4 shadow-sm">
-          <p className="text-sm font-semibold text-amber-900">คำร้องนี้ถูกเปลี่ยนเป็นงานขยายเขต</p>
+          <p className="text-sm font-semibold text-amber-900">ผลสำรวจพบว่าต้องขยายเขต</p>
           <dl className="mt-2 grid gap-2 text-sm text-amber-900 sm:grid-cols-2">
             <div>
               <dt className="font-medium">เดิม</dt>
-              <dd>ขอมิเตอร์ใหม่</dd>
+              <dd>{previousRequestTypeLabel}</dd>
             </div>
             <div>
               <dt className="font-medium">เหตุผล</dt>

@@ -168,6 +168,8 @@ const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>
   WAIT_AONANG_MANAGER_FINAL_APPROVAL: ['COMPLETED']
 };
 
+const REQUEST_TYPES_CONVERTIBLE_TO_EXPANSION: RequestType[] = ['METER', 'METER_30_100_1P'];
+
 export async function createRequestAction(formData: FormData) {
   const customerName = requiredField(formData, 'customer_name');
   const phone = requiredField(formData, 'phone');
@@ -2068,9 +2070,9 @@ export async function updateRequestAssigneeAction(formData: FormData) {
   redirect(`/requests/${requestId}`);
 }
 
-export async function convertMeterToExpansionAction(formData: FormData): Promise<{ message: string }> {
+export async function markSurveyNeedsExpansionAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
-  const reason = requiredField(formData, 'conversion_reason');
+  const reason = requiredField(formData, 'survey_expansion_reason');
   const supabase = createServerSupabaseClient();
   const nowIso = new Date().toISOString();
   const {
@@ -2079,7 +2081,7 @@ export async function convertMeterToExpansionAction(formData: FormData): Promise
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,request_type,status')
+    .select('id,request_type,status,survey_note')
     .eq('id', requestId)
     .single();
 
@@ -2087,21 +2089,25 @@ export async function convertMeterToExpansionAction(formData: FormData): Promise
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
-  if (request.request_type !== 'METER') {
-    throw new Error('เปลี่ยนเป็นงานขยายเขตได้เฉพาะคำร้องขอมิเตอร์ใหม่เท่านั้น');
+  if (!REQUEST_TYPES_CONVERTIBLE_TO_EXPANSION.includes(request.request_type as RequestType)) {
+    throw new Error('บันทึกผลสำรวจว่าต้องขยายเขตได้เฉพาะคำร้องขอมิเตอร์ใหม่ หรือขอมิเตอร์ 30/100 1 เฟสเท่านั้น');
   }
 
-  if (['COMPLETED', 'COMPLETED_OVERLOAD_FORWARD', 'COORDINATED_WITH_CONSTRUCTION'].includes(request.status)) {
-    throw new Error('ไม่สามารถเปลี่ยนประเภทคำร้องได้ เพราะงานนี้จบแล้ว');
+  if (request.status !== 'IN_SURVEY') {
+    throw new Error('บันทึกผลสำรวจว่าต้องขยายเขตได้เฉพาะงานที่อยู่ในขั้นตอนสำรวจเท่านั้น');
   }
 
   const actorLabel = user?.email ? `โดย: ${user.email}` : 'โดย: ผู้ใช้งานปัจจุบัน';
   const auditNote = [
-    'เปลี่ยนประเภทคำร้องจาก METER เป็น EXPANSION',
+    'ผลสำรวจ: ต้องขยายเขต',
+    'เปลี่ยนเส้นทางจาก Flow ขอมิเตอร์ใหม่ ไป Flow ขยายเขต',
+    `previous_request_type: ${request.request_type}`,
     `เหตุผล: ${reason}`,
     actorLabel,
     `เวลา: ${formatActionTimestamp(nowIso)}`
   ].join('\n');
+  const surveyExpansionNote = [`ผลสำรวจ: ต้องขยายเขต`, `เหตุผล: ${reason}`].join('\n');
+  const mergedSurveyNote = [request.survey_note, surveyExpansionNote].filter(Boolean).join('\n');
 
   const { data: updatedRequest, error } = await supabase
     .from('service_requests')
@@ -2110,13 +2116,15 @@ export async function convertMeterToExpansionAction(formData: FormData): Promise
       request_intent: 'EXPANSION',
       flow_type: 'EXPANSION',
       status: 'WAIT_LAYOUT_DRAWING',
+      survey_completed_at: nowIso,
+      survey_note: mergedSurveyNote || null,
       forwarded_to_expansion_at: nowIso,
       forwarded_to_expansion_note: auditNote,
       updated_at: nowIso
     })
     .eq('id', requestId)
-    .eq('request_type', 'METER')
-    .not('status', 'in', '("COMPLETED","COMPLETED_OVERLOAD_FORWARD","COORDINATED_WITH_CONSTRUCTION")')
+    .in('request_type', REQUEST_TYPES_CONVERTIBLE_TO_EXPANSION)
+    .eq('status', 'IN_SURVEY')
     .select('id')
     .maybeSingle();
 
@@ -2125,11 +2133,10 @@ export async function convertMeterToExpansionAction(formData: FormData): Promise
   }
 
   if (!updatedRequest) {
-    throw new Error('ไม่สามารถเปลี่ยนประเภทคำร้องได้ เนื่องจากข้อมูลคำร้องมีการเปลี่ยนแปลง กรุณารีเฟรชหน้าแล้วลองใหม่');
+    throw new Error('ไม่สามารถบันทึกผลสำรวจว่าต้องขยายเขตได้ เนื่องจากข้อมูลคำร้องมีการเปลี่ยนแปลง กรุณารีเฟรชหน้าแล้วลองใหม่');
   }
 
-  revalidateRequestPaths(requestId);
-  return { message: 'เปลี่ยนเป็นงานขยายเขตเรียบร้อยแล้ว' };
+  finalizeWorkflowAction(requestId, formData);
 }
 
 export async function confirmPaymentReceivedAction(formData: FormData) {

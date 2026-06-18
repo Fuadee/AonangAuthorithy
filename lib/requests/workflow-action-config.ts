@@ -22,6 +22,7 @@ export type WorkflowActionKey =
   | 'COMPLETE_SURVEY'
   | 'SURVEY_PASS'
   | 'SURVEY_FAIL'
+  | 'SURVEY_NEEDS_EXPANSION'
   | 'THREE_PHASE_CAPABLE'
   | 'THREE_PHASE_NEEDS_EXPANSION'
   | 'REPORT_CUSTOMER_FIX'
@@ -79,6 +80,7 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   COMPLETE_SURVEY: 'สำรวจเสร็จ',
   SURVEY_PASS: 'บันทึกว่าสำรวจผ่าน',
   SURVEY_FAIL: 'บันทึกว่าสำรวจไม่ผ่าน',
+  SURVEY_NEEDS_EXPANSION: 'สำรวจแล้วพบว่าต้องขยายเขต',
   THREE_PHASE_CAPABLE: 'ระบบรองรับ 3 เฟส',
   THREE_PHASE_NEEDS_EXPANSION: 'ส่งต่องานขยายเขต',
   REPORT_CUSTOMER_FIX: 'ผู้ใช้ไฟแจ้งว่าแก้ไขแล้ว',
@@ -312,10 +314,22 @@ export function getAvailableRequestActions(
     }
 
     if (canMarkSurveyPassed({ status, request_type: request.request_type })) {
-      return [
+      const surveyActions = [
         toAction('SURVEY_PASS', { variant: 'primary', flow: 'success', requiresConfirmation: 'ยืนยันผลสำรวจผ่าน?' }),
         toAction('SURVEY_FAIL', { variant: 'secondary', intent: 'warning', flow: 'warning', handlerType: 'survey_fail_dialog' })
       ];
+
+      if (['METER', 'METER_30_100_1P'].includes(request.request_type)) {
+        surveyActions.push(
+          toAction('SURVEY_NEEDS_EXPANSION', {
+            variant: 'secondary',
+            intent: 'warning',
+            flow: 'warning'
+          })
+        );
+      }
+
+      return surveyActions;
     }
 
     return [

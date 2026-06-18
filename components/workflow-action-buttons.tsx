@@ -167,6 +167,7 @@ export function WorkflowActionButtons({
   const [isIncompleteDocumentModalOpen, setIsIncompleteDocumentModalOpen] = useState(false);
   const [selectedIncompleteDocumentOption, setSelectedIncompleteDocumentOption] = useState<IncompleteDocumentOption | null>(null);
   const [incompleteDocumentError, setIncompleteDocumentError] = useState<string | null>(null);
+  const [successMessage, setSuccessMessage] = useState<string | null>(null);
   const [isSubmittingIncompleteDecision, startIncompleteDecisionTransition] = useTransition();
 
   const shouldGroupDocumentReviewActions = currentStatus === 'WAIT_DOCUMENT_REVIEW';
@@ -218,6 +219,7 @@ export function WorkflowActionButtons({
     event.preventDefault();
     event.stopPropagation();
     console.info('[workflow-action-buttons] action button clicked', { actionKey, requestId, currentStatus });
+    setSuccessMessage(null);
     setActiveAction(actionKey);
   };
 
@@ -361,9 +363,20 @@ export function WorkflowActionButtons({
         actionKey={activeAction && activeAction !== 'SURVEY_FAIL' && activeAction !== 'SCHEDULE_SURVEY' && activeAction !== 'EDIT_SURVEY_DATE' ? activeAction : null}
         currentStatus={currentStatus}
         onClose={() => setActiveAction(null)}
+        onSuccess={(completedActionKey) => {
+          if (completedActionKey === 'SURVEY_NEEDS_EXPANSION') {
+            setSuccessMessage('บันทึกผลสำรวจว่าต้องขยายเขตเรียบร้อยแล้ว');
+          }
+        }}
         requestId={requestId}
         stayOnQueue={stayOnQueue}
       />
+
+      {successMessage ? (
+        <p className="rounded-md border border-emerald-200 bg-emerald-50 px-3 py-2 text-sm font-medium text-emerald-700">
+          {successMessage}
+        </p>
+      ) : null}
 
       <IncompleteDocumentModal
         error={incompleteDocumentError}

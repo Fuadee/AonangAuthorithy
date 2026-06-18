@@ -25,6 +25,7 @@ import {
   markKrabiEstimationCompletedAction,
   markKrabiInProgressAction,
   markKrabiNeedsDocumentFixAction,
+  markSurveyNeedsExpansionAction,
   markSentToKrabiAction,
   markSurveyPassedAction,
   markThreePhaseCapabilitySupportedAction,
@@ -53,6 +54,7 @@ type WorkflowActionModalProps = {
   actionKey: WorkflowActionKey | null;
   requestId: string;
   onClose: () => void;
+  onSuccess?: (actionKey: WorkflowActionKey) => void;
   currentStatus?: RequestStatus;
   stayOnQueue?: boolean;
 };
@@ -66,6 +68,7 @@ const ACTION_EXECUTORS: Partial<Record<WorkflowActionKey, ActionExecutor>> = {
   ISSUE_BILL: issueBillingAction,
   CONFIRM_PAYMENT: confirmPaymentReceivedAction,
   SURVEY_PASS: markSurveyPassedAction,
+  SURVEY_NEEDS_EXPANSION: markSurveyNeedsExpansionAction,
   REPORT_CUSTOMER_FIX: reportCustomerFixAction,
   SCHEDULE_RESURVEY: moveToResurveyAction,
   PHOTO_APPROVE: approveFixFromPhotoAction,
@@ -152,7 +155,8 @@ function getActionTitle(actionKey: WorkflowActionKey): string {
     ,
     MANAGER_APPROVE_OVERLOAD_FORWARD: 'อนุมัติบันทึกให้กระบี่ปรับปรุงระบบจำหน่าย',
     MANAGER_RETURN_FOR_RESURVEY: 'ส่งกลับให้สำรวจตรวจสอบใหม่',
-    RESTART_RETURNED_RESURVEY: 'เริ่มงานสำรวจรอบใหม่'
+    RESTART_RETURNED_RESURVEY: 'เริ่มงานสำรวจรอบใหม่',
+    SURVEY_NEEDS_EXPANSION: 'ยืนยันผลสำรวจ: ต้องขยายเขต'
   };
   return map[actionKey] ?? 'ยืนยันการทำรายการ';
 }
@@ -166,6 +170,7 @@ const DANGER_MODAL_ACTIONS: WorkflowActionKey[] = [
 const WARNING_MODAL_ACTIONS: WorkflowActionKey[] = [
   'DOC_INCOMPLETE_COLLECT_ON_SITE',
   'DOC_INCOMPLETE_WAIT_CUSTOMER',
+  'SURVEY_NEEDS_EXPANSION',
   'THREE_PHASE_NEEDS_EXPANSION',
   'START_DOCUMENT_FIX',
   'KRABI_FIX_COMPLETED',
@@ -201,7 +206,7 @@ function getModalSubmitButtonClass(actionKey: WorkflowActionKey): string {
   return 'btn-flow-primary';
 }
 
-export function WorkflowActionModal({ actionKey, requestId, onClose, currentStatus, stayOnQueue = false }: WorkflowActionModalProps) {
+export function WorkflowActionModal({ actionKey, requestId, onClose, onSuccess, currentStatus, stayOnQueue = false }: WorkflowActionModalProps) {
   const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [submitError, setSubmitError] = useState<string | null>(null);
@@ -240,6 +245,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
       try {
         await executor(formData);
         setSubmitError(null);
+        onSuccess?.(submitActionKey);
         onClose();
         router.refresh();
       } catch (error) {
@@ -360,6 +366,38 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, currentStat
           <div className="flex justify-end gap-2">
             <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
             <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
+          </div>
+        </form>
+      </ModalShell>
+    );
+  }
+
+  if (actionKey === 'SURVEY_NEEDS_EXPANSION') {
+    return (
+      <ModalShell title="ยืนยันผลสำรวจ: ต้องขยายเขต" onClose={onClose}>
+        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('SURVEY_NEEDS_EXPANSION')}>
+          <input name="request_id" type="hidden" value={requestId} />
+          <QueueStayInput stayOnQueue={stayOnQueue} />
+          <p className="text-sm leading-relaxed text-slate-600">
+            ระบบจะบันทึกผลสำรวจว่าคำร้องนี้ต้องเข้าสู่กระบวนการขยายเขต และย้ายงานไปยังขั้นตอนออกแบบ/ร่างผัง โดยไม่ลบข้อมูลเดิม
+          </p>
+          <div>
+            <label className="text-sm font-medium text-slate-700" htmlFor="survey_expansion_reason">เหตุผล/รายละเอียดจากการสำรวจ</label>
+            <textarea
+              className="input min-h-28"
+              disabled={isPending}
+              id="survey_expansion_reason"
+              name="survey_expansion_reason"
+              placeholder="เช่น ระยะสายไม่ถึง ต้องปักเสาเพิ่ม หม้อแปลง/ระบบจำหน่ายไม่รองรับ หรือเหตุผลอื่น ๆ"
+              required
+            />
+          </div>
+          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
+          <div className="flex justify-end gap-2">
+            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
+            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">
+              {isPending ? 'กำลังบันทึก...' : 'ยืนยันผลสำรวจ: ต้องขยายเขต'}
+            </button>
           </div>
         </form>
       </ModalShell>
