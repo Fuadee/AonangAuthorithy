@@ -1,3 +1,4 @@
+import { randomUUID } from 'node:crypto';
 import { RequestForm } from '@/components/request-form';
 import { Area, Assignee } from '@/lib/requests/types';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
@@ -25,7 +26,11 @@ export default async function CreateRequestPage() {
     <div className="mx-auto max-w-4xl space-y-4">
       <h2 className="text-2xl font-semibold">สร้างคำร้องใหม่</h2>
       <p className="text-sm text-slate-500">เลือกลักษณะงาน/ขนาดมิเตอร์/ระบบไฟ แล้วกรอกข้อมูลลูกค้าให้ครบถ้วน</p>
-      <RequestForm areas={(areas ?? []) as Area[]} assignees={(assignees ?? []) as Assignee[]} />
+      <RequestForm
+        areas={(areas ?? []) as Area[]}
+        assignees={(assignees ?? []) as Assignee[]}
+        submissionId={randomUUID()}
+      />
     </div>
   );
 }

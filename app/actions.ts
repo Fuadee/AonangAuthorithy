@@ -83,6 +83,14 @@ function isValidDateOnly(dateText: string): boolean {
   return /^\d{4}-\d{2}-\d{2}$/.test(dateText) && !Number.isNaN(new Date(`${dateText}T00:00:00.000Z`).valueOf());
 }
 
+function isValidUuid(value: string): boolean {
+  return /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i.test(value);
+}
+
+function getActionErrorMessage(error: unknown): string {
+  return error instanceof Error ? error.message : 'ไม่สามารถบันทึกคำร้องได้ กรุณาลองใหม่อีกครั้ง';
+}
+
 function formatActionTimestamp(value: string): string {
   return new Intl.DateTimeFormat('th-TH', {
     dateStyle: 'medium',
@@ -170,7 +178,38 @@ const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>
 
 const REQUEST_TYPES_CONVERTIBLE_TO_EXPANSION: RequestType[] = ['METER', 'METER_30_100_1P'];
 
-export async function createRequestAction(formData: FormData) {
+type CreatedRequest = {
+  id: string;
+  request_no: string;
+  duplicate: boolean;
+};
+
+async function createRequest(formData: FormData): Promise<CreatedRequest> {
+  const submissionId = requiredField(formData, 'submission_id');
+  if (!isValidUuid(submissionId)) {
+    throw new Error('Invalid submission ID');
+  }
+
+  const supabase = createServerSupabaseClient();
+  const { data: existingRequest, error: existingRequestError } = await supabase
+    .from('service_requests')
+    .select('id,request_no')
+    .eq('submission_id', submissionId)
+    .maybeSingle();
+
+  if (existingRequestError) {
+    throw new Error(existingRequestError.message);
+  }
+
+  if (existingRequest) {
+    console.info('[createRequestAction] duplicate submission returned existing request', {
+      submissionId,
+      requestId: existingRequest.id,
+      requestNo: existingRequest.request_no
+    });
+    return { ...existingRequest, duplicate: true };
+  }
+
   const customerName = requiredField(formData, 'customer_name');
   const phone = requiredField(formData, 'phone');
   const areaCode = requiredField(formData, 'area_code');
@@ -222,8 +261,6 @@ export async function createRequestAction(formData: FormData) {
     }
   }
 
-  const supabase = createServerSupabaseClient();
-
   if (!isAreaCode(areaCode)) {
     throw new Error('Invalid area code');
   }
@@ -265,58 +302,93 @@ export async function createRequestAction(formData: FormData) {
     scheduledSurveyDate
   });
 
-  const { error: insertError } = await supabase.from('service_requests').insert({
-    request_no: requestNo,
-    customer_name: customerName,
-    phone,
-    area_id: area.id,
-    area_code: area.code,
-    area_name: area.name,
-    assignee_id: assignee.id,
-    assignee_code: assignee.code,
-    assignee_name: assignee.name,
-    assigned_surveyor_id: assignee.id,
-    assigned_surveyor: assignee.name,
-    scheduled_survey_date: scheduledSurveyDate,
-    survey_date_initial: scheduledSurveyDate,
-    survey_date_current: scheduledSurveyDate,
-    status: initialStatus,
-    request_type: requestType,
-    request_intent: submission.intent,
-    meter_size: submission.meterSize,
-    phase: submission.phase,
-    flow_type: flowType,
-    house_number: houseNumber,
-    village_no: villageNo,
-    road,
-    landmark,
-    latitude,
-    longitude,
-    location_note: locationNote,
-    collect_docs_on_site: false
-  });
+  const { data: insertedRequest, error: insertError } = await supabase
+    .from('service_requests')
+    .insert({
+      submission_id: submissionId,
+      request_no: requestNo,
+      customer_name: customerName,
+      phone,
+      area_id: area.id,
+      area_code: area.code,
+      area_name: area.name,
+      assignee_id: assignee.id,
+      assignee_code: assignee.code,
+      assignee_name: assignee.name,
+      assigned_surveyor_id: assignee.id,
+      assigned_surveyor: assignee.name,
+      scheduled_survey_date: scheduledSurveyDate,
+      survey_date_initial: scheduledSurveyDate,
+      survey_date_current: scheduledSurveyDate,
+      status: initialStatus,
+      request_type: requestType,
+      request_intent: submission.intent,
+      meter_size: submission.meterSize,
+      phase: submission.phase,
+      flow_type: flowType,
+      house_number: houseNumber,
+      village_no: villageNo,
+      road,
+      landmark,
+      latitude,
+      longitude,
+      location_note: locationNote,
+      collect_docs_on_site: false
+    })
+    .select('id,request_no,created_at,updated_at,status')
+    .single();
 
   if (insertError) {
+    if (insertError.code === '23505') {
+      const { data: racedRequest, error: racedRequestError } = await supabase
+        .from('service_requests')
+        .select('id,request_no')
+        .eq('submission_id', submissionId)
+        .maybeSingle();
+
+      if (racedRequestError) {
+        throw new Error(racedRequestError.message);
+      }
+
+      if (racedRequest) {
+        console.info('[createRequestAction] concurrent duplicate returned existing request', {
+          submissionId,
+          requestId: racedRequest.id,
+          requestNo: racedRequest.request_no
+        });
+        return { ...racedRequest, duplicate: true };
+      }
+    }
+
     throw new Error(insertError.message);
   }
 
-  const { data: insertedRequest, error: insertedLookupError } = await supabase
-    .from('service_requests')
-    .select('id,request_no,created_at,updated_at,status')
-    .eq('request_no', requestNo)
-    .maybeSingle();
+  console.info('[createRequestAction] inserted request confirmed in DB', insertedRequest);
 
-  if (insertedLookupError) {
-    console.warn('[createRequestAction] insert succeeded but failed to fetch inserted row', {
-      requestNo,
-      error: insertedLookupError.message
-    });
-  } else {
-    console.info('[createRequestAction] inserted request confirmed in DB', insertedRequest);
+  return {
+    id: insertedRequest.id,
+    request_no: insertedRequest.request_no,
+    duplicate: false
+  };
+}
+
+export async function createRequestAction(
+  _previousState: { error: string | null },
+  formData: FormData
+): Promise<{ error: string | null }> {
+  let createdRequest: CreatedRequest;
+
+  try {
+    createdRequest = await createRequest(formData);
+  } catch (error) {
+    console.error('[createRequestAction] create failed', error);
+    return { error: getActionErrorMessage(error) };
   }
 
-  console.info('[createRequestAction] revalidate analytics after create', {
-    requestNo,
+  console.info('[createRequestAction] revalidate after create', {
+    requestId: createdRequest.id,
+    requestNo: createdRequest.request_no,
+    duplicate: createdRequest.duplicate,
     paths: ['/dashboard', '/surveyor', '/analytics']
   });
 

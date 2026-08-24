@@ -1,6 +1,6 @@
 'use client';
 
-import { FormEvent, useEffect, useMemo, useState } from 'react';
+import { FormEvent, useActionState, useEffect, useMemo, useRef, useState } from 'react';
 import { createRequestAction } from '@/app/actions';
 import { formatDateOnly, isFutureBangkokDate } from '@/lib/datetime';
 import { Area, Assignee } from '@/lib/requests/types';
@@ -25,6 +25,7 @@ import {
 type RequestFormProps = {
   areas: Area[];
   assignees: Assignee[];
+  submissionId: string;
 };
 
 type CanonicalSurveyorOption = {
@@ -43,7 +44,12 @@ const WEEKDAY_LABELS: Record<string, string> = {
   Sunday: 'อาทิตย์'
 };
 
-export function RequestForm({ areas, assignees }: RequestFormProps) {
+export function RequestForm({ areas, assignees, submissionId }: RequestFormProps) {
+  const [createState, createFormAction, isCreatePending] = useActionState(createRequestAction, {
+    error: null
+  });
+  const submitLockRef = useRef(false);
+  const [isSubmitLocked, setIsSubmitLocked] = useState(false);
   const [intent, setIntent] = useState<RequestIntent | ''>('');
   const [meterSize, setMeterSize] = useState<MeterSize | ''>('');
   const [phase, setPhase] = useState<PhaseType | ''>('');
@@ -66,6 +72,13 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   const [landmark, setLandmark] = useState('');
   const [surveyDateError, setSurveyDateError] = useState<string | null>(null);
   const [lastAutoAppliedRecommendationKey, setLastAutoAppliedRecommendationKey] = useState('');
+
+  useEffect(() => {
+    if (!isCreatePending && createState.error) {
+      submitLockRef.current = false;
+      setIsSubmitLocked(false);
+    }
+  }, [createState.error, isCreatePending]);
 
   const selectedArea = useMemo(() => areas.find((area) => area.code === areaCode), [areas, areaCode]);
   const surveyorOptions = useMemo<CanonicalSurveyorOption[]>(
@@ -292,6 +305,11 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
   }, [areaCode, assignees, recommendation, selectedSurveyDate, selectedSurveyorId, surveyorOptions]);
 
   function handleSubmit(event: FormEvent<HTMLFormElement>) {
+    if (submitLockRef.current) {
+      event.preventDefault();
+      return;
+    }
+
     if (!intent) {
       event.preventDefault();
       setIntentError('กรุณาเลือกลักษณะงาน');
@@ -351,10 +369,12 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
     setIntentError(null);
     setMeterSizeError(null);
     setPhaseError(null);
+    submitLockRef.current = true;
+    setIsSubmitLocked(true);
   }
 
   return (
-    <form action={createRequestAction} className="card space-y-5 p-6" onSubmit={handleSubmit}>
+    <form action={createFormAction} className="card space-y-5 p-6" onSubmit={handleSubmit}>
       <section className="space-y-4 rounded-xl border border-slate-200 bg-slate-50 p-4">
         <div>
           <h3 className="text-sm font-semibold text-slate-700">ประเภทคำร้อง</h3>
@@ -460,6 +480,7 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
         <input name="request_type" type="hidden" value={resolvedSelection?.requestType ?? ''} readOnly />
         <input name="flow_type" type="hidden" value={resolvedSelection?.flowType ?? ''} readOnly />
         <input name="path_family" type="hidden" value={resolvedSelection?.pathFamily ?? ''} readOnly />
+        <input name="submission_id" type="hidden" value={submissionId} readOnly />
       </section>
 
       <div>
@@ -704,8 +725,14 @@ export function RequestForm({ areas, assignees }: RequestFormProps) {
         submitError={locationError}
       />
 
-      <button className="btn-primary w-full" type="submit">
-        บันทึกคำร้อง
+      {createState.error && !isSubmitLocked && !isCreatePending ? (
+        <p aria-live="polite" className="text-sm text-rose-600" role="alert">
+          {createState.error}
+        </p>
+      ) : null}
+
+      <button className="btn-primary w-full" disabled={isSubmitLocked || isCreatePending} type="submit">
+        {isSubmitLocked || isCreatePending ? 'กำลังบันทึก...' : 'บันทึกคำร้อง'}
       </button>
     </form>
   );

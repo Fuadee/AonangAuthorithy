@@ -33,6 +33,7 @@ create table if not exists public.survey_schedules (
 
 create table if not exists public.service_requests (
   id uuid primary key default gen_random_uuid(),
+  submission_id uuid unique,
   request_no text unique not null,
   customer_name text not null,
   phone text not null,
