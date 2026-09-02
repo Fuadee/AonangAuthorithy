@@ -125,6 +125,15 @@ create table if not exists public.service_requests (
   krabi_completed_at timestamptz,
   forwarded_to_expansion_at timestamptz,
   forwarded_to_expansion_note text,
+  constraint service_requests_manager_review_prerequisites_check
+    check (
+      status <> 'WAIT_MANAGER_REVIEW'
+      or (
+        request_type not in ('METER_30_100_1P', 'METER_30_100_3P')
+        and invoice_signed_at is not null
+        and paid_at is not null
+      )
+    ),
   constraint service_requests_location_coordinates_pair
     check ((latitude is null and longitude is null) or (latitude is not null and longitude is not null)),
   created_at timestamptz not null default now(),

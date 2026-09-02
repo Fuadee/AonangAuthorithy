@@ -26,6 +26,7 @@ import {
   isThirtyOneHundredRequestType
 } from '@/lib/requests/types';
 import { resolveRequestSubmission } from '@/lib/requests/request-intent';
+import { resolvePassedSurveyStatus, resolveSurveyCompletionStatus } from '@/lib/requests/workflow-transitions';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 function requiredField(formData: FormData, key: string): string {
@@ -161,7 +162,7 @@ const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>
   KRABI_ESTIMATION_COMPLETED: ['BILL_ISSUED'],
   BILL_ISSUED: ['COORDINATED_WITH_CONSTRUCTION'],
   WAIT_ACTION_CONFIRMATION: ['WAIT_MANAGER_REVIEW', 'WAIT_AONANG_MANAGER_FINAL_APPROVAL'],
-  WAIT_MANAGER_REVIEW: ['COMPLETED', 'SENT_TO_KRABI', 'RETURNED_FOR_RESURVEY'],
+  WAIT_MANAGER_REVIEW: ['COMPLETED'],
   WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL: ['SENT_TO_KRABI', 'RETURNED_FOR_RESURVEY'],
   SURVEY_OVERLOAD_REPORTED: ['COMPLETED_OVERLOAD_FORWARD'],
   SENT_TO_KRABI: ['WAIT_KRABI_DOCUMENT_CHECK', 'WAIT_KRABI_APPROVAL'],
@@ -485,8 +486,14 @@ export async function updateRequestStatusAction(formData: FormData) {
     throw new Error('งานขยายเขตต้องกดวาดผังเสร็จเพื่อไปสถานะรอจัดส่งเอกสาร');
   }
 
-  if (nextStatus === 'WAIT_MANAGER_REVIEW' && !canMoveToManagerReview(request)) {
-    throw new Error('ยังส่งให้ผู้จัดการตรวจไม่ได้ เพราะยังเซ็นใบแจ้งหนี้/ชำระเงินไม่ครบ');
+  if (nextStatus === 'WAIT_MANAGER_REVIEW') {
+    if (isThirtyOneHundredRequestType(request.request_type as RequestType)) {
+      throw new Error('งานขอมิเตอร์ 30/100 ต้องใช้สถานะผู้จัดการก่อนส่งกระบี่หรืออนุมัติรอบสุดท้ายตามขั้นตอน');
+    }
+
+    if (!canMoveToManagerReview(request)) {
+      throw new Error('ยังส่งให้ผู้จัดการตรวจไม่ได้ เพราะยังเซ็นใบแจ้งหนี้/ชำระเงินไม่ครบ');
+    }
   }
 
   const { error } = await supabase
@@ -787,18 +794,7 @@ export async function completeSurveyAction(formData: FormData) {
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status:
-        requestType === 'METER_30_100_1P'
-          ? 'WAIT_MANAGER_REVIEW'
-          : requestType === 'METER_30_100_3P'
-            ? 'CHECK_3PHASE_CAPABILITY'
-          : requestType === 'METER'
-            ? collectDocsOnSite
-              ? 'SURVEY_COMPLETED'
-              : 'WAIT_BILLING'
-            : requestType === 'METER_TO_3PHASE'
-            ? 'CHECK_3PHASE_CAPABILITY'
-            : 'WAIT_LAYOUT_DRAWING',
+      status: resolveSurveyCompletionStatus(requestType, collectDocsOnSite),
       survey_note: surveyNote,
       survey_completed_at: nowIso,
       updated_at: nowIso
@@ -1376,7 +1372,7 @@ export async function markSurveyPassedAction(formData: FormData) {
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: ['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type as RequestType) ? 'WAIT_MANAGER_REVIEW' : 'WAIT_BILLING',
+      status: resolvePassedSurveyStatus(request.request_type as RequestType),
       survey_result: 'PASS',
       survey_failure_type: null,
       fix_approved_via: 'RESURVEY',
@@ -1674,7 +1670,7 @@ export async function approveFixFromPhotoAction(formData: FormData) {
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: ['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type as RequestType) ? 'WAIT_MANAGER_REVIEW' : 'WAIT_BILLING',
+      status: resolvePassedSurveyStatus(request.request_type as RequestType),
       photo_review_status: 'APPROVED',
       photo_reviewed_at: nowIso,
       photo_reviewed_by: reviewer,
@@ -2298,10 +2294,10 @@ export async function approveManagerReviewAction(formData: FormData) {
   assertMeterLoopAllowed(request.request_type as RequestType);
 
   if (isThirtyOneHundredRequestType(request.request_type as RequestType)) {
-    if (!['WAIT_MANAGER_REVIEW', 'WAIT_AONANG_MANAGER_FINAL_APPROVAL'].includes(request.status)) {
-      throw new Error('ผู้จัดการอนุมัติได้เฉพาะงานขอมิเตอร์ 30/100 ที่รอผู้จัดการพิจารณา');
-    }
-  } else if (request.status !== 'WAIT_MANAGER_REVIEW') {
+    throw new Error('งานขอมิเตอร์ 30/100 ต้องใช้ action ผู้จัดการก่อนส่งกระบี่หรืออนุมัติรอบสุดท้ายตามขั้นตอน');
+  }
+
+  if (request.status !== 'WAIT_MANAGER_REVIEW') {
     throw new Error('ผู้จัดการอนุมัติได้เฉพาะงานที่รอผู้จัดการตรวจ');
   }
 
@@ -2309,15 +2305,10 @@ export async function approveManagerReviewAction(formData: FormData) {
     throw new Error('ยังอนุมัติไม่ได้ เพราะยังไม่ครบเงื่อนไขเซ็นใบแจ้งหนี้และชำระเงิน');
   }
 
-  const nextStatus =
-    isThirtyOneHundredRequestType(request.request_type as RequestType) && request.status === 'WAIT_MANAGER_REVIEW'
-      ? 'SENT_TO_KRABI'
-      : 'COMPLETED';
-
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: nextStatus,
+      status: 'COMPLETED',
       updated_at: nowIso
     })
     .eq('id', requestId);
@@ -2378,7 +2369,7 @@ export async function returnRequestForResurveyAction(formData: FormData) {
     throw new Error('ส่งกลับตรวจสอบใหม่ได้เฉพาะงานขอมิเตอร์ 30/100');
   }
 
-  if (!['WAIT_MANAGER_REVIEW', 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL'].includes(request.status)) {
+  if (request.status !== 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL') {
     throw new Error('ส่งกลับตรวจสอบใหม่ได้เฉพาะงานที่อยู่คิวผู้จัดการ');
   }
 
