@@ -4,8 +4,6 @@ import { FlowTypeBadge } from '@/components/queue/flow-type-badge';
 import { notFound } from 'next/navigation';
 import { LocationPreview } from '@/components/location-preview';
 import {
-  canMoveToBilling,
-  canMoveToManagerReview,
   getFinalApprovalSource,
   getCurrentSurveyDate,
   getCustomerDelaySummary,
@@ -25,9 +23,7 @@ import {
   getRequestStatusLabelForDisplay,
   isOverloadCompletedAwaitingKrabi,
   REQUEST_STATUS_DESCRIPTION,
-  isInvoiceSigned,
   needsRescheduleAfterDocuments,
-  isPaid,
   isExpansionWorkflowStatus,
   RequestStatus,
   RequestType,
@@ -187,22 +183,12 @@ function getNextStepSummary(
       case 'WAIT_RECEIVE_FROM_KRABI':
       case 'WAIT_ELIGIBILITY_REVIEW':
         return {
-          nextStep: 'บันทึกผลตรวจสอบสิทธิ์ (ผ่าน = ส่งผู้จัดการอนุมัติ, ไม่ผ่าน = ไปออกใบแจ้งหนี้)',
-          owner: 'การเงิน'
-        };
-      case 'WAIT_BILLING':
-        return {
-          nextStep: 'เจ้าหน้าที่ออกใบแจ้งหนี้และบันทึกผู้ดำเนินการ',
-          owner: 'การเงิน'
-        };
-      case 'WAIT_PAYMENT':
-        return {
-          nextStep: 'รอบันทึกชำระเงิน จากนั้นส่งให้ผู้จัดการอ่าวนางอนุมัติรอบสุดท้าย',
-          owner: 'การเงิน'
+          nextStep: 'บันทึกผลตรวจสอบสิทธิ์ แล้วส่งผู้จัดการอ่าวนางตรวจสอบการเงินและอนุมัติขั้นสุดท้าย',
+          owner: 'เจ้าหน้าที่ตรวจสอบสิทธิ์'
         };
       case 'WAIT_AONANG_MANAGER_FINAL_APPROVAL':
         return {
-          nextStep: 'ผู้จัดการอ่าวนางอนุมัติรอบสุดท้ายก่อนปิดงาน',
+          nextStep: 'ผู้จัดการอ่าวนางตรวจสอบการเงินจากหลักฐานภายนอกระบบ และอนุมัติขั้นสุดท้ายก่อนปิดงาน',
           owner: 'ผู้จัดการอ่าวนาง'
         };
       case 'SURVEY_OVERLOAD_REPORTED':
@@ -239,12 +225,8 @@ function getNextStepSummary(
           return { nextStep: 'เข้าสู่ flow สำรวจแบบงานขอมิเตอร์แล้ว ให้ตัดสินใจผลสำรวจว่า “ผ่าน” หรือ “ไม่ผ่าน”', owner: 'นักสำรวจ' };
         }
         return { nextStep: 'ตัดสินใจว่าระบบรองรับ 3 เฟสหรือไม่', owner: 'นักสำรวจ' };
-      case 'WAIT_BILLING':
-        return { nextStep: 'ผลสำรวจผ่านแล้ว รอออกใบแจ้งหนี้เหมือนงานขอมิเตอร์', owner: 'การเงิน' };
-      case 'WAIT_ACTION_CONFIRMATION':
-        return { nextStep: 'บันทึก “เซ็นใบแจ้งหนี้” และ “ชำระเงิน” ให้ครบทั้งสองรายการ', owner: 'นักสำรวจ / การเงิน' };
       case 'WAIT_MANAGER_REVIEW':
-        return { nextStep: 'ผู้จัดการตรวจเอกสารและอนุมัติปิดงาน', owner: 'ผู้จัดการ' };
+        return { nextStep: 'ผู้จัดการตรวจสอบการเงินจากหลักฐานภายนอกระบบ และอนุมัติติดตั้ง', owner: 'ผู้จัดการ' };
       case 'COMPLETED':
         return { nextStep: 'ปิดงานเรียบร้อยแล้ว', owner: 'เสร็จสิ้น' };
       case 'WAIT_CUSTOMER_FIX':
@@ -282,7 +264,22 @@ function getNextStepSummary(
         nextStep: 'สำรวจหน้างานและบันทึกผลสำรวจ',
         owner: 'นักสำรวจ'
       };
+    case 'WAIT_MANAGER_REVIEW':
+      return {
+        nextStep: 'ผู้จัดการตรวจสอบการเงินจากหลักฐานภายนอกระบบ และอนุมัติติดตั้ง',
+        owner: 'ผู้จัดการอ่าวนาง'
+      };
     case 'SURVEY_COMPLETED':
+      if (requestType === 'METER') {
+        return {
+          nextStep: 'ยืนยันว่าได้รับเอกสารหน้างานครบแล้ว จากนั้นส่งผู้จัดการตรวจสอบการเงินและอนุมัติติดตั้ง',
+          owner: 'เจ้าหน้าที่รับคำร้อง / นักสำรวจ'
+        };
+      }
+      return {
+        nextStep: 'วาดผังและยืนยัน “วาดผังเสร็จ”',
+        owner: 'นักสำรวจ'
+      };
     case 'WAIT_LAYOUT_DRAWING':
       return {
         nextStep: 'วาดผังและยืนยัน “วาดผังเสร็จ”',
@@ -315,11 +312,6 @@ function getNextStepSummary(
       };
     case 'KRABI_ESTIMATION_COMPLETED':
       return {
-        nextStep: 'ยืนยันว่าออกใบแจ้งหนี้แล้ว',
-        owner: 'เจ้าหน้าที่'
-      };
-    case 'BILL_ISSUED':
-      return {
         nextStep: 'ยืนยันว่า ผกส.รับเรื่องแล้ว เพื่อจบ flow ฝั่งกระบี่',
         owner: 'เจ้าหน้าที่'
       };
@@ -341,16 +333,9 @@ function getTimeline(request: {
   survey_reviewed_at: string | null;
   survey_reschedule_date: string | null;
   survey_completed_at: string | null;
-  billed_at: string | null;
-  invoice_signed_at: string | null;
-  paid_at: string | null;
   updated_at: string;
   status: RequestStatus;
   survey_note: string | null;
-  billing_note: string | null;
-  billed_by: string | null;
-  invoice_signed_by: string | null;
-  paid_by: string | null;
   document_status: 'COMPLETE' | 'INCOMPLETE' | null;
   collect_docs_on_site: boolean;
   survey_date_initial: string | null;
@@ -630,44 +615,6 @@ function getTimeline(request: {
     });
   }
 
-  if (request.billed_at) {
-    const detail: string[] = [];
-    if (request.billed_by) {
-      detail.push(`ออกโดย: ${request.billed_by}`);
-    }
-    if (request.billing_note) {
-      detail.push(`หมายเหตุ: ${request.billing_note}`);
-    }
-
-    items.push({
-      key: 'billed',
-      title: 'ออกใบแจ้งหนี้แล้ว',
-      description: detail.length ? detail.join(' | ') : undefined,
-      at: request.billed_at,
-      sortAt: resolveTimelineSortAt(request.billed_at)
-    });
-  }
-
-  if (request.invoice_signed_at) {
-    items.push({
-      key: 'surveyor-signed',
-      title: 'นักสำรวจเซ็นรับรองใบแจ้งหนี้',
-      description: request.invoice_signed_by ? `ผู้เซ็น: ${request.invoice_signed_by}` : undefined,
-      at: request.invoice_signed_at,
-      sortAt: resolveTimelineSortAt(request.invoice_signed_at)
-    });
-  }
-
-  if (request.paid_at) {
-    items.push({
-      key: 'paid',
-      title: 'ยืนยันชำระเงินแล้ว',
-      description: request.paid_by ? `ยืนยันโดย: ${request.paid_by}` : undefined,
-      at: request.paid_at,
-      sortAt: resolveTimelineSortAt(request.paid_at)
-    });
-  }
-
   if (request.updated_at !== request.created_at) {
     items.push({
       key: 'updated',
@@ -688,7 +635,7 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
     .select(
-      'id,request_no,customer_name,phone,request_type,request_intent,meter_size,phase,flow_type,area_name,assignee_id,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,survey_failure_type,fix_verification_mode,customer_fix_note,customer_fix_reported_at,overload_report_reason,overload_report_note,overload_reported_at,overload_reported_by,manager_overload_approved_at,manager_overload_approved_by,krabi_reference_no,krabi_submitted_at,krabi_submitted_by,manager_return_reason,manager_return_checklist,manager_returned_by,manager_returned_at,survey_round,resurvey_note,resurvey_completed_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,billing_amount,billing_note,billed_at,billed_by,invoice_signed_at,invoice_signed_by,paid_at,paid_by,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,forwarded_to_expansion_at,forwarded_to_expansion_note,three_phase_capability_result,three_phase_capability_checked_at,house_number,village_no,road,landmark,latitude,longitude,location_note,created_at,updated_at'
+      'id,request_no,customer_name,phone,request_type,request_intent,meter_size,phase,flow_type,area_name,assignee_id,assignee_name,assigned_surveyor_id,assigned_surveyor,scheduled_survey_date,survey_date_initial,survey_date_current,previous_survey_date,survey_rescheduled_at,survey_reschedule_reason,documents_received_at,awaiting_customer_documents_since,status,survey_note,survey_reschedule_date,survey_reviewed_at,survey_completed_at,survey_result,survey_failure_type,fix_verification_mode,customer_fix_note,customer_fix_reported_at,overload_report_reason,overload_report_note,overload_reported_at,overload_reported_by,manager_overload_approved_at,manager_overload_approved_by,krabi_reference_no,krabi_submitted_at,krabi_submitted_by,manager_return_reason,manager_return_checklist,manager_returned_by,manager_returned_at,survey_round,resurvey_note,resurvey_completed_at,photo_review_status,photo_reviewed_at,photo_reviewed_by,fix_approved_via,document_status,collect_docs_on_site,incomplete_docs_note,reject_reason,rejected_by,rejected_at,is_document_ready,document_prepared_at,planned_dispatch_date,dispatched_to_krabi_at,dispatched_to_krabi_by,krabi_received_at,krabi_in_progress_at,krabi_completed_at,forwarded_to_expansion_at,forwarded_to_expansion_note,three_phase_capability_result,three_phase_capability_checked_at,house_number,village_no,road,landmark,latitude,longitude,location_note,created_at,updated_at'
     )
     .eq('id', id)
     .maybeSingle();
@@ -713,10 +660,6 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
   const currentQueue = getRequestQueueGroup(requestStatus);
   const documentSummary = getDocumentStatusSummary(request);
   const postSurveyFixSummary = getPostSurveyFixSummary(request);
-  const invoiceSigned = isInvoiceSigned(request);
-  const paid = isPaid(request);
-  const canGoBilling = canMoveToBilling(request);
-  const readyForManager = canMoveToManagerReview(request);
   const nextStepSummary = getNextStepSummary(requestStatus, requestType, request.three_phase_capability_result);
   const documentReviewRules = getDocumentReviewRules(requestType);
   const currentSurveyDate = getCurrentSurveyDate(request);
@@ -736,16 +679,9 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
     survey_reviewed_at: request.survey_reviewed_at,
     survey_reschedule_date: request.survey_reschedule_date,
     survey_completed_at: request.survey_completed_at,
-    billed_at: request.billed_at,
-    invoice_signed_at: request.invoice_signed_at,
-    paid_at: request.paid_at,
     updated_at: request.updated_at,
     status: requestStatus,
     survey_note: request.survey_note,
-    billing_note: request.billing_note,
-    billed_by: request.billed_by,
-    invoice_signed_by: request.invoice_signed_by,
-    paid_by: request.paid_by,
     document_status: request.document_status,
     collect_docs_on_site: request.collect_docs_on_site,
     survey_date_initial: request.survey_date_initial,
@@ -1133,65 +1069,12 @@ export default async function RequestDetailPage({ params }: RequestDetailPagePro
             </div>
           </dl>
 
-          {!canGoBilling && request.status === 'SURVEY_COMPLETED' ? (
+          {request.collect_docs_on_site && request.document_status !== 'COMPLETE' && request.status === 'SURVEY_COMPLETED' ? (
             <div className="mt-4 rounded-lg border border-amber-300 bg-amber-50 p-4">
               <p className="text-sm font-semibold text-amber-800">เคสรับเอกสารหน้างาน ยังต้องยืนยันเอกสารครบก่อน</p>
-              <p className="mt-1 text-sm text-amber-700">ยังไม่สามารถไปสถานะรอออกใบแจ้งหนี้ได้จนกว่าจะกด “เอกสารครบแล้ว”</p>
+              <p className="mt-1 text-sm text-amber-700">ยังไม่สามารถส่งให้ผู้จัดการอนุมัติได้จนกว่าจะกด “เอกสารครบแล้ว”</p>
             </div>
           ) : null}
-        </section>
-      ) : null}
-
-      {['METER', 'METER_30_100_1P', 'METER_30_100_3P'].includes(requestType) ? (
-        <section className="card p-6">
-          <h3 className="text-lg font-semibold">ข้อมูลใบแจ้งหนี้งานขอมิเตอร์</h3>
-          <dl className="mt-4 grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
-            <div>
-              <dt className="text-sm text-slate-500">ออกใบแจ้งหนี้เมื่อ</dt>
-              <dd className="mt-1 font-medium">{formatDateTime(request.billed_at)}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-slate-500">ออกโดย</dt>
-              <dd className="mt-1 font-medium">{request.billed_by ?? '-'}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-slate-500">นักสำรวจเซ็นเมื่อ</dt>
-              <dd className="mt-1 font-medium">{formatDateTime(request.invoice_signed_at)}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-slate-500">ผู้เซ็น</dt>
-              <dd className="mt-1 font-medium">{request.invoice_signed_by ?? '-'}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-slate-500">ชำระเงินเมื่อ</dt>
-              <dd className="mt-1 font-medium">{formatDateTime(request.paid_at)}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-slate-500">รับชำระโดย</dt>
-              <dd className="mt-1 font-medium">{request.paid_by ?? '-'}</dd>
-            </div>
-            <div>
-              <dt className="text-sm text-slate-500">หมายเหตุใบแจ้งหนี้</dt>
-              <dd className="mt-1 font-medium">{request.billing_note ?? '-'}</dd>
-            </div>
-          </dl>
-
-          <div className="mt-4 rounded-lg border border-slate-200 bg-slate-50 p-4">
-            <p className="text-sm font-semibold text-slate-800">สรุปเงื่อนไขหลังแจ้งหนี้</p>
-            <ul className="mt-2 space-y-2 text-sm text-slate-700">
-              <li>
-                เซ็นใบแจ้งหนี้: {invoiceSigned ? 'เสร็จแล้ว' : 'ยังไม่เสร็จ'} {request.invoice_signed_by ? `(${request.invoice_signed_by})` : ''}
-              </li>
-              <li>
-                ชำระเงิน: {paid ? 'เสร็จแล้ว' : 'ยังไม่เสร็จ'} {request.paid_by ? `(${request.paid_by})` : ''}
-              </li>
-            </ul>
-            {readyForManager ? (
-              <p className="mt-2 text-sm text-emerald-700">ครบทั้ง 2 เงื่อนไขแล้ว ระบบพร้อมส่งต่อผู้จัดการตรวจ</p>
-            ) : (
-              <p className="mt-2 text-sm text-amber-700">ยังต้องดำเนินการอีก {invoiceSigned ? '' : 'เซ็นใบแจ้งหนี้'}{!invoiceSigned && !paid ? ' และ ' : ''}{paid ? '' : 'ชำระเงิน'}</p>
-            )}
-          </div>
         </section>
       ) : null}
 

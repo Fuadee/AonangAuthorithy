@@ -2,7 +2,6 @@ import {
   canApproveFixFromPhoto,
   canEvaluateThreePhaseCapability,
   canMarkSurveyPassed,
-  canMoveToManagerReview,
   canStartSurvey,
   isThirtyOneHundredRequestType,
   RequestStatus,
@@ -16,6 +15,7 @@ export type WorkflowActionKey =
   | 'DOC_INCOMPLETE_COLLECT_ON_SITE'
   | 'DOC_INCOMPLETE_WAIT_CUSTOMER'
   | 'CONFIRM_DOCS_RECEIVED'
+  | 'CONFIRM_ON_SITE_DOCS'
   | 'START_SURVEY'
   | 'SCHEDULE_SURVEY'
   | 'EDIT_SURVEY_DATE'
@@ -29,9 +29,6 @@ export type WorkflowActionKey =
   | 'SCHEDULE_RESURVEY'
   | 'PHOTO_APPROVE'
   | 'PHOTO_REJECT_TO_RESURVEY'
-  | 'ISSUE_BILL'
-  | 'SURVEYOR_SIGN'
-  | 'CONFIRM_PAYMENT'
   | 'MANAGER_APPROVE'
   | 'MANAGER_RETURN_FOR_RESURVEY'
   | 'RESTART_RETURNED_RESURVEY'
@@ -41,11 +38,8 @@ export type WorkflowActionKey =
   | 'KRABI_RETURN_FOR_FIX'
   | 'KRABI_FIX_COMPLETED'
   | 'KRABI_ESTIMATION_COMPLETED'
-  | 'KRABI_BILL_ISSUED'
   | 'COORDINATED_WITH_CONSTRUCTION'
   | 'COMPLETE_DESIGN_ESTIMATE'
-  | 'ISSUE_3PHASE_BILL'
-  | 'CONFIRM_3PHASE_PAYMENT'
   | 'COMPLETE_INSTALLATION'
   | 'COMPLETE_INSPECTION'
   | 'SEND_PRE_KRABI_APPROVAL'
@@ -59,7 +53,6 @@ export type WorkflowActionKey =
   | 'SEND_TO_ELIGIBILITY_REVIEW'
   | 'ELIGIBILITY_PASS'
   | 'ELIGIBILITY_FAIL'
-  | 'MOVE_TO_FINAL_MANAGER_APPROVAL'
   | 'FINAL_MANAGER_APPROVE'
   | 'COMPLETE_WORK'
   | 'MANAGER_APPROVE_OVERLOAD_FORWARD';
@@ -74,6 +67,7 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   DOC_INCOMPLETE_COLLECT_ON_SITE: 'เอกสารไม่ครบ (รับเอกสารหน้างาน)',
   DOC_INCOMPLETE_WAIT_CUSTOMER: 'แจ้งว่ารอเอกสารจากลูกค้า',
   CONFIRM_DOCS_RECEIVED: 'ได้รับเอกสารแล้ว',
+  CONFIRM_ON_SITE_DOCS: 'ยืนยันเอกสารหน้างานครบ',
   START_SURVEY: 'เริ่มสำรวจ',
   SCHEDULE_SURVEY: 'กำหนดวันสำรวจ',
   EDIT_SURVEY_DATE: 'แก้ไขวันนัด',
@@ -87,10 +81,7 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   SCHEDULE_RESURVEY: 'นัดตรวจซ้ำ',
   PHOTO_APPROVE: 'ตรวจข้อมูลแก้ไขผ่าน',
   PHOTO_REJECT_TO_RESURVEY: 'นัดสำรวจใหม่',
-  ISSUE_BILL: 'ส่งเข้าการเงิน / ออกใบแจ้งหนี้',
-  SURVEYOR_SIGN: 'เซ็นใบแจ้งหนี้แล้ว',
-  CONFIRM_PAYMENT: 'ชำระเงินแล้ว',
-  MANAGER_APPROVE: 'อนุมัติส่งต่อ Flow มิเตอร์',
+  MANAGER_APPROVE: 'ตรวจสอบการเงิน + อนุมัติติดตั้ง',
   MANAGER_RETURN_FOR_RESURVEY: 'ส่งกลับให้ตรวจสอบใหม่',
   RESTART_RETURNED_RESURVEY: 'ตั้งต้นงานสำรวจใหม่',
   LAYOUT_DRAWING_DONE: 'วาดผังขยายเขตเสร็จ',
@@ -99,11 +90,8 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   KRABI_RETURN_FOR_FIX: 'เอกสารไม่พร้อม ส่งกลับแก้ไข',
   KRABI_FIX_COMPLETED: 'แก้ไขเอกสารแล้ว / พร้อมส่งใหม่',
   KRABI_ESTIMATION_COMPLETED: 'ประมาณการขยายเขตเสร็จ',
-  KRABI_BILL_ISSUED: 'ออกใบแจ้งหนี้ขยายเขตแล้ว',
   COORDINATED_WITH_CONSTRUCTION: 'ส่งต่อก่อสร้างขยายเขต',
   COMPLETE_DESIGN_ESTIMATE: 'ออกแบบ / ประเมินเสร็จ',
-  ISSUE_3PHASE_BILL: 'ออกใบแจ้งหนี้ 3 เฟส',
-  CONFIRM_3PHASE_PAYMENT: 'ยืนยันชำระเงิน 3 เฟส',
   COMPLETE_INSTALLATION: 'ติดตั้งเปลี่ยนมิเตอร์เสร็จ',
   COMPLETE_INSPECTION: 'ตรวจสอบหลังติดตั้งผ่าน',
   SEND_PRE_KRABI_APPROVAL: 'ส่งให้ ผจก.อ่าวนางอนุมัติก่อนส่งกระบี่',
@@ -117,8 +105,7 @@ export const WORKFLOW_ACTION_LABELS: Record<WorkflowActionKey, string> = {
   SEND_TO_ELIGIBILITY_REVIEW: 'ตรวจสอบสิทธิ์',
   ELIGIBILITY_PASS: 'บันทึกว่าตรวจสอบสิทธิ์ผ่าน',
   ELIGIBILITY_FAIL: 'บันทึกว่าตรวจสอบสิทธิ์ไม่ผ่าน',
-  MOVE_TO_FINAL_MANAGER_APPROVAL: 'ส่งให้ ผจก.อ่าวนางอนุมัติรอบสุดท้าย',
-  FINAL_MANAGER_APPROVE: 'อนุมัติปิดงาน',
+  FINAL_MANAGER_APPROVE: 'ตรวจสอบการเงิน + อนุมัติขั้นสุดท้าย',
   COMPLETE_WORK: 'ปิดงานเสร็จสิ้น',
   MANAGER_APPROVE_OVERLOAD_FORWARD: 'อนุมัติบันทึกให้กระบี่ปรับปรุงระบบจำหน่าย'
 };
@@ -134,7 +121,6 @@ const STATUS_INSTRUCTION: Partial<Record<RequestStatus, string>> = {
   IN_SURVEY: 'กรุณาดำเนินการหลังสำรวจ',
   CHECK_3PHASE_CAPABILITY: 'กรุณาเลือกผลว่าระบบรองรับ 3 เฟสหรือไม่',
   DESIGN_AND_ESTIMATE: 'กรุณาบันทึกผลการออกแบบ/ประเมิน',
-  WAIT_PAYMENT: 'กรุณายืนยันการรับชำระเงิน',
   INSTALLATION: 'กรุณาบันทึกผลการติดตั้งเปลี่ยนมิเตอร์',
   INSPECTION: 'กรุณาบันทึกผลตรวจสอบหลังติดตั้ง',
   WAIT_CUSTOMER_FIX: 'กรุณายืนยันการแจ้งแก้ไขของผู้ใช้ไฟ',
@@ -149,10 +135,8 @@ const STATUS_INSTRUCTION: Partial<Record<RequestStatus, string>> = {
   KRABI_APPROVED: 'กรุณาบันทึกรับเอกสารกลับจากกระบี่',
   WAIT_RECEIVE_FROM_KRABI: 'กรุณาตรวจสอบสิทธิ์',
   WAIT_ELIGIBILITY_REVIEW: 'กรุณาเลือกผลการตรวจสอบสิทธิ์',
-  WAIT_BILLING: 'กรุณาออกใบแจ้งหนี้',
-  WAIT_ACTION_CONFIRMATION: 'กรุณาส่งให้ผู้จัดการอ่าวนางอนุมัติรอบสุดท้าย',
-  WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'กรุณาอนุมัติปิดงาน',
-  WAIT_MANAGER_REVIEW: 'กรุณาตรวจสอบและอนุมัติส่งต่อ หรือส่งกลับให้ตรวจสอบใหม่',
+  WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'กรุณาตรวจสอบการเงินจากหลักฐานภายนอกระบบ และอนุมัติขั้นสุดท้าย',
+  WAIT_MANAGER_REVIEW: 'กรุณาตรวจสอบการเงินจากหลักฐานภายนอกระบบ และอนุมัติติดตั้ง',
   RETURNED_FOR_RESURVEY: 'กรุณามอบหมายนักสำรวจใหม่และกำหนดวันนัดสำรวจใหม่ เพื่อเริ่มรอบสำรวจใหม่ทั้งหมด',
   SURVEY_OVERLOAD_REPORTED: 'กรุณาตรวจสอบบันทึกโหลดเกินและอนุมัติส่งต่อกระบี่'
 };
@@ -180,8 +164,6 @@ type WorkflowActionResolverRequest = Pick<
   | 'fix_verification_mode'
   | 'scheduled_survey_date'
   | 'survey_date_current'
-  | 'invoice_signed_at'
-  | 'paid_at'
   | 'is_document_ready'
 > &
   Partial<Pick<ServiceRequest, 'id' | 'flow_type' | 'three_phase_capability_result'>>;
@@ -365,6 +347,16 @@ export function getAvailableRequestActions(
     );
   }
 
+  if (request.request_type === 'METER' && status === 'SURVEY_COMPLETED') {
+    return [
+      toAction('CONFIRM_ON_SITE_DOCS', {
+        variant: 'primary',
+        flow: 'success',
+        requiresConfirmation: 'ยืนยันว่าได้รับเอกสารหน้างานครบแล้วและพร้อมส่งผู้จัดการ?'
+      })
+    ];
+  }
+
 
   if (inExpansionWorkflow && ['SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING'].includes(status)) {
     return [toAction('LAYOUT_DRAWING_DONE', { variant: 'primary', flow: 'success', requiresConfirmation: 'ยืนยันวาดผังเสร็จแล้ว?' })];
@@ -390,10 +382,6 @@ export function getAvailableRequestActions(
   }
 
   if (inExpansionWorkflow && status === 'KRABI_ESTIMATION_COMPLETED') {
-    return [toAction('KRABI_BILL_ISSUED', { variant: 'primary', flow: 'success' })];
-  }
-
-  if (inExpansionWorkflow && status === 'BILL_ISSUED') {
     return [toAction('COORDINATED_WITH_CONSTRUCTION', { variant: 'primary', flow: 'success' })];
   }
 
@@ -440,32 +428,13 @@ export function getAvailableRequestActions(
       ];
     }
 
-    if (status === 'WAIT_BILLING') {
-      return [toAction('ISSUE_BILL', { variant: 'primary', flow: 'primary' })];
-    }
-
-    if (status === 'WAIT_PAYMENT') {
-      return [toAction('MOVE_TO_FINAL_MANAGER_APPROVAL', { variant: 'primary', flow: 'primary' })];
-    }
-
-    if (status === 'WAIT_ACTION_CONFIRMATION') {
-      return [toAction('MOVE_TO_FINAL_MANAGER_APPROVAL', { variant: 'primary', flow: 'primary' })];
-    }
-
     if (status === 'WAIT_AONANG_MANAGER_FINAL_APPROVAL') {
       return [toAction('FINAL_MANAGER_APPROVE', { variant: 'primary', flow: 'success' }), toAction('COMPLETE_WORK', { variant: 'secondary', flow: 'neutral' })];
     }
   }
 
-  if (status === 'WAIT_MANAGER_REVIEW' && ['METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE'].includes(request.request_type) && canMoveToManagerReview(request)) {
-    if (isThirtyOneHundredRequestType(request.request_type)) {
-      return [
-        toAction('MANAGER_APPROVE', { variant: 'primary', flow: 'primary', requiresConfirmation: 'ยืนยันอนุมัติส่งต่อกระบี่?' }),
-        toAction('MANAGER_RETURN_FOR_RESURVEY', { variant: 'secondary', intent: 'warning', flow: 'warning' })
-      ];
-    }
-
-    return [toAction('MANAGER_APPROVE', { variant: 'primary', flow: 'success', requiresConfirmation: 'ยืนยันอนุมัติปิดงาน?' })];
+  if (status === 'WAIT_MANAGER_REVIEW' && ['METER', 'METER_TO_3PHASE'].includes(request.request_type)) {
+    return [toAction('MANAGER_APPROVE', { variant: 'primary', flow: 'success', requiresConfirmation: 'ยืนยันว่าตรวจสอบการเงินแล้วและอนุมัติติดตั้ง?' })];
   }
 
   if (status === 'RETURNED_FOR_RESURVEY' && isThirtyOneHundredRequestType(request.request_type)) {

@@ -32,7 +32,7 @@ type FilterChipProps = {
   label: string;
   isActive: boolean;
   onClick: () => void;
-  tone?: 'default' | 'survey' | 'finance' | 'manager' | 'document' | 'operation' | 'done';
+  tone?: 'default' | 'survey' | 'alert' | 'manager' | 'document' | 'operation' | 'done';
 };
 
 type FilterGroupOption<T extends string> = {
@@ -101,7 +101,7 @@ function normalizeDashboardTypeFilter(value: string | null | undefined): Request
 const STATUS_STYLES = {
   default: 'border-[#0B3FB3] bg-[#0F4ED8] text-white focus-visible:ring-[#155EEF] ring-[#155EEF]/60',
   survey: 'border-[#0B3FB3] bg-[#0F4ED8] text-white focus-visible:ring-[#155EEF] ring-[#155EEF]/60',
-  finance: 'border-[#B45309] bg-[#EA8A00] text-white focus-visible:ring-[#F59E0B] ring-[#F59E0B]/60',
+  alert: 'border-[#B45309] bg-[#EA8A00] text-white focus-visible:ring-[#F59E0B] ring-[#F59E0B]/60',
   manager: 'border-[#B45309] bg-[#EA8A00] text-white focus-visible:ring-[#F59E0B] ring-[#F59E0B]/60',
   document: 'border-[#475569] bg-[#E2E8F0] text-[#334155] focus-visible:ring-[#94A3B8] ring-[#94A3B8]/60',
   operation: 'border-[#0B3FB3] bg-[#0F4ED8] text-white focus-visible:ring-[#155EEF] ring-[#155EEF]/60',
@@ -110,14 +110,13 @@ const STATUS_STYLES = {
 
 const QUEUE_STYLE_KEY: Record<RequestQueueGroup, keyof typeof STATUS_STYLES | null> = {
   SURVEY: 'survey',
-  BILLING: 'finance',
   MANAGER: 'manager',
   DISPATCH: 'document',
   KRABI: 'operation',
   DONE: 'done',
   OTHER: null
 };
-const WAITING_KRABI_STYLE_KEY: FilterChipProps['tone'] = 'finance';
+const WAITING_KRABI_STYLE_KEY: FilterChipProps['tone'] = 'alert';
 
 const FILTER_CHIP_BASE =
   'inline-flex min-h-10 items-center justify-center rounded-md border px-4 py-2 text-sm font-semibold whitespace-nowrap shadow-[0_1px_3px_rgba(15,23,42,0.12)] transition-all duration-200 hover:-translate-y-px hover:shadow-[0_3px_6px_rgba(15,23,42,0.16)] active:translate-y-0 active:shadow-[inset_0_2px_4px_rgba(15,23,42,0.12)] focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-offset-2 focus-visible:ring-offset-white';

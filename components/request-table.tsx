@@ -2,7 +2,6 @@
 
 import Link from 'next/link';
 import { AreaResponsibleCell } from '@/components/area-responsible-cell';
-import { BillingWorkflowActionRenderer } from '@/components/billing-workflow-action-renderer';
 import { RequestStatusBadge } from '@/components/queue/request-status-badge';
 import { RequestTypeFlowCell } from '@/components/queue/request-type-flow-cell';
 import { WorkflowActionButtons } from '@/components/workflow-action-buttons';
@@ -10,7 +9,6 @@ import { getQueueWorkflowActions } from '@/lib/requests/workflow-action-config';
 import {
   getCurrentSurveyDate,
   getDispatchSubStatus,
-  isMeterLikeBillingRequest,
   getResponsiblePersonName,
   RequestStatus,
   ServiceRequest
@@ -96,7 +94,6 @@ export function RequestTable({
           const responsiblePersonName = getResponsiblePersonName(request);
           const dispatchSubStatus = getDispatchSubStatus(request);
           const workflowActions = getQueueWorkflowActions(request);
-          const shouldRenderBillingActions = isMeterLikeBillingRequest(request.request_type, request.status);
           const hasAction = workflowActions.length > 0;
           const dispatchDateMeta = getDispatchDateMeta(request.dispatched_to_krabi_at);
 
@@ -164,17 +161,7 @@ export function RequestTable({
               <div className="flex min-h-14 flex-col items-end justify-center">
                 <p className="text-[11px] font-medium tracking-wide text-slate-500 uppercase lg:hidden">{resolvedActionColumnLabel}</p>
                 <div className="flex min-h-10 w-full justify-end">
-                  {shouldRenderBillingActions ? (
-                    <div className="w-full min-w-[152px]">
-                      <BillingWorkflowActionRenderer
-                        compact
-                        currentStatus={request.status}
-                        isInvoiceSigned={request.invoice_signed_at !== null}
-                        isPaid={request.paid_at !== null}
-                        requestId={request.id}
-                      />
-                    </div>
-                  ) : hasAction ? (
+                  {hasAction ? (
                     <div className="w-full min-w-[152px] [&_button]:min-w-[152px] [&_button]:justify-center [&_details>summary]:min-w-[152px] [&_summary]:justify-center">
                       <WorkflowActionButtons
                         actions={workflowActions}
@@ -301,24 +288,14 @@ export function RequestTable({
                   <td className="px-3 py-3 align-middle text-center">
                     {actionColumnMode === 'workflow' ? (
                       <div className="flex min-h-10 items-center justify-center [&_button]:min-w-[124px] [&_button]:px-2.5 [&_details>summary]:min-w-[124px] [&_details>summary]:px-2.5 [&_summary]:min-w-[124px] [&_summary]:px-2.5">
-                        {isMeterLikeBillingRequest(request.request_type, request.status) ? (
-                          <BillingWorkflowActionRenderer
-                            compact
-                            currentStatus={request.status}
-                            isInvoiceSigned={request.invoice_signed_at !== null}
-                            isPaid={request.paid_at !== null}
-                            requestId={request.id}
-                          />
-                        ) : (
-                          <WorkflowActionButtons
-                            actions={getQueueWorkflowActions(request)}
-                            compact
-                            currentStatus={request.status}
-                            maxVisibleActions={1}
-                            requestId={request.id}
-                            stayOnQueue
-                          />
-                        )}
+                        <WorkflowActionButtons
+                          actions={getQueueWorkflowActions(request)}
+                          compact
+                          currentStatus={request.status}
+                          maxVisibleActions={1}
+                          requestId={request.id}
+                          stayOnQueue
+                        />
                       </div>
                     ) : (
                       <div className="flex justify-center py-0.5">

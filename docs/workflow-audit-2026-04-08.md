@@ -233,3 +233,5 @@ SENT_TO_KRABI / WAIT_KRABI_DOCUMENT_CHECK
   - ไม่รองรับ: ส่งต่องานเดิมไป flow ขยายเขตที่ `WAIT_LAYOUT_DRAWING` ทันที (ไม่สร้างคำร้องใหม่)
 - เพิ่ม trace field ในคำร้องเดิม: `forwarded_to_expansion_at`, `forwarded_to_expansion_note`
 - Timeline มีข้อความ: “ระบบไม่รองรับ 3 เฟส จึงส่งต่อเข้าสู่ขั้นตอนขยายเขต ที่สถานะ WAIT_LAYOUT_DRAWING”
+> เอกสารนี้เป็น snapshot ของ workflow เดิมก่อน migration วันที่ 2026-09-03 และเก็บไว้เพื่อ audit เท่านั้น
+> สถานะ/ขั้นตอนการเงินที่กล่าวถึงด้านล่างไม่ใช่ source of truth ปัจจุบัน กรุณาอ้างอิงโค้ดใน `lib/requests/workflow-transitions.ts`, `lib/requests/workflow-action-config.ts` และ migration ล่าสุด

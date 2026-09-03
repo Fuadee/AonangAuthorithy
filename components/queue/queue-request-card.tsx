@@ -21,8 +21,6 @@ export type QueueRequestCardProps = {
     fixVerificationMode: 'PHOTO_OR_RESURVEY' | 'RESURVEY_ONLY' | null;
     scheduledSurveyDate: string | null;
     surveyDateCurrent: string | null;
-    invoiceSignedAt: string | null;
-    paidAt: string | null;
     isDocumentReady: boolean;
   };
 };
@@ -47,8 +45,6 @@ export function QueueRequestCard({
     fix_verification_mode: workflowContext.fixVerificationMode,
     scheduled_survey_date: workflowContext.scheduledSurveyDate,
     survey_date_current: workflowContext.surveyDateCurrent,
-    invoice_signed_at: workflowContext.invoiceSignedAt,
-    paid_at: workflowContext.paidAt,
     is_document_ready: workflowContext.isDocumentReady
   });
   const hasSurveyor = Boolean(surveyorName);

@@ -14,13 +14,9 @@ import {
   completeThreePhaseInspectionAction,
   completeThreePhaseInstallationAction,
   confirmDocumentsReceivedFromCustomerAction,
-  confirmPaymentReceivedAction,
-  confirmThreePhasePaymentAction,
+  confirmOnSiteDocumentsCompleteAction,
   forwardThreePhaseToExpansionAction,
-  issueBillingAction,
-  issueThreePhaseBillingAction,
   markCoordinatedWithConstructionAction,
-  markExpansionBillIssuedAction,
   markKrabiDocumentFixCompletedAction,
   markKrabiEstimationCompletedAction,
   markKrabiInProgressAction,
@@ -29,7 +25,6 @@ import {
   markSentToKrabiAction,
   markSurveyPassedAction,
   markThreePhaseCapabilitySupportedAction,
-  moveToFinalManagerApprovalAction,
   moveToResurveyAction,
   rejectFixPhotoAndRequireResurveyAction,
   markEligibilityFailedForMeterAction,
@@ -63,10 +58,9 @@ type ActionExecutor = (formData: FormData) => Promise<void>;
 
 const ACTION_EXECUTORS: Partial<Record<WorkflowActionKey, ActionExecutor>> = {
   CONFIRM_DOCS_RECEIVED: confirmDocumentsReceivedFromCustomerAction,
+  CONFIRM_ON_SITE_DOCS: confirmOnSiteDocumentsCompleteAction,
   START_SURVEY: startSurveyAction,
   COMPLETE_SURVEY: completeSurveyAction,
-  ISSUE_BILL: issueBillingAction,
-  CONFIRM_PAYMENT: confirmPaymentReceivedAction,
   SURVEY_PASS: markSurveyPassedAction,
   SURVEY_NEEDS_EXPANSION: markSurveyNeedsExpansionAction,
   REPORT_CUSTOMER_FIX: reportCustomerFixAction,
@@ -82,13 +76,10 @@ const ACTION_EXECUTORS: Partial<Record<WorkflowActionKey, ActionExecutor>> = {
   KRABI_RETURN_FOR_FIX: markKrabiNeedsDocumentFixAction,
   KRABI_FIX_COMPLETED: markKrabiDocumentFixCompletedAction,
   KRABI_ESTIMATION_COMPLETED: markKrabiEstimationCompletedAction,
-  KRABI_BILL_ISSUED: markExpansionBillIssuedAction,
   COORDINATED_WITH_CONSTRUCTION: markCoordinatedWithConstructionAction,
   THREE_PHASE_CAPABLE: markThreePhaseCapabilitySupportedAction,
   THREE_PHASE_NEEDS_EXPANSION: forwardThreePhaseToExpansionAction,
   COMPLETE_DESIGN_ESTIMATE: completeThreePhaseDesignEstimateAction,
-  ISSUE_3PHASE_BILL: issueThreePhaseBillingAction,
-  CONFIRM_3PHASE_PAYMENT: confirmThreePhasePaymentAction,
   COMPLETE_INSTALLATION: completeThreePhaseInstallationAction,
   COMPLETE_INSPECTION: completeThreePhaseInspectionAction,
   APPROVE_PRE_KRABI: approveAonangManagerPreKrabiAction,
@@ -101,7 +92,6 @@ const ACTION_EXECUTORS: Partial<Record<WorkflowActionKey, ActionExecutor>> = {
   SEND_TO_ELIGIBILITY_REVIEW: sendToEligibilityReviewForMeterAction,
   ELIGIBILITY_PASS: markEligibilityPassedForMeterAction,
   ELIGIBILITY_FAIL: markEligibilityFailedForMeterAction,
-  MOVE_TO_FINAL_MANAGER_APPROVAL: moveToFinalManagerApprovalAction,
   FINAL_MANAGER_APPROVE: approveAonangManagerFinalAction,
   COMPLETE_WORK: approveAonangManagerFinalAction
   ,
@@ -136,6 +126,7 @@ function QueueStayInput({ stayOnQueue }: { stayOnQueue: boolean }) {
 function getActionTitle(actionKey: WorkflowActionKey): string {
   const map: Partial<Record<WorkflowActionKey, string>> = {
     THREE_PHASE_CAPABLE: 'ยืนยันว่าระบบรองรับ 3 เฟส',
+    CONFIRM_ON_SITE_DOCS: 'ยืนยันเอกสารหน้างานครบ',
     THREE_PHASE_NEEDS_EXPANSION: 'ยืนยันส่งต่องานขยายเขต',
     COMPLETE_DESIGN_ESTIMATE: 'ยืนยันออกแบบ / ประเมินเสร็จ',
     COMPLETE_INSTALLATION: 'ยืนยันติดตั้งเปลี่ยนมิเตอร์เสร็จ',
@@ -149,8 +140,7 @@ function getActionTitle(actionKey: WorkflowActionKey): string {
     SEND_TO_ELIGIBILITY_REVIEW: 'ตรวจสอบสิทธิ์',
     ELIGIBILITY_PASS: 'ยืนยันผลตรวจสอบสิทธิ์ผ่าน',
     ELIGIBILITY_FAIL: 'ยืนยันผลตรวจสอบสิทธิ์ไม่ผ่าน',
-    MOVE_TO_FINAL_MANAGER_APPROVAL: 'ส่งให้ผู้จัดการอ่าวนางอนุมัติรอบสุดท้าย',
-    FINAL_MANAGER_APPROVE: 'อนุมัติปิดงาน',
+    FINAL_MANAGER_APPROVE: 'ตรวจสอบการเงิน + อนุมัติขั้นสุดท้าย',
     COMPLETE_WORK: 'ปิดงานเสร็จสิ้น'
     ,
     MANAGER_APPROVE_OVERLOAD_FORWARD: 'อนุมัติบันทึกให้กระบี่ปรับปรุงระบบจำหน่าย',
@@ -188,8 +178,7 @@ const SUCCESS_MODAL_ACTIONS: WorkflowActionKey[] = [
   'FINAL_MANAGER_APPROVE',
   'COMPLETE_WORK',
   'COORDINATED_WITH_CONSTRUCTION',
-  'KRABI_ESTIMATION_COMPLETED',
-  'KRABI_BILL_ISSUED'
+  'KRABI_ESTIMATION_COMPLETED'
 ];
 
 const INFO_MODAL_ACTIONS: WorkflowActionKey[] = [
@@ -453,79 +442,6 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, onSuccess, 
   }
 
 
-  if (actionKey === 'ISSUE_BILL') {
-    return (
-      <ModalShell title="ออกใบแจ้งหนี้" onClose={onClose}>
-        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('ISSUE_BILL')}>
-          <input name="request_id" type="hidden" value={requestId} />
-          <QueueStayInput stayOnQueue={stayOnQueue} />
-          <input className="input" name="billed_by" placeholder="ออกโดย" required type="text" />
-          <textarea className="input min-h-24" name="billing_note" placeholder="หมายเหตุ (ถ้ามี)" />
-          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
-          <div className="flex justify-end gap-2">
-            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
-          </div>
-        </form>
-      </ModalShell>
-    );
-  }
-
-  if (actionKey === 'CONFIRM_PAYMENT') {
-    return (
-      <ModalShell title="ยืนยันรับชำระเงิน" onClose={onClose}>
-        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('CONFIRM_PAYMENT')}>
-          <input name="request_id" type="hidden" value={requestId} />
-          <QueueStayInput stayOnQueue={stayOnQueue} />
-          <div>
-            <label className="text-sm font-medium text-slate-700" htmlFor="paid_by">รับชำระโดย</label>
-            <input className="input" disabled={isPending} id="paid_by" name="paid_by" required type="text" />
-          </div>
-          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
-          <div className="flex justify-end gap-2">
-            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
-          </div>
-        </form>
-      </ModalShell>
-    );
-  }
-
-  if (actionKey === 'ISSUE_3PHASE_BILL') {
-    return (
-      <ModalShell title="ออกใบแจ้งหนี้งานเพิ่มเป็นมิเตอร์ 3 เฟส" onClose={onClose}>
-        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('ISSUE_3PHASE_BILL')}>
-          <input name="request_id" type="hidden" value={requestId} />
-          <QueueStayInput stayOnQueue={stayOnQueue} />
-          <input className="input" name="billed_by" placeholder="ออกโดย" required type="text" />
-          <textarea className="input min-h-24" name="billing_note" placeholder="หมายเหตุ (ถ้ามี)" />
-          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
-          <div className="flex justify-end gap-2">
-            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
-          </div>
-        </form>
-      </ModalShell>
-    );
-  }
-
-  if (actionKey === 'CONFIRM_3PHASE_PAYMENT') {
-    return (
-      <ModalShell title="ยืนยันรับชำระเงินงานเพิ่มเป็นมิเตอร์ 3 เฟส" onClose={onClose}>
-        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('CONFIRM_3PHASE_PAYMENT')}>
-          <input name="request_id" type="hidden" value={requestId} />
-          <QueueStayInput stayOnQueue={stayOnQueue} />
-          <input className="input" name="paid_by" placeholder="รับชำระโดย" required type="text" />
-          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
-          <div className="flex justify-end gap-2">
-            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
-          </div>
-        </form>
-      </ModalShell>
-    );
-  }
-
   if (actionKey === 'SURVEY_PASS') {
     return (
       <ModalShell title="ยืนยันสำรวจผ่าน" onClose={onClose}>
@@ -773,22 +689,6 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, onSuccess, 
     );
   }
 
-  if (actionKey === 'KRABI_BILL_ISSUED') {
-    return (
-      <ModalShell title="ยืนยันว่าออกใบแจ้งหนี้แล้ว" onClose={onClose}>
-        <form className="space-y-3" onSubmit={onSubmitWorkflowAction('KRABI_BILL_ISSUED')}>
-          <input name="request_id" type="hidden" value={requestId} />
-          <QueueStayInput stayOnQueue={stayOnQueue} />
-          {submitError ? <p className="rounded-md bg-rose-50 px-3 py-2 text-sm text-rose-700">{submitError}</p> : null}
-          <div className="flex justify-end gap-2">
-            <button className="btn-flow-neutral" disabled={isPending} type="button" onClick={onClose}>ยกเลิก</button>
-            <button className={getModalSubmitButtonClass(actionKey)} disabled={isPending} type="submit">{isPending ? 'กำลังบันทึก...' : 'ยืนยัน'}</button>
-          </div>
-        </form>
-      </ModalShell>
-    );
-  }
-
   if (actionKey === 'COORDINATED_WITH_CONSTRUCTION') {
     return (
       <ModalShell title="ยืนยันว่า ผกส.รับเรื่องแล้ว" onClose={onClose}>
@@ -807,7 +707,7 @@ export function WorkflowActionModal({ actionKey, requestId, onClose, onSuccess, 
 
 
 
-  if (['APPROVE_PRE_KRABI','MOVE_TO_WAIT_KRABI_APPROVAL','MARK_KRABI_APPROVED','START_DOCUMENT_FIX','RESENT_TO_KRABI','RECEIVE_FROM_KRABI','SEND_TO_ELIGIBILITY_REVIEW','ELIGIBILITY_PASS','ELIGIBILITY_FAIL','MOVE_TO_FINAL_MANAGER_APPROVAL','FINAL_MANAGER_APPROVE','COMPLETE_WORK','MANAGER_APPROVE_OVERLOAD_FORWARD'].includes(actionKey)) {
+  if (['CONFIRM_ON_SITE_DOCS','APPROVE_PRE_KRABI','MOVE_TO_WAIT_KRABI_APPROVAL','MARK_KRABI_APPROVED','START_DOCUMENT_FIX','RESENT_TO_KRABI','RECEIVE_FROM_KRABI','SEND_TO_ELIGIBILITY_REVIEW','ELIGIBILITY_PASS','ELIGIBILITY_FAIL','FINAL_MANAGER_APPROVE','COMPLETE_WORK','MANAGER_APPROVE_OVERLOAD_FORWARD'].includes(actionKey)) {
     return (
       <ModalShell title={getActionTitle(actionKey)} onClose={onClose}>
         <form className="space-y-3" onSubmit={onSubmitWorkflowAction(actionKey)}>

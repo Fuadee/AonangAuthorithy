@@ -15,7 +15,6 @@ export const REQUEST_STATUSES = [
   'KRABI_NEEDS_DOCUMENT_FIX',
   'KRABI_IN_PROGRESS',
   'KRABI_ESTIMATION_COMPLETED',
-  'BILL_ISSUED',
   'COORDINATED_WITH_CONSTRUCTION',
   'WAIT_DOCUMENT_REVIEW',
   'WAIT_DOCUMENT_FROM_CUSTOMER',
@@ -37,11 +36,8 @@ export const REQUEST_STATUSES = [
   'CHECK_3PHASE_CAPABILITY',
   'NEEDS_EXPANSION',
   'DESIGN_AND_ESTIMATE',
-  'WAIT_BILLING',
-  'WAIT_PAYMENT',
   'INSTALLATION',
   'INSPECTION',
-  'WAIT_ACTION_CONFIRMATION',
   'WAIT_MANAGER_REVIEW',
   'RETURNED_FOR_RESURVEY',
   'COMPLETED',
@@ -51,7 +47,7 @@ import { formatDateOnly, formatThaiDateTime } from '@/lib/datetime';
 
 export const REQUEST_TYPES = ['METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE', 'EXPANSION'] as const;
 export const FLOW_TYPES = ['METER', 'EXPANSION'] as const;
-export const REQUEST_QUEUE_GROUPS = ['SURVEY', 'DISPATCH', 'KRABI', 'BILLING', 'MANAGER', 'DONE', 'OTHER'] as const;
+export const REQUEST_QUEUE_GROUPS = ['SURVEY', 'DISPATCH', 'KRABI', 'MANAGER', 'DONE', 'OTHER'] as const;
 export const DOCUMENT_STATUSES = ['COMPLETE', 'INCOMPLETE'] as const;
 export const SURVEY_RESULTS = ['PASS', 'FAIL'] as const;
 export const FIX_VERIFICATION_MODES = ['PHOTO_OR_RESURVEY', 'RESURVEY_ONLY'] as const;
@@ -100,7 +96,6 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   KRABI_NEEDS_DOCUMENT_FIX: 'กระบี่ตีกลับให้แก้ไขเอกสาร',
   KRABI_IN_PROGRESS: 'กระบี่กำลังประมาณการ',
   KRABI_ESTIMATION_COMPLETED: 'กระบี่ประมาณการเสร็จแล้ว',
-  BILL_ISSUED: 'ออกใบแจ้งหนี้แล้ว',
   COORDINATED_WITH_CONSTRUCTION: 'แล้วเสร็จ / ผกส.รับเรื่อง',
   WAIT_DOCUMENT_REVIEW: 'รอตรวจเอกสาร',
   WAIT_DOCUMENT_FROM_CUSTOMER: 'รอลูกค้านำเอกสาร',
@@ -118,16 +113,13 @@ export const REQUEST_STATUS_LABELS: Record<RequestStatus, string> = {
   KRABI_APPROVED: 'กระบี่อนุมัติแล้ว',
   WAIT_RECEIVE_FROM_KRABI: 'รอตรวจสอบสิทธิ์',
   WAIT_ELIGIBILITY_REVIEW: 'รอตรวจสอบสิทธิ์',
-  WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'รอผู้จัดการอ่าวนางอนุมัติ',
+  WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'รอตรวจสอบการเงินและอนุมัติขั้นสุดท้าย',
   CHECK_3PHASE_CAPABILITY: 'รอตรวจว่าระบบรองรับ 3 เฟสหรือไม่',
   NEEDS_EXPANSION: 'ต้องขยายเขต (รอส่งต่อ)',
   DESIGN_AND_ESTIMATE: 'ออกแบบ / ประเมิน',
-  WAIT_BILLING: 'ออกใบแจ้งหนี้',
-  WAIT_PAYMENT: 'รอชำระเงิน',
   INSTALLATION: 'ดำเนินการติดตั้งเปลี่ยนมิเตอร์',
   INSPECTION: 'ตรวจสอบหลังติดตั้ง',
-  WAIT_ACTION_CONFIRMATION: 'รอชำระเงิน',
-  WAIT_MANAGER_REVIEW: 'รอผู้จัดการตรวจ',
+  WAIT_MANAGER_REVIEW: 'รอตรวจสอบการเงินและอนุมัติติดตั้ง',
   RETURNED_FOR_RESURVEY: 'ต้องสำรวจใหม่',
   COMPLETED: 'เสร็จสิ้น',
   COMPLETED_OVERLOAD_FORWARD: 'เสร็จสิ้น'
@@ -145,13 +137,12 @@ export const REQUEST_QUEUE_GROUP_LABELS: Record<RequestQueueGroup, string> = {
   SURVEY: 'สำรวจ',
   DISPATCH: 'เอกสาร',
   KRABI: 'ดำเนินการ',
-  BILLING: 'การเงิน',
   MANAGER: 'อนุมัติ',
   DONE: 'เสร็จสิ้น',
   OTHER: 'อื่น ๆ'
 };
 
-export const DASHBOARD_QUEUE_GROUPS: RequestQueueGroup[] = ['SURVEY', 'BILLING', 'MANAGER', 'DISPATCH', 'KRABI', 'DONE'];
+export const DASHBOARD_QUEUE_GROUPS: RequestQueueGroup[] = ['SURVEY', 'MANAGER', 'DISPATCH', 'KRABI', 'DONE'];
 
 export const REQUEST_QUEUE_GROUP_META: Record<
   RequestQueueGroup,
@@ -164,45 +155,38 @@ export const REQUEST_QUEUE_GROUP_META: Record<
     toneClass: 'text-[#3B82F6]',
     showOnDashboard: true
   },
-  BILLING: {
-    label: REQUEST_QUEUE_GROUP_LABELS.BILLING,
-    href: '/billing',
-    order: 2,
-    toneClass: 'text-[#F59E0B]',
-    showOnDashboard: true
-  },
   MANAGER: {
     label: REQUEST_QUEUE_GROUP_LABELS.MANAGER,
     href: '/manager',
-    order: 3,
+    order: 2,
     toneClass: 'text-[#6366F1]',
     showOnDashboard: true
   },
   DISPATCH: {
     label: REQUEST_QUEUE_GROUP_LABELS.DISPATCH,
     href: '/document',
-    order: 4,
+    order: 3,
     toneClass: 'text-[#64748B]',
     showOnDashboard: true
   },
   KRABI: {
     label: REQUEST_QUEUE_GROUP_LABELS.KRABI,
     href: '/krabi',
-    order: 5,
+    order: 4,
     toneClass: 'text-[#6366F1]',
     showOnDashboard: true
   },
   DONE: {
     label: REQUEST_QUEUE_GROUP_LABELS.DONE,
     href: '/dashboard?queue=DONE',
-    order: 6,
+    order: 5,
     toneClass: 'text-[#10B981]',
     showOnDashboard: true
   },
   OTHER: {
     label: REQUEST_QUEUE_GROUP_LABELS.OTHER,
     href: '/dashboard',
-    order: 7,
+    order: 6,
     toneClass: 'text-[#64748B]',
     showOnDashboard: false
   }
@@ -222,7 +206,6 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   KRABI_NEEDS_DOCUMENT_FIX: 'DISPATCH',
   KRABI_IN_PROGRESS: 'KRABI',
   KRABI_ESTIMATION_COMPLETED: 'KRABI',
-  BILL_ISSUED: 'KRABI',
   COORDINATED_WITH_CONSTRUCTION: 'DONE',
   WAIT_DOCUMENT_REVIEW: 'SURVEY',
   WAIT_DOCUMENT_FROM_CUSTOMER: 'SURVEY',
@@ -238,17 +221,14 @@ export const REQUEST_STATUS_QUEUE_GROUP: Record<RequestStatus, RequestQueueGroup
   DOCUMENT_FIX: 'DISPATCH',
   RESENT_TO_KRABI: 'DISPATCH',
   KRABI_APPROVED: 'KRABI',
-  WAIT_RECEIVE_FROM_KRABI: 'BILLING',
-  WAIT_ELIGIBILITY_REVIEW: 'BILLING',
+  WAIT_RECEIVE_FROM_KRABI: 'KRABI',
+  WAIT_ELIGIBILITY_REVIEW: 'KRABI',
   WAIT_AONANG_MANAGER_FINAL_APPROVAL: 'MANAGER',
   CHECK_3PHASE_CAPABILITY: 'SURVEY',
   NEEDS_EXPANSION: 'DISPATCH',
   DESIGN_AND_ESTIMATE: 'SURVEY',
-  WAIT_BILLING: 'BILLING',
-  WAIT_PAYMENT: 'BILLING',
   INSTALLATION: 'SURVEY',
   INSPECTION: 'SURVEY',
-  WAIT_ACTION_CONFIRMATION: 'BILLING',
   WAIT_MANAGER_REVIEW: 'MANAGER',
   RETURNED_FOR_RESURVEY: 'SURVEY',
   COMPLETED: 'DONE',
@@ -290,7 +270,6 @@ export function getStatusesByQueueGroup(queue: RequestQueueGroup): RequestStatus
 }
 
 export const SURVEYOR_VISIBLE_STATUSES: RequestStatus[] = getStatusesByQueueGroup('SURVEY');
-export const BILLING_VISIBLE_STATUSES: RequestStatus[] = getStatusesByQueueGroup('BILLING');
 export const MANAGER_VISIBLE_STATUSES: RequestStatus[] = getStatusesByQueueGroup('MANAGER');
 export const SURVEY_MAP_ACTIVE_STATUS: RequestStatus = 'IN_SURVEY';
 export const SURVEY_MAP_DEFAULT_STATUSES: RequestStatus[] = [SURVEY_MAP_ACTIVE_STATUS];
@@ -443,26 +422,6 @@ export function isMeterFamilyRequestType(requestType: RequestType): boolean {
   return requestType === 'METER' || requestType === 'METER_30_100_1P' || requestType === 'METER_30_100_3P' || requestType === 'METER_TO_3PHASE';
 }
 
-export const METER_LIKE_BILLING_STATUSES: ReadonlyArray<RequestStatus> = [
-  'WAIT_BILLING',
-  'WAIT_PAYMENT',
-  'WAIT_ACTION_CONFIRMATION',
-  'WAIT_AONANG_MANAGER_FINAL_APPROVAL',
-  'WAIT_MANAGER_REVIEW'
-];
-
-export function isMeterLikeBillingRequest(requestType: RequestType, status: RequestStatus): boolean {
-  if (!METER_LIKE_BILLING_STATUSES.includes(status)) {
-    return false;
-  }
-
-  if ((requestType === 'METER_TO_3PHASE' || requestType === 'METER_30_100_3P') && status === 'WAIT_PAYMENT') {
-    return false;
-  }
-
-  return requestType === 'METER' || requestType === 'METER_30_100_1P' || requestType === 'METER_30_100_3P' || requestType === 'METER_TO_3PHASE';
-}
-
 export const EXPANSION_WORKFLOW_STATUSES: RequestStatus[] = [
   'WAIT_LAYOUT_DRAWING',
   'WAITING_TO_SEND_TO_KRABI',
@@ -471,7 +430,6 @@ export const EXPANSION_WORKFLOW_STATUSES: RequestStatus[] = [
   'KRABI_NEEDS_DOCUMENT_FIX',
   'KRABI_IN_PROGRESS',
   'KRABI_ESTIMATION_COMPLETED',
-  'BILL_ISSUED',
   'COORDINATED_WITH_CONSTRUCTION'
 ];
 
@@ -535,14 +493,6 @@ export function getDocumentReviewRules(requestType: RequestType): {
     mode: getDocumentReviewMode(requestType),
     requiredDocuments: getRequiredDocuments(requestType)
   };
-}
-
-export function isInvoiceSigned(request: Pick<ServiceRequest, 'invoice_signed_at'>): boolean {
-  return Boolean(request.invoice_signed_at);
-}
-
-export function isPaid(request: Pick<ServiceRequest, 'paid_at'>): boolean {
-  return Boolean(request.paid_at);
 }
 
 export function isDocumentComplete(request: Pick<ServiceRequest, 'document_status'>): boolean {
@@ -699,14 +649,6 @@ export function getCustomerDelaySummary(
   return null;
 }
 
-export function canMoveToBilling(request: Pick<ServiceRequest, 'collect_docs_on_site' | 'document_status'>): boolean {
-  if (!request.collect_docs_on_site) {
-    return true;
-  }
-
-  return request.document_status === 'COMPLETE';
-}
-
 export function canMarkSurveyPassed(request: Pick<ServiceRequest, 'status' | 'request_type'>): boolean {
   return ['METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE'].includes(request.request_type) && request.status === 'IN_SURVEY';
 }
@@ -714,7 +656,7 @@ export function canMarkSurveyPassed(request: Pick<ServiceRequest, 'status' | 're
 export function canEvaluateThreePhaseCapability(
   request: Pick<ServiceRequest, 'status' | 'request_type' | 'three_phase_capability_result'>
 ): boolean {
-  return ['METER_TO_3PHASE', 'METER_30_100_3P'].includes(request.request_type) && request.status === 'IN_SURVEY' && request.three_phase_capability_result !== 'SUPPORTED';
+  return ['METER_TO_3PHASE', 'METER_30_100_3P'].includes(request.request_type) && ['IN_SURVEY', 'CHECK_3PHASE_CAPABILITY'].includes(request.status) && request.three_phase_capability_result !== 'SUPPORTED';
 }
 
 export function canMarkSurveyFailed(request: Pick<ServiceRequest, 'status' | 'request_type'>): boolean {
@@ -837,19 +779,6 @@ export function getDocumentStatusSummary(
     collectDocsOnSiteLabel: request.collect_docs_on_site ? 'ใช่' : 'ไม่ใช่',
     incompleteDocsNote: request.incomplete_docs_note
   };
-}
-
-export function canMoveToManagerReview(
-  request: Pick<ServiceRequest, 'invoice_signed_at' | 'paid_at'>
-): boolean {
-  return isInvoiceSigned(request) && isPaid(request);
-}
-
-// หลังออกใบแจ้งหนี้ งาน “เซ็น” และ “ชำระ” เป็นเงื่อนไขขนานที่ทำสลับลำดับได้ จึง resolve ด้วย flags ไม่ใช่ status ต่อกัน
-export function resolvePostBillingPhase(
-  request: Pick<ServiceRequest, 'invoice_signed_at' | 'paid_at'>
-): Extract<RequestStatus, 'WAIT_ACTION_CONFIRMATION' | 'WAIT_MANAGER_REVIEW'> {
-  return canMoveToManagerReview(request) ? 'WAIT_MANAGER_REVIEW' : 'WAIT_ACTION_CONFIRMATION';
 }
 
 export type Area = {

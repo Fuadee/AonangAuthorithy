@@ -9,11 +9,9 @@ import {
   canApproveFixFromPhoto,
   canMarkSurveyFailed,
   canMarkSurveyPassed,
-  canMoveToBilling,
   canStartSurvey,
   calculateNextPlannedDispatchDate,
   canEvaluateThreePhaseCapability,
-  canMoveToManagerReview,
   DocumentReviewDecision,
   normalizeSurveyWorkflowStatus,
   REQUEST_STATUSES,
@@ -21,12 +19,17 @@ import {
   REQUEST_TYPES,
   RequestType,
   resolveDocumentReviewDecision,
-  resolvePostBillingPhase,
   shouldUseExpansionActionSet,
   isThirtyOneHundredRequestType
 } from '@/lib/requests/types';
 import { resolveRequestSubmission } from '@/lib/requests/request-intent';
-import { resolvePassedSurveyStatus, resolveSurveyCompletionStatus } from '@/lib/requests/workflow-transitions';
+import {
+  resolveEligibilityReviewStatus,
+  resolveExpansionPostEstimationStatus,
+  resolvePassedSurveyStatus,
+  resolveSurveyCompletionStatus,
+  resolveThreePhaseCapabilityStatus
+} from '@/lib/requests/workflow-transitions';
 import { createServerSupabaseClient } from '@/lib/supabase/server';
 
 function requiredField(formData: FormData, key: string): string {
@@ -105,12 +108,6 @@ function isValidRequestStatus(status: string): status is RequestStatus {
 }
 
 
-function assertMeterLoopAllowed(requestType: RequestType): void {
-  if (!['METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE'].includes(requestType)) {
-    throw new Error('รองรับ workflow ออกใบแจ้งหนี้เฉพาะคำร้องขอมิเตอร์และงานเพิ่มเป็นมิเตอร์ 3 เฟสเท่านั้น');
-  }
-}
-
 function assertExpansionWorkflowAllowed(request: { request_type: RequestType; status: RequestStatus; three_phase_capability_result?: 'SUPPORTED' | 'UNSUPPORTED' | null }): void {
   if (!shouldUseExpansionActionSet(request)) {
     throw new Error('action นี้รองรับเฉพาะงานขยายเขต หรือคำร้อง 3 เฟสที่ถูกส่งต่อเข้า flow ขยายเขตแล้ว');
@@ -120,7 +117,6 @@ function assertExpansionWorkflowAllowed(request: { request_type: RequestType; st
 function revalidateRequestPaths(requestId: string): void {
   revalidatePath('/dashboard');
   revalidatePath('/surveyor');
-  revalidatePath('/billing');
   revalidatePath('/manager');
   revalidatePath('/document');
   revalidatePath('/krabi');
@@ -132,8 +128,7 @@ function revalidateRequestPaths(requestId: string): void {
 
 function shouldStayOnQueue(formData: FormData): boolean {
   const stayOnQueue = formData.get('stay_on_queue')?.toString() === '1';
-  const returnTo = formData.get('return_to')?.toString();
-  return stayOnQueue || returnTo === '/billing';
+  return stayOnQueue;
 }
 
 function finalizeWorkflowAction(requestId: string, formData: FormData): void {
@@ -156,12 +151,9 @@ const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>
   WAIT_LAYOUT_DRAWING: ['WAITING_TO_SEND_TO_KRABI'],
   WAITING_TO_SEND_TO_KRABI: ['SENT_TO_KRABI'],
   WAIT_KRABI_DOCUMENT_CHECK: ['KRABI_IN_PROGRESS', 'KRABI_NEEDS_DOCUMENT_FIX'],
-  WAIT_BILLING: ['WAIT_ACTION_CONFIRMATION', 'WAIT_PAYMENT'],
   KRABI_NEEDS_DOCUMENT_FIX: ['WAITING_TO_SEND_TO_KRABI'],
   KRABI_IN_PROGRESS: ['KRABI_ESTIMATION_COMPLETED'],
-  KRABI_ESTIMATION_COMPLETED: ['BILL_ISSUED'],
-  BILL_ISSUED: ['COORDINATED_WITH_CONSTRUCTION'],
-  WAIT_ACTION_CONFIRMATION: ['WAIT_MANAGER_REVIEW', 'WAIT_AONANG_MANAGER_FINAL_APPROVAL'],
+  KRABI_ESTIMATION_COMPLETED: ['COORDINATED_WITH_CONSTRUCTION'],
   WAIT_MANAGER_REVIEW: ['COMPLETED'],
   WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL: ['SENT_TO_KRABI', 'RETURNED_FOR_RESURVEY'],
   SURVEY_OVERLOAD_REPORTED: ['COMPLETED_OVERLOAD_FORWARD'],
@@ -172,8 +164,7 @@ const ALLOWED_STATUS_TRANSITIONS: Partial<Record<RequestStatus, RequestStatus[]>
   RESENT_TO_KRABI: ['WAIT_KRABI_APPROVAL'],
   KRABI_APPROVED: ['WAIT_ELIGIBILITY_REVIEW'],
   WAIT_RECEIVE_FROM_KRABI: ['WAIT_ELIGIBILITY_REVIEW'],
-  WAIT_ELIGIBILITY_REVIEW: ['WAIT_BILLING', 'WAIT_AONANG_MANAGER_FINAL_APPROVAL'],
-  WAIT_PAYMENT: ['WAIT_AONANG_MANAGER_FINAL_APPROVAL'],
+  WAIT_ELIGIBILITY_REVIEW: ['WAIT_AONANG_MANAGER_FINAL_APPROVAL'],
   WAIT_AONANG_MANAGER_FINAL_APPROVAL: ['COMPLETED']
 };
 
@@ -412,7 +403,7 @@ export async function updateRequestStatusAction(formData: FormData) {
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status,invoice_signed_at,paid_at,request_type,collect_docs_on_site,document_status,fix_verification_mode')
+    .select('id,status,request_type,collect_docs_on_site,document_status,fix_verification_mode')
     .eq('id', requestId)
     .single();
 
@@ -429,32 +420,8 @@ export async function updateRequestStatusAction(formData: FormData) {
     throw new Error('ไม่สามารถข้ามสถานะได้');
   }
 
-  if (request.status === 'WAIT_DOCUMENT_REVIEW' && nextStatus === 'WAIT_BILLING') {
-    throw new Error('ห้ามเปลี่ยนเป็นรอออกใบแจ้งหนี้โดยตรง ต้องผ่านการสำรวจก่อน');
-  }
-  if (request.status === 'WAIT_CUSTOMER_FIX' && nextStatus === 'WAIT_BILLING') {
-    throw new Error('ห้ามข้ามจากรอผู้ใช้ไฟแก้ไขไปออกใบแจ้งหนี้โดยตรง');
-  }
-  if (request.status === 'WAIT_FIX_REVIEW' && nextStatus === 'WAIT_BILLING') {
-    throw new Error('ห้ามข้ามจากรอตรวจรูปไปออกใบแจ้งหนี้โดยตรง');
-  }
-
-  if (request.status === 'WAIT_BILLING' && (nextStatus === 'WAIT_MANAGER_REVIEW' || nextStatus === 'COMPLETED')) {
-    throw new Error('ห้ามข้ามจากรอออกใบแจ้งหนี้ไปสถานะปลายทางโดยตรง');
-  }
-
-  if (request.status === 'WAIT_ACTION_CONFIRMATION' && nextStatus === 'COMPLETED') {
-    throw new Error('ต้องผ่านการตรวจของผู้จัดการก่อนปิดงาน');
-  }
-
   if (['METER', 'METER_30_100_1P', 'METER_30_100_3P', 'METER_TO_3PHASE'].includes(request.request_type) && request.status === 'WAIT_DOCUMENT_FROM_CUSTOMER' && nextStatus === 'READY_FOR_SURVEY') {
     throw new Error('ต้องกด action “ได้รับเอกสารแล้ว” เพื่อยืนยันเอกสารครบก่อนรับงาน');
-  }
-
-  if (request.request_type === 'METER' && request.status === 'SURVEY_COMPLETED' && nextStatus === 'WAIT_BILLING') {
-    if (!canMoveToBilling(request)) {
-      throw new Error('เคสรับเอกสารหน้างาน ต้องยืนยันว่าเอกสารครบแล้วก่อนออกใบแจ้งหนี้');
-    }
   }
 
   if (
@@ -467,14 +434,13 @@ export async function updateRequestStatusAction(formData: FormData) {
       'KRABI_NEEDS_DOCUMENT_FIX',
       'KRABI_IN_PROGRESS',
       'KRABI_ESTIMATION_COMPLETED',
-      'BILL_ISSUED',
       'COORDINATED_WITH_CONSTRUCTION'
     ].includes(nextStatus)
   ) {
     throw new Error('สถานะวาดผัง/ส่งเอกสารกระบี่รองรับเฉพาะงานขยายเขตเท่านั้น');
   }
 
-  if (request.request_type === 'EXPANSION' && ['WAIT_BILLING', 'WAIT_PAYMENT', 'INSTALLATION', 'INSPECTION', 'DESIGN_AND_ESTIMATE', 'CHECK_3PHASE_CAPABILITY'].includes(nextStatus)) {
+  if (request.request_type === 'EXPANSION' && ['INSTALLATION', 'INSPECTION', 'DESIGN_AND_ESTIMATE', 'CHECK_3PHASE_CAPABILITY'].includes(nextStatus)) {
     throw new Error('งานขยายเขตไม่สามารถใช้สถานะ flow งานเพิ่มเป็นมิเตอร์ 3 เฟสได้');
   }
 
@@ -491,9 +457,6 @@ export async function updateRequestStatusAction(formData: FormData) {
       throw new Error('งานขอมิเตอร์ 30/100 ต้องใช้สถานะผู้จัดการก่อนส่งกระบี่หรืออนุมัติรอบสุดท้ายตามขั้นตอน');
     }
 
-    if (!canMoveToManagerReview(request)) {
-      throw new Error('ยังส่งให้ผู้จัดการตรวจไม่ได้ เพราะยังเซ็นใบแจ้งหนี้/ชำระเงินไม่ครบ');
-    }
   }
 
   const { error } = await supabase
@@ -1083,38 +1046,6 @@ export async function markKrabiEstimationCompletedAction(formData: FormData) {
   finalizeWorkflowAction(requestId, formData);
 }
 
-export async function markExpansionBillIssuedAction(formData: FormData) {
-  const requestId = requiredField(formData, 'request_id');
-  const supabase = createServerSupabaseClient();
-  const nowIso = new Date().toISOString();
-
-  const { data: request, error: requestError } = await supabase
-    .from('service_requests')
-    .select('id,status,request_type,three_phase_capability_result')
-    .eq('id', requestId)
-    .single();
-  if (requestError || !request) {
-    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
-  }
-  assertExpansionWorkflowAllowed({
-    request_type: request.request_type as RequestType,
-    status: request.status as RequestStatus,
-    three_phase_capability_result: request.three_phase_capability_result
-  });
-  if (request.status !== 'KRABI_ESTIMATION_COMPLETED') {
-    throw new Error('ต้องผ่านสถานะกระบี่ประมาณการเสร็จก่อน');
-  }
-
-  const { error } = await supabase
-    .from('service_requests')
-    .update({ status: 'BILL_ISSUED', billed_at: nowIso, updated_at: nowIso })
-    .eq('id', requestId);
-  if (error) {
-    throw new Error(error.message);
-  }
-  finalizeWorkflowAction(requestId, formData);
-}
-
 export async function markCoordinatedWithConstructionAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
   const supabase = createServerSupabaseClient();
@@ -1133,13 +1064,13 @@ export async function markCoordinatedWithConstructionAction(formData: FormData) 
     status: request.status as RequestStatus,
     three_phase_capability_result: request.three_phase_capability_result
   });
-  if (request.status !== 'BILL_ISSUED') {
-    throw new Error('ต้องบันทึกว่าออกใบแจ้งหนี้แล้วก่อน');
+  if (request.status !== 'KRABI_ESTIMATION_COMPLETED') {
+    throw new Error('ประสานก่อสร้างได้เฉพาะงานที่กระบี่ประมาณการเสร็จแล้ว');
   }
 
   const { error } = await supabase
     .from('service_requests')
-    .update({ status: 'COORDINATED_WITH_CONSTRUCTION', updated_at: nowIso })
+    .update({ status: resolveExpansionPostEstimationStatus(), updated_at: nowIso })
     .eq('id', requestId);
   if (error) {
     throw new Error(error.message);
@@ -1174,7 +1105,10 @@ export async function markThreePhaseCapabilitySupportedAction(formData: FormData
     currentStatus: request.status,
     requestType: request.request_type,
     currentCapability: request.three_phase_capability_result ?? null,
-    targetStatus: 'IN_SURVEY',
+    targetStatus: resolveThreePhaseCapabilityStatus(
+      request.request_type as Extract<RequestType, 'METER_TO_3PHASE' | 'METER_30_100_3P'>,
+      'SUPPORTED'
+    ),
     targetCapability: 'SUPPORTED'
   });
 
@@ -1205,10 +1139,15 @@ export async function markThreePhaseCapabilitySupportedAction(formData: FormData
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: 'IN_SURVEY',
+      status: resolveThreePhaseCapabilityStatus(
+        request.request_type as Extract<RequestType, 'METER_TO_3PHASE' | 'METER_30_100_3P'>,
+        'SUPPORTED'
+      ),
       three_phase_capability_result: 'SUPPORTED',
       flow_type: 'METER',
       three_phase_capability_checked_at: nowIso,
+      survey_result: 'PASS',
+      survey_completed_at: nowIso,
       survey_note: mergedSurveyNote || null,
       updated_at: nowIso
     })
@@ -1221,7 +1160,10 @@ export async function markThreePhaseCapabilitySupportedAction(formData: FormData
   console.info('[meter-3phase-supported-action-success]', {
     requestId,
     skippedUpdate: false,
-    nextStatus: 'IN_SURVEY',
+    nextStatus: resolveThreePhaseCapabilityStatus(
+      request.request_type as Extract<RequestType, 'METER_TO_3PHASE' | 'METER_30_100_3P'>,
+      'SUPPORTED'
+    ),
     nextCapability: 'SUPPORTED'
   });
   finalizeWorkflowAction(requestId, formData);
@@ -1241,7 +1183,7 @@ export async function forwardThreePhaseToExpansionAction(formData: FormData) {
     throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   }
 
-  if (!['METER_TO_3PHASE', 'METER_30_100_3P'].includes(request.request_type as RequestType) || request.status !== 'IN_SURVEY' || request.three_phase_capability_result === 'SUPPORTED') {
+  if (!['METER_TO_3PHASE', 'METER_30_100_3P'].includes(request.request_type as RequestType) || !['IN_SURVEY', 'CHECK_3PHASE_CAPABILITY'].includes(request.status) || request.three_phase_capability_result === 'SUPPORTED') {
     throw new Error('ส่งต่อไปงานขยายเขตได้เฉพาะงานเพิ่มเป็นมิเตอร์ 3 เฟสที่อยู่ขั้นกำลังสำรวจ');
   }
 
@@ -1252,7 +1194,10 @@ ${timelineNote}` : timelineNote;
   const { error } = await supabase
     .from('service_requests')
     .update({
-      status: 'WAIT_LAYOUT_DRAWING',
+      status: resolveThreePhaseCapabilityStatus(
+        request.request_type as Extract<RequestType, 'METER_TO_3PHASE' | 'METER_30_100_3P'>,
+        'UNSUPPORTED'
+      ),
       flow_type: 'EXPANSION',
       survey_result: 'FAIL',
       survey_completed_at: nowIso,
@@ -1279,34 +1224,7 @@ export async function completeThreePhaseDesignEstimateAction(formData: FormData)
   const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
   if (requestError || !request) throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   if ((request.request_type as RequestType) !== 'METER_TO_3PHASE' || request.status !== 'DESIGN_AND_ESTIMATE') throw new Error('ขั้นตอนนี้ใช้ได้เฉพาะงานเพิ่มเป็นมิเตอร์ 3 เฟสที่อยู่ขั้นออกแบบ/ประเมิน');
-  const { error } = await supabase.from('service_requests').update({ status: 'WAIT_BILLING', updated_at: nowIso }).eq('id', requestId);
-  if (error) throw new Error(error.message);
-  finalizeWorkflowAction(requestId, formData);
-}
-
-export async function issueThreePhaseBillingAction(formData: FormData) {
-  const requestId = requiredField(formData, 'request_id');
-  const billedBy = requiredField(formData, 'billed_by');
-  const billingNote = optionalField(formData, 'billing_note');
-  const supabase = createServerSupabaseClient();
-  const nowIso = new Date().toISOString();
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
-  if (requestError || !request) throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
-  if ((request.request_type as RequestType) !== 'METER_TO_3PHASE' || request.status !== 'WAIT_BILLING') throw new Error('ออกใบแจ้งหนี้ได้เฉพาะงานเพิ่มเป็นมิเตอร์ 3 เฟสที่รอออกใบแจ้งหนี้');
-  const { error } = await supabase.from('service_requests').update({ status: 'WAIT_PAYMENT', billed_at: nowIso, billed_by: billedBy, billing_note: billingNote, updated_at: nowIso }).eq('id', requestId);
-  if (error) throw new Error(error.message);
-  finalizeWorkflowAction(requestId, formData);
-}
-
-export async function confirmThreePhasePaymentAction(formData: FormData) {
-  const requestId = requiredField(formData, 'request_id');
-  const paidBy = requiredField(formData, 'paid_by');
-  const supabase = createServerSupabaseClient();
-  const nowIso = new Date().toISOString();
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
-  if (requestError || !request) throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
-  if ((request.request_type as RequestType) !== 'METER_TO_3PHASE' || request.status !== 'WAIT_PAYMENT') throw new Error('ยืนยันชำระเงินได้เฉพาะงานเพิ่มเป็นมิเตอร์ 3 เฟสที่รอชำระเงิน');
-  const { error } = await supabase.from('service_requests').update({ status: 'INSTALLATION', paid_at: nowIso, paid_by: paidBy, updated_at: nowIso }).eq('id', requestId);
+  const { error } = await supabase.from('service_requests').update({ status: 'WAIT_MANAGER_REVIEW', updated_at: nowIso }).eq('id', requestId);
   if (error) throw new Error(error.message);
   finalizeWorkflowAction(requestId, formData);
 }
@@ -1806,7 +1724,7 @@ export async function confirmOnSiteDocumentsCompleteAction(formData: FormData) {
 
   const { error } = await supabase
     .from('service_requests')
-    .update({ status: 'WAIT_BILLING', document_status: 'COMPLETE', updated_at: nowIso })
+    .update({ status: 'WAIT_MANAGER_REVIEW', document_status: 'COMPLETE', updated_at: nowIso })
     .eq('id', requestId);
 
   if (error) {
@@ -1814,129 +1732,6 @@ export async function confirmOnSiteDocumentsCompleteAction(formData: FormData) {
   }
 
   finalizeWorkflowAction(requestId, formData);
-}
-
-export async function issueBillingAction(formData: FormData) {
-  const requestId = requiredField(formData, 'request_id');
-  const billedBy = requiredField(formData, 'billed_by');
-  const billingNote = optionalField(formData, 'billing_note');
-
-  const supabase = createServerSupabaseClient();
-  const nowIso = new Date().toISOString();
-
-  console.info('[billing-action] issueBillingAction', {
-    requestId,
-    stay_on_queue: formData.get('stay_on_queue')?.toString() ?? null,
-    return_to: formData.get('return_to')?.toString() ?? null
-  });
-
-  const { data: request, error: requestError } = await supabase
-    .from('service_requests')
-    .select('id,status,request_type')
-    .eq('id', requestId)
-    .single();
-
-  if (requestError || !request) {
-    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
-  }
-
-  if (!isValidRequestStatus(request.status)) {
-    throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
-  }
-
-  assertMeterLoopAllowed(request.request_type as RequestType);
-
-  if (['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type as RequestType) && request.status !== 'WAIT_BILLING') {
-    throw new Error('ออกใบแจ้งหนี้ได้เฉพาะงานขอมิเตอร์ที่อยู่สถานะออกใบแจ้งหนี้');
-  }
-
-  if (!['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type as RequestType) && request.status !== 'WAIT_BILLING') {
-    throw new Error('ออกใบแจ้งหนี้ได้เฉพาะงานที่อยู่สถานะรอออกใบแจ้งหนี้');
-  }
-
-  const { error } = await supabase
-    .from('service_requests')
-    .update({
-      status: ['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type as RequestType) ? 'WAIT_PAYMENT' : 'WAIT_ACTION_CONFIRMATION',
-      billing_note: billingNote,
-      billed_at: nowIso,
-      billed_by: billedBy,
-      updated_at: nowIso
-    })
-    .eq('id', requestId);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  finalizeWorkflowAction(requestId, formData);
-}
-
-export async function confirmBillingSurveyorSignAction(formData: FormData) {
-  const requestId = requiredField(formData, 'request_id');
-  const invoiceSignedBy = requiredField(formData, 'invoice_signed_by');
-
-  const supabase = createServerSupabaseClient();
-  const nowIso = new Date().toISOString();
-
-  console.info('[billing-action] confirmBillingSurveyorSignAction', {
-    requestId,
-    stay_on_queue: formData.get('stay_on_queue')?.toString() ?? null,
-    return_to: formData.get('return_to')?.toString() ?? null
-  });
-
-  const { data: request, error: requestError } = await supabase
-    .from('service_requests')
-    .select('id,status,request_type,billed_at,invoice_signed_at,paid_at')
-    .eq('id', requestId)
-    .single();
-
-  if (requestError || !request) {
-    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
-  }
-
-  if (!isValidRequestStatus(request.status)) {
-    throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
-  }
-
-  assertMeterLoopAllowed(request.request_type as RequestType);
-
-  if (request.status !== 'WAIT_ACTION_CONFIRMATION') {
-    throw new Error('เซ็นรับรองได้เฉพาะงานที่อยู่ช่วงรอชำระเงินหลังแจ้งหนี้');
-  }
-
-  if (!request.billed_at) {
-    throw new Error('ยังไม่สามารถเซ็นรับรองได้ เพราะยังไม่พบข้อมูลการออกใบแจ้งหนี้');
-  }
-
-  if (request.invoice_signed_at) {
-    throw new Error('มีการบันทึกการเซ็นใบแจ้งหนี้แล้ว');
-  }
-
-  const resolvedStatus = resolveMeterPostBillingStatus(request.request_type as RequestType, nowIso, request.paid_at);
-
-  const { error } = await supabase
-    .from('service_requests')
-    .update({
-      status: resolvedStatus,
-      invoice_signed_at: nowIso,
-      invoice_signed_by: invoiceSignedBy,
-      updated_at: nowIso
-    })
-    .eq('id', requestId);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  finalizeWorkflowAction(requestId, formData);
-}
-
-
-function resolveMeterPostBillingStatus(requestType: RequestType, invoiceSignedAt: string | null, paidAt: string | null): RequestStatus {
-  if (['METER_30_100_1P', 'METER_30_100_3P'].includes(requestType)) return paidAt ? 'WAIT_AONANG_MANAGER_FINAL_APPROVAL' : 'WAIT_PAYMENT';
-
-  return resolvePostBillingPhase({ invoice_signed_at: invoiceSignedAt, paid_at: paidAt });
 }
 
 export async function approveAonangManagerPreKrabiAction(formData: FormData) {
@@ -2044,7 +1839,7 @@ export async function markEligibilityPassedForMeterAction(formData: FormData) {
   const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
   if (requestError || !request) throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   if (!['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type as RequestType) || request.status !== 'WAIT_ELIGIBILITY_REVIEW') throw new Error('บันทึกผลตรวจสอบสิทธิ์ได้เฉพาะงานขอมิเตอร์ที่อยู่ขั้นตรวจสอบสิทธิ์');
-  const { error } = await supabase.from('service_requests').update({ status: 'WAIT_AONANG_MANAGER_FINAL_APPROVAL', updated_at: nowIso }).eq('id', requestId);
+  const { error } = await supabase.from('service_requests').update({ status: resolveEligibilityReviewStatus(true), updated_at: nowIso }).eq('id', requestId);
   if (error) throw new Error(error.message);
   finalizeWorkflowAction(requestId, formData);
 }
@@ -2056,26 +1851,7 @@ export async function markEligibilityFailedForMeterAction(formData: FormData) {
   const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type').eq('id', requestId).single();
   if (requestError || !request) throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
   if (!['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type as RequestType) || request.status !== 'WAIT_ELIGIBILITY_REVIEW') throw new Error('บันทึกผลตรวจสอบสิทธิ์ได้เฉพาะงานขอมิเตอร์ที่อยู่ขั้นตรวจสอบสิทธิ์');
-  const { error } = await supabase.from('service_requests').update({ status: 'WAIT_BILLING', updated_at: nowIso }).eq('id', requestId);
-  if (error) throw new Error(error.message);
-  finalizeWorkflowAction(requestId, formData);
-}
-
-export async function moveToFinalManagerApprovalAction(formData: FormData) {
-  const requestId = requiredField(formData, 'request_id');
-  const supabase = createServerSupabaseClient();
-  const nowIso = new Date().toISOString();
-  const { data: request, error: requestError } = await supabase.from('service_requests').select('id,status,request_type,invoice_signed_at,paid_at').eq('id', requestId).single();
-  if (requestError || !request) throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
-  if (['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type as RequestType)) {
-    if (request.status !== 'WAIT_PAYMENT') throw new Error('ส่งให้ผู้จัดการอนุมัติรอบสุดท้ายได้เฉพาะงานขอมิเตอร์ที่รอชำระเงิน');
-    if (!request.paid_at) throw new Error('ยังส่งอนุมัติรอบสุดท้ายไม่ได้ เพราะยังไม่บันทึกการชำระเงิน');
-  } else if (request.status !== 'WAIT_ACTION_CONFIRMATION') {
-    throw new Error('ส่งให้ผู้จัดการอนุมัติรอบสุดท้ายได้เฉพาะงานขอมิเตอร์ที่รอเซ็น/ชำระเงิน');
-  } else if (!canMoveToManagerReview(request)) {
-    throw new Error('ยังส่งอนุมัติรอบสุดท้ายไม่ได้ เพราะยังไม่ครบเงื่อนไขเซ็นใบแจ้งหนี้และชำระเงิน');
-  }
-  const { error } = await supabase.from('service_requests').update({ status: 'WAIT_AONANG_MANAGER_FINAL_APPROVAL', updated_at: nowIso }).eq('id', requestId);
+  const { error } = await supabase.from('service_requests').update({ status: resolveEligibilityReviewStatus(false), updated_at: nowIso }).eq('id', requestId);
   if (error) throw new Error(error.message);
   finalizeWorkflowAction(requestId, formData);
 }
@@ -2207,65 +1983,6 @@ export async function markSurveyNeedsExpansionAction(formData: FormData) {
   finalizeWorkflowAction(requestId, formData);
 }
 
-export async function confirmPaymentReceivedAction(formData: FormData) {
-  const requestId = requiredField(formData, 'request_id');
-  const paidBy = requiredField(formData, 'paid_by');
-
-  const supabase = createServerSupabaseClient();
-  const nowIso = new Date().toISOString();
-
-  console.info('[billing-action] confirmPaymentReceivedAction', {
-    requestId,
-    stay_on_queue: formData.get('stay_on_queue')?.toString() ?? null,
-    return_to: formData.get('return_to')?.toString() ?? null
-  });
-
-  const { data: request, error: requestError } = await supabase
-    .from('service_requests')
-    .select('id,status,request_type,invoice_signed_at,paid_at')
-    .eq('id', requestId)
-    .single();
-
-  if (requestError || !request) {
-    throw new Error(requestError?.message ?? 'ไม่พบคำร้อง');
-  }
-
-  if (!isValidRequestStatus(request.status)) {
-    throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
-  }
-
-  assertMeterLoopAllowed(request.request_type as RequestType);
-
-  if (request.status !== 'WAIT_ACTION_CONFIRMATION' && request.status !== 'WAIT_PAYMENT') {
-    throw new Error('ยืนยันชำระเงินได้เฉพาะงานที่อยู่ช่วงรอชำระเงินหลังแจ้งหนี้');
-  }
-
-  if (request.paid_at) {
-    throw new Error('มีการบันทึกการชำระเงินแล้ว');
-  }
-
-  const resolvedStatus =
-    ['METER_30_100_1P', 'METER_30_100_3P'].includes(request.request_type as RequestType)
-      ? 'WAIT_PAYMENT'
-      : resolveMeterPostBillingStatus(request.request_type as RequestType, request.invoice_signed_at, nowIso);
-
-  const { error } = await supabase
-    .from('service_requests')
-    .update({
-      status: resolvedStatus,
-      paid_at: nowIso,
-      paid_by: paidBy,
-      updated_at: nowIso
-    })
-    .eq('id', requestId);
-
-  if (error) {
-    throw new Error(error.message);
-  }
-
-  finalizeWorkflowAction(requestId, formData);
-}
-
 export async function approveManagerReviewAction(formData: FormData) {
   const requestId = requiredField(formData, 'request_id');
   const supabase = createServerSupabaseClient();
@@ -2273,7 +1990,7 @@ export async function approveManagerReviewAction(formData: FormData) {
 
   const { data: request, error: requestError } = await supabase
     .from('service_requests')
-    .select('id,status,request_type,invoice_signed_at,paid_at')
+    .select('id,status,request_type')
     .eq('id', requestId)
     .single();
 
@@ -2291,18 +2008,12 @@ export async function approveManagerReviewAction(formData: FormData) {
     throw new Error('สถานะปัจจุบันไม่ถูกต้อง');
   }
 
-  assertMeterLoopAllowed(request.request_type as RequestType);
-
-  if (isThirtyOneHundredRequestType(request.request_type as RequestType)) {
-    throw new Error('งานขอมิเตอร์ 30/100 ต้องใช้ action ผู้จัดการก่อนส่งกระบี่หรืออนุมัติรอบสุดท้ายตามขั้นตอน');
+  if (!['METER', 'METER_TO_3PHASE'].includes(request.request_type as RequestType)) {
+    throw new Error('ขั้นตรวจสอบการเงินและอนุมัติติดตั้งรองรับเฉพาะงานขอมิเตอร์ทั่วไปและงานเพิ่มเป็นมิเตอร์ 3 เฟส');
   }
 
   if (request.status !== 'WAIT_MANAGER_REVIEW') {
     throw new Error('ผู้จัดการอนุมัติได้เฉพาะงานที่รอผู้จัดการตรวจ');
-  }
-
-  if (!canMoveToManagerReview(request)) {
-    throw new Error('ยังอนุมัติไม่ได้ เพราะยังไม่ครบเงื่อนไขเซ็นใบแจ้งหนี้และชำระเงิน');
   }
 
   const { error } = await supabase

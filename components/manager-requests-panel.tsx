@@ -84,21 +84,21 @@ export function ManagerRequestsPanel({ requests }: ManagerRequestsPanelProps) {
     if (request.status === 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL') {
       return {
         action: approveAonangManagerPreKrabiAction,
-        label: 'อนุมัติส่งต่อ Flow มิเตอร์',
+        label: 'อนุมัติก่อนส่งกระบี่',
         className: 'btn-flow-primary'
       };
     }
     if (request.status === 'WAIT_AONANG_MANAGER_FINAL_APPROVAL') {
       return {
         action: approveAonangManagerFinalAction,
-        label: 'อนุมัติปิดงานมิเตอร์',
+        label: 'ตรวจสอบการเงิน + อนุมัติขั้นสุดท้าย',
         className: 'btn-flow-success'
       };
     }
 
     return {
       action: approveManagerReviewAction,
-      label: 'อนุมัติส่งต่อ Flow มิเตอร์',
+      label: 'ตรวจสอบการเงิน + อนุมัติติดตั้ง',
       className: 'btn-flow-primary'
     };
   };

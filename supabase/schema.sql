@@ -61,7 +61,7 @@ create table if not exists public.service_requests (
   meter_size text check (meter_size in ('NORMAL', 'THIRTY_ONE_HUNDRED')),
   phase text check (phase in ('ONE_PHASE', 'THREE_PHASE')),
   flow_type text not null default 'METER' check (flow_type in ('METER', 'EXPANSION')),
-  status text not null default 'NEW' check (status in ('NEW', 'PENDING_SURVEY_REVIEW', 'SURVEY_ACCEPTED', 'SURVEY_DOCS_INCOMPLETE', 'SURVEY_RESCHEDULE_REQUESTED', 'SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING', 'WAITING_TO_SEND_TO_KRABI', 'SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK', 'KRABI_NEEDS_DOCUMENT_FIX', 'KRABI_IN_PROGRESS', 'KRABI_ESTIMATION_COMPLETED', 'BILL_ISSUED', 'COORDINATED_WITH_CONSTRUCTION', 'WAIT_DOCUMENT_REVIEW', 'WAIT_DOCUMENT_FROM_CUSTOMER', 'READY_FOR_SURVEY', 'IN_SURVEY', 'WAIT_CUSTOMER_FIX', 'WAIT_FIX_REVIEW', 'READY_FOR_RESURVEY', 'SURVEY_OVERLOAD_REPORTED', 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL', 'WAIT_KRABI_APPROVAL', 'KRABI_NEEDS_CORRECTION', 'DOCUMENT_FIX', 'RESENT_TO_KRABI', 'KRABI_APPROVED', 'WAIT_RECEIVE_FROM_KRABI', 'WAIT_ELIGIBILITY_REVIEW', 'WAIT_AONANG_MANAGER_FINAL_APPROVAL', 'CHECK_3PHASE_CAPABILITY', 'NEEDS_EXPANSION', 'DESIGN_AND_ESTIMATE', 'WAIT_BILLING', 'WAIT_PAYMENT', 'INSTALLATION', 'INSPECTION', 'WAIT_ACTION_CONFIRMATION', 'WAIT_MANAGER_REVIEW', 'RETURNED_FOR_RESURVEY', 'COMPLETED', 'COMPLETED_OVERLOAD_FORWARD')),
+  status text not null default 'NEW' check (status in ('NEW', 'PENDING_SURVEY_REVIEW', 'SURVEY_ACCEPTED', 'SURVEY_DOCS_INCOMPLETE', 'SURVEY_RESCHEDULE_REQUESTED', 'SURVEY_COMPLETED', 'WAIT_LAYOUT_DRAWING', 'WAITING_TO_SEND_TO_KRABI', 'SENT_TO_KRABI', 'WAIT_KRABI_DOCUMENT_CHECK', 'KRABI_NEEDS_DOCUMENT_FIX', 'KRABI_IN_PROGRESS', 'KRABI_ESTIMATION_COMPLETED', 'COORDINATED_WITH_CONSTRUCTION', 'WAIT_DOCUMENT_REVIEW', 'WAIT_DOCUMENT_FROM_CUSTOMER', 'READY_FOR_SURVEY', 'IN_SURVEY', 'WAIT_CUSTOMER_FIX', 'WAIT_FIX_REVIEW', 'READY_FOR_RESURVEY', 'SURVEY_OVERLOAD_REPORTED', 'WAIT_AONANG_MANAGER_PRE_KRABI_APPROVAL', 'WAIT_KRABI_APPROVAL', 'KRABI_NEEDS_CORRECTION', 'DOCUMENT_FIX', 'RESENT_TO_KRABI', 'KRABI_APPROVED', 'WAIT_RECEIVE_FROM_KRABI', 'WAIT_ELIGIBILITY_REVIEW', 'WAIT_AONANG_MANAGER_FINAL_APPROVAL', 'CHECK_3PHASE_CAPABILITY', 'NEEDS_EXPANSION', 'DESIGN_AND_ESTIMATE', 'INSTALLATION', 'INSPECTION', 'WAIT_MANAGER_REVIEW', 'RETURNED_FOR_RESURVEY', 'COMPLETED', 'COMPLETED_OVERLOAD_FORWARD')),
   survey_note text,
   survey_reschedule_date date,
   survey_rescheduled_at timestamptz,
@@ -107,6 +107,7 @@ create table if not exists public.service_requests (
   proceed_override_by text,
   proceed_override_at timestamptz,
   proceed_override_reason text,
+  -- Historical financial fields are retained for audit only and are not workflow prerequisites.
   billing_amount numeric(12, 2),
   billing_note text,
   billed_at timestamptz,
@@ -125,15 +126,6 @@ create table if not exists public.service_requests (
   krabi_completed_at timestamptz,
   forwarded_to_expansion_at timestamptz,
   forwarded_to_expansion_note text,
-  constraint service_requests_manager_review_prerequisites_check
-    check (
-      status <> 'WAIT_MANAGER_REVIEW'
-      or (
-        request_type not in ('METER_30_100_1P', 'METER_30_100_3P')
-        and invoice_signed_at is not null
-        and paid_at is not null
-      )
-    ),
   constraint service_requests_location_coordinates_pair
     check ((latitude is null and longitude is null) or (latitude is not null and longitude is not null)),
   created_at timestamptz not null default now(),
@@ -150,8 +142,6 @@ create index if not exists idx_service_requests_surveyor_status on public.servic
 create index if not exists idx_service_requests_assigned_surveyor_id_date on public.service_requests (assigned_surveyor_id, scheduled_survey_date);
 create index if not exists idx_service_requests_assigned_surveyor_id_status_date on public.service_requests (assigned_surveyor_id, status, scheduled_survey_date);
 
-create index if not exists idx_service_requests_wait_billing on public.service_requests (request_type, status) where status = 'WAIT_BILLING';
-create index if not exists idx_service_requests_wait_action_confirmation on public.service_requests (request_type, status) where status = 'WAIT_ACTION_CONFIRMATION';
 create index if not exists idx_service_requests_wait_manager_review on public.service_requests (request_type, status) where status = 'WAIT_MANAGER_REVIEW';
 create index if not exists idx_service_requests_overload_wait_manager on public.service_requests (status, overload_reported_at) where status = 'SURVEY_OVERLOAD_REPORTED';
 create index if not exists idx_service_requests_ready_to_send_krabi on public.service_requests (status, planned_dispatch_date, is_document_ready) where status = 'WAITING_TO_SEND_TO_KRABI';
